@@ -20,7 +20,12 @@ const shell = spawn(claudePath, [
   cols: 100,
   rows: 30,
   cwd: "/home/exedev/claude-collab",
-  env: { ...process.env as Record<string, string>, TERM: "xterm-256color", HOME: "/home/exedev" },
+  env: {
+    ...process.env as Record<string, string>,
+    TERM: "xterm-256color",
+    HOME: "/home/exedev",
+    CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1",
+  },
 });
 
 console.log("Claude PTY spawned, pid:", shell.pid);
