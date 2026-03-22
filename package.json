@@ -5,6 +5,7 @@
     "start": "bun run server.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
     "bun-pty": "^0.4.8",
     "node-pty": "^1.0.0"
   }
