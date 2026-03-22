@@ -182,10 +182,16 @@
     term.loadAddon(fitAddon);
     term.open(document.getElementById('terminal-container'));
     fitAddon.fit();
+    // Simple scroll tracking - removed overcomplicated version
     window.addEventListener('resize', () => fitAddon.fit());
     new ResizeObserver(() => fitAddon.fit()).observe(document.getElementById('terminal-container'));
 
     let ws, myName = '', currentSessionId = null, sessionList = [], pendingJoin = null;
+    let scrollTimer = null;
+    function smartScroll() {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => term.scrollToBottom(), 50);
+    }
 
     const COLORS = ['#ff7b72','#d2a8ff','#79c0ff','#7ee787','#ffa657','#f778ba','#a5d6ff','#ffd8b1'];
     function nameColor(n) { let h=0; for(let i=0;i<n.length;i++) h=n.charCodeAt(i)+((h<<5)-h); return COLORS[Math.abs(h)%COLORS.length]; }
@@ -277,7 +283,7 @@
               pendingJoin = null;
             }
             break;
-          case 'output': term.write(msg.data); break;
+          case 'output': term.write(msg.data); smartScroll(); break;
           case 'chat': addChat(msg.name, msg.text); break;
           case 'system': addSystem(msg.text); break;
           case 'users':
@@ -307,6 +313,38 @@
     }
     document.getElementById('msg-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    });
+    document.getElementById('msg-input').addEventListener('paste', async (e) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of items) {
+        if (!item.type.startsWith('image/')) continue;
+        e.preventDefault();
+        const blob = item.getAsFile();
+        if (!blob) continue;
+        const input = document.getElementById('msg-input');
+        const origPlaceholder = input.placeholder;
+        input.placeholder = 'Uploading image...';
+        input.style.borderColor = '#ffa657';
+        try {
+          const fd = new FormData();
+          fd.append('image', blob);
+          const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
+          const data = await res.json();
+          if (data.path) {
+            input.value = (input.value ? input.value + ' ' : '') + data.path;
+            input.focus();
+          } else {
+            addSystem('Image upload failed: ' + (data.error || 'unknown error'));
+          }
+        } catch (err) {
+          addSystem('Image upload failed: ' + err.message);
+        } finally {
+          input.placeholder = origPlaceholder;
+          input.style.borderColor = '';
+        }
+        break; // only handle first image
+      }
     });
     document.getElementById('send-btn').addEventListener('click', send);
     const KEY_MAP = {

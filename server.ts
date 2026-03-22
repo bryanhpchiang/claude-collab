@@ -1,6 +1,8 @@
 import { spawn, type IPty } from "bun-pty";
-import { readdir, readFile } from "fs/promises";
+import { readdir, readFile, mkdir, stat } from "fs/promises";
 import { join } from "path";
+
+const UPLOAD_DIR = "/tmp/claude-uploads";
 
 const claudePath = "/home/exedev/.local/bin/claude";
 const CLAUDE_PROJECTS_DIR = join(process.env.HOME || "/home/exedev", ".claude/projects");
@@ -28,6 +30,7 @@ interface DiskSession {
   project: string;
   firstMessage: string;
   timestamp: string;
+  lastModified: string;
 }
 
 const sessions = new Map<string, Session>();
@@ -52,6 +55,8 @@ async function getDiskSessions(): Promise<DiskSession[]> {
         const claudeSessionId = file.replace(".jsonl", "");
         const filePath = join(projectDir, file);
         try {
+          const fileStat = await stat(filePath);
+          const lastModified = fileStat.mtime.toISOString();
           const content = await readFile(filePath, "utf-8");
           const lines = content.split("\n").filter(Boolean);
           let firstMessage = "";
@@ -72,11 +77,13 @@ async function getDiskSessions(): Promise<DiskSession[]> {
             project: project.replace(/-/g, "/").replace(/^\//, ""),
             firstMessage: firstMessage || "(empty session)",
             timestamp,
+            lastModified,
           });
         } catch {}
       }
     }
   } catch {}
+  results.sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime());
   return results;
 }
 
@@ -214,6 +221,24 @@ const server = Bun.serve({
 
     if (url.pathname === "/api/disk-sessions") {
       return (async () => Response.json(await getDiskSessions()))();
+    }
+
+    if (url.pathname === "/api/upload-image" && req.method === "POST") {
+      return (async () => {
+        try {
+          await mkdir(UPLOAD_DIR, { recursive: true });
+          const formData = await req.formData();
+          const file = formData.get("image") as File | null;
+          if (!file) return Response.json({ error: "No image provided" }, { status: 400 });
+          const ext = file.type.split("/")[1]?.replace("jpeg", "jpg") || "png";
+          const filename = `image-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+          const filepath = join(UPLOAD_DIR, filename);
+          await Bun.write(filepath, file);
+          return Response.json({ path: filepath });
+        } catch (err) {
+          return Response.json({ error: "Upload failed" }, { status: 500 });
+        }
+      })();
     }
 
     if (url.pathname === "/" || url.pathname === "/index.html") {
