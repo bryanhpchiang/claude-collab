@@ -92,6 +92,20 @@
       background: #21262d;
       border-radius: 6px;
       border: 1px solid #30363d;
+      cursor: pointer;
+      user-select: none;
+    }
+    #input-area .name-tag:hover { border-color: #58a6ff; }
+    #name-edit-input {
+      background: #0d1117;
+      border: 1px solid #58a6ff;
+      color: #e6edf3;
+      padding: 5px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      width: 100px;
+      outline: none;
     }
     #msg-input {
       flex: 1;
@@ -398,6 +412,42 @@
       document.getElementById('my-name-tag').style.color = nameColor(name);
       connect();
     }
+
+    // Click name tag to edit (event delegation on input-area)
+    document.getElementById('input-area').addEventListener('click', (e) => {
+      const tag = e.target.closest('#my-name-tag');
+      if (!tag) return;
+
+      const input = document.createElement('input');
+      input.id = 'name-edit-input';
+      input.value = myName;
+      input.maxLength = 20;
+      tag.replaceWith(input);
+      input.focus();
+      input.select();
+
+      let saved = false;
+      function save() {
+        if (saved) return;
+        saved = true;
+        const newName = input.value.trim() || myName;
+        myName = newName;
+        localStorage.setItem('claude-collab-name', newName);
+        const newTag = document.createElement('div');
+        newTag.className = 'name-tag';
+        newTag.id = 'my-name-tag';
+        newTag.textContent = newName;
+        newTag.style.display = 'block';
+        newTag.style.color = nameColor(newName);
+        input.replaceWith(newTag);
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'join', name: newName }));
+        }
+      }
+
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } });
+      input.addEventListener('blur', save);
+    });
 
     // Auto-join if name is saved
     const savedName = localStorage.getItem('claude-collab-name');
