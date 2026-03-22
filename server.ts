@@ -1,6 +1,9 @@
 import { spawn, type IPty } from "bun-pty";
+import { readdir, readFile } from "fs/promises";
+import { join } from "path";
 
 const claudePath = "/home/exedev/.local/bin/claude";
+const CLAUDE_PROJECTS_DIR = join(process.env.HOME || "/home/exedev", ".claude/projects");
 
 const systemPrompt = [
   "You are in a MULTIPLAYER session. Multiple users are typing messages to you through a shared web terminal.",
@@ -13,26 +16,74 @@ const systemPrompt = [
 interface Session {
   id: string;
   name: string;
+  claudeSessionId?: string; // UUID from claude's own session system
   shell: IPty;
   scrollback: string;
   chatHistory: object[];
   createdAt: number;
 }
 
+interface DiskSession {
+  claudeSessionId: string;
+  project: string;
+  firstMessage: string;
+  timestamp: string;
+}
+
 const sessions = new Map<string, Session>();
-const clientSession = new Map<any, string>(); // ws -> sessionId
-const clientInfo = new Map<any, { name: string }>(); // ws -> user info
+const clientSession = new Map<any, string>();
+const clientInfo = new Map<any, { name: string }>();
 const MAX_CHAT_HISTORY = 200;
 
 function genId(): string {
   return Math.random().toString(36).slice(2, 8);
 }
 
-function createSession(name: string): Session {
-  const id = genId();
-  const shell = spawn(claudePath, [
+// Scan disk for existing Claude Code sessions
+async function getDiskSessions(): Promise<DiskSession[]> {
+  const results: DiskSession[] = [];
+  try {
+    const projects = await readdir(CLAUDE_PROJECTS_DIR);
+    for (const project of projects) {
+      const projectDir = join(CLAUDE_PROJECTS_DIR, project);
+      const files = await readdir(projectDir).catch(() => []);
+      for (const file of files) {
+        if (!file.endsWith(".jsonl")) continue;
+        const claudeSessionId = file.replace(".jsonl", "");
+        const filePath = join(projectDir, file);
+        try {
+          const content = await readFile(filePath, "utf-8");
+          const lines = content.split("\n").filter(Boolean);
+          let firstMessage = "";
+          let timestamp = "";
+          for (const line of lines) {
+            try {
+              const entry = JSON.parse(line);
+              if (entry.type === "user" && entry.message?.content) {
+                const msg = entry.message.content;
+                firstMessage = (typeof msg === "string" ? msg : JSON.stringify(msg)).slice(0, 80);
+                timestamp = entry.timestamp || "";
+                break;
+              }
+            } catch {}
+          }
+          results.push({
+            claudeSessionId,
+            project: project.replace(/-/g, "/").replace(/^\//, ""),
+            firstMessage: firstMessage || "(empty session)",
+            timestamp,
+          });
+        } catch {}
+      }
+    }
+  } catch {}
+  return results;
+}
+
+function spawnClaude(args: string[]): IPty {
+  return spawn(claudePath, [
     "--dangerously-skip-permissions",
-    "--append-system-prompt", systemPrompt,
+    ...args,
   ], {
     name: "xterm-256color",
     cols: 100,
@@ -45,10 +96,20 @@ function createSession(name: string): Session {
       CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1",
     },
   });
+}
+
+function createSession(name: string, resumeId?: string): Session {
+  const id = genId();
+  const args = resumeId
+    ? ["--resume", resumeId, "--append-system-prompt", systemPrompt]
+    : ["--append-system-prompt", systemPrompt];
+
+  const shell = spawnClaude(args);
 
   const session: Session = {
     id,
     name,
+    claudeSessionId: resumeId,
     shell,
     scrollback: "",
     chatHistory: [],
@@ -76,7 +137,7 @@ function createSession(name: string): Session {
   });
 
   sessions.set(id, session);
-  console.log(`Session created: ${id} "${name}" (pid: ${shell.pid})`);
+  console.log(`Session created: ${id} "${name}"${resumeId ? ` (resume: ${resumeId})` : ""} (pid: ${shell.pid})`);
   return session;
 }
 
@@ -132,14 +193,27 @@ const server = Bun.serve({
       }
       if (req.method === "POST") {
         return (async () => {
-          const body = await req.json() as { name?: string };
+          const body = await req.json() as { name?: string; resumeId?: string };
           const name = body.name || "Untitled";
-          const session = createSession(name);
-          // Notify all connected clients about new session
+          const session = createSession(name, body.resumeId);
           server.publish("lobby", JSON.stringify({ type: "sessions", sessions: getSessionList() }));
           return Response.json({ id: session.id, name: session.name });
         })();
       }
+      if (req.method === "PATCH") {
+        return (async () => {
+          const body = await req.json() as { id: string; name: string };
+          const session = sessions.get(body.id);
+          if (!session) return Response.json({ error: "not found" }, { status: 404 });
+          session.name = body.name;
+          server.publish("lobby", JSON.stringify({ type: "sessions", sessions: getSessionList() }));
+          return Response.json({ id: session.id, name: session.name });
+        })();
+      }
+    }
+
+    if (url.pathname === "/api/disk-sessions") {
+      return (async () => Response.json(await getDiskSessions()))();
     }
 
     if (url.pathname === "/" || url.pathname === "/index.html") {

@@ -214,8 +214,34 @@
       sessionList.forEach(s => {
         const tab = document.createElement('div');
         tab.className = 'session-tab' + (s.id === currentSessionId ? ' active' : '');
-        tab.innerHTML = `${esc(s.name)}<span class="user-count">${s.users.length}</span>`;
+        tab.dataset.id = s.id;
+        tab.innerHTML = `<span class="tab-name">${esc(s.name)}</span><span class="user-count">${s.users.length}</span>`;
         tab.addEventListener('click', () => joinSession(s.id));
+        tab.addEventListener('dblclick', (e) => {
+          e.stopPropagation();
+          const nameSpan = tab.querySelector('.tab-name');
+          const input = document.createElement('input');
+          input.value = s.name;
+          input.style.cssText = 'background:#0d1117;border:1px solid #58a6ff;color:#e6edf3;padding:2px 6px;border-radius:4px;font-size:12px;width:100px;outline:none;';
+          nameSpan.replaceWith(input);
+          input.focus(); input.select();
+          let saved = false;
+          function save() {
+            if (saved) return; saved = true;
+            const newName = input.value.trim() || s.name;
+            fetch('/api/sessions', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: s.id, name: newName }),
+            });
+            s.name = newName;
+            const span = document.createElement('span');
+            span.className = 'tab-name'; span.textContent = newName;
+            input.replaceWith(span);
+          }
+          input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save(); } if (e.key === 'Escape') save(); });
+          input.addEventListener('blur', save);
+        });
         bar.insertBefore(tab, btn);
       });
     }
@@ -294,15 +320,93 @@
       const seq = KEY_MAP[btn.dataset.label];
       if (seq) ws.send(JSON.stringify({ type: 'key', seq, label: btn.dataset.label }));
     });
-    document.getElementById('new-session-btn').addEventListener('click', async () => {
-      const name = prompt('Session name:');
-      if (!name) return;
-      const res = await fetch('/api/sessions', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      });
-      const session = await res.json();
-      joinSession(session.id);
+    document.getElementById('new-session-btn').addEventListener('click', async (e) => {
+      // Show a dropdown: New / Resume from disk
+      const existing = document.getElementById('new-session-menu');
+      if (existing) { existing.remove(); return; }
+
+      const menu = document.createElement('div');
+      menu.id = 'new-session-menu';
+      menu.style.cssText = 'position:absolute;top:36px;left:16px;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:8px 0;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:300px;max-height:400px;overflow-y:auto;';
+
+      // New session option
+      const newOpt = document.createElement('div');
+      newOpt.textContent = '+ New blank session';
+      newOpt.style.cssText = 'padding:8px 16px;cursor:pointer;font-size:13px;color:#7ee787;';
+      newOpt.onmouseenter = () => newOpt.style.background = '#21262d';
+      newOpt.onmouseleave = () => newOpt.style.background = '';
+      newOpt.onclick = async () => {
+        menu.remove();
+        const name = prompt('Session name:');
+        if (!name) return;
+        const res = await fetch('/api/sessions', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+        const session = await res.json();
+        joinSession(session.id);
+      };
+      menu.appendChild(newOpt);
+
+      // Divider
+      const divider = document.createElement('div');
+      divider.style.cssText = 'border-top:1px solid #30363d;margin:4px 0;';
+      menu.appendChild(divider);
+
+      // Loading
+      const loading = document.createElement('div');
+      loading.textContent = 'Loading sessions from disk...';
+      loading.style.cssText = 'padding:8px 16px;font-size:12px;color:#8b949e;';
+      menu.appendChild(loading);
+
+      document.getElementById('session-bar').style.position = 'relative';
+      document.getElementById('session-bar').appendChild(menu);
+
+      // Fetch disk sessions
+      const res = await fetch('/api/disk-sessions');
+      const diskSessions = await res.json();
+      loading.remove();
+
+      if (diskSessions.length === 0) {
+        const empty = document.createElement('div');
+        empty.textContent = 'No sessions found on disk';
+        empty.style.cssText = 'padding:8px 16px;font-size:12px;color:#8b949e;';
+        menu.appendChild(empty);
+      } else {
+        // Header
+        const header = document.createElement('div');
+        header.textContent = 'Resume from disk:';
+        header.style.cssText = 'padding:4px 16px 4px;font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px;';
+        menu.appendChild(header);
+
+        diskSessions.forEach(ds => {
+          const opt = document.createElement('div');
+          opt.style.cssText = 'padding:6px 16px;cursor:pointer;font-size:13px;';
+          opt.innerHTML = `<div style="color:#e6edf3;margin-bottom:2px">${esc(ds.firstMessage)}</div><div style="font-size:11px;color:#8b949e">${esc(ds.project)} &middot; ${ds.claudeSessionId.slice(0,8)}</div>`;
+          opt.onmouseenter = () => opt.style.background = '#21262d';
+          opt.onmouseleave = () => opt.style.background = '';
+          opt.onclick = async () => {
+            menu.remove();
+            const name = ds.firstMessage.slice(0, 30) || ds.claudeSessionId.slice(0, 8);
+            const r = await fetch('/api/sessions', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name, resumeId: ds.claudeSessionId }),
+            });
+            const session = await r.json();
+            joinSession(session.id);
+          };
+          menu.appendChild(opt);
+        });
+      }
+
+      // Close on click outside
+      const closeMenu = (ev) => {
+        if (!menu.contains(ev.target) && ev.target !== e.target) {
+          menu.remove();
+          document.removeEventListener('click', closeMenu);
+        }
+      };
+      setTimeout(() => document.addEventListener('click', closeMenu), 0);
     });
     function joinFlow() {
       const name = document.getElementById('name-input').value.trim();
