@@ -17,8 +17,8 @@ const shell = spawn(claudePath, [
   "--append-system-prompt", systemPrompt,
 ], {
   name: "xterm-256color",
-  cols: 160,
-  rows: 48,
+  cols: 100,
+  rows: 30,
   cwd: "/home/exedev/claude-collab",
   env: { ...process.env as Record<string, string>, TERM: "xterm-256color", HOME: "/home/exedev" },
 });
@@ -36,8 +36,17 @@ setTimeout(() => {
 
 let scrollback = "";
 const clients = new Map<any, { name: string }>();
+const chatHistory: object[] = [];
+const MAX_CHAT_HISTORY = 200;
 
 function broadcastMsg(msg: object) {
+  // Store chat and system messages in history
+  if ("type" in msg && ((msg as any).type === "chat" || (msg as any).type === "system")) {
+    chatHistory.push(msg);
+    if (chatHistory.length > MAX_CHAT_HISTORY) {
+      chatHistory.splice(0, chatHistory.length - MAX_CHAT_HISTORY);
+    }
+  }
   server.publish("terminal", JSON.stringify(msg));
 }
 
@@ -68,6 +77,10 @@ const server = Bun.serve({
       ws.subscribe("terminal");
       ws.send(JSON.stringify({ type: "output", data: scrollback }));
       ws.send(JSON.stringify({ type: "users", users: getUserList() }));
+      // Replay chat history
+      for (const msg of chatHistory) {
+        ws.send(JSON.stringify(msg));
+      }
     },
     message(ws, msg) {
       try {

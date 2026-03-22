@@ -391,11 +391,19 @@
       const name = document.getElementById('name-input').value.trim();
       if (!name) return;
       myName = name;
+      localStorage.setItem('claude-collab-name', name);
       document.getElementById('name-modal').style.display = 'none';
       document.getElementById('my-name-tag').textContent = name;
       document.getElementById('my-name-tag').style.display = 'block';
       document.getElementById('my-name-tag').style.color = nameColor(name);
       connect();
+    }
+
+    // Auto-join if name is saved
+    const savedName = localStorage.getItem('claude-collab-name');
+    if (savedName) {
+      document.getElementById('name-input').value = savedName;
+      joinFlow();
     }
 
     document.getElementById('name-input').addEventListener('keydown', (e) => {
