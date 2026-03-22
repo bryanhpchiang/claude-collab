@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Claude Collab</title>
+  <title>The Hive -- Multiplayer Claude</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%237ee787'/%3E%3Cstop offset='100%25' stop-color='%2358a6ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='%230d1117'/%3E%3Cg transform='translate(32,32)'%3E%3Cpolygon points='0,-18 15.6,-9 15.6,9 0,18 -15.6,9 -15.6,-9' fill='none' stroke='url(%23g)' stroke-width='2.5' opacity='0.9'/%3E%3Ccircle cx='-8' cy='-3' r='4' fill='%237ee787'/%3E%3Ccircle cx='8' cy='-3' r='4' fill='%2358a6ff'/%3E%3Ccircle cx='0' cy='9' r='4' fill='%23d2a8ff'/%3E%3Cline x1='-8' y1='-3' x2='8' y2='-3' stroke='%2330363d' stroke-width='1.2'/%3E%3Cline x1='-8' y1='-3' x2='0' y2='9' stroke='%2330363d' stroke-width='1.2'/%3E%3Cline x1='8' y1='-3' x2='0' y2='9' stroke='%2330363d' stroke-width='1.2'/%3E%3C/g%3E%3C/svg%3E">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -16,8 +17,19 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 8px 16px; background: #161b22; border-bottom: 1px solid #30363d; flex-shrink: 0;
     }
-    #header h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
-    #header h1 span { color: #7ee787; }
+    #header h1 {
+      font-size: 16px; font-weight: 700; letter-spacing: -0.5px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    #header h1 .logo-hex {
+      width: 22px; height: 22px; flex-shrink: 0;
+    }
+    #header h1 .brand-the { color: #8b949e; font-weight: 400; }
+    #header h1 .brand-hive {
+      background: linear-gradient(135deg, #7ee787, #58a6ff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
     #users-bar { font-size: 12px; color: #8b949e; }
     .user-dot {
       display: inline-block; width: 7px; height: 7px; border-radius: 50%;
@@ -146,8 +158,16 @@
 <body class="in-lobby">
   <div id="name-modal">
     <div class="modal-box">
-      <h2>Claude Collab</h2>
-      <p>Enter your name to join</p>
+      <svg width="40" height="40" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:12px">
+        <defs><linearGradient id="mg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7ee787"/><stop offset="100%" stop-color="#58a6ff"/></linearGradient></defs>
+        <g transform="translate(32,32)">
+          <polygon points="0,-28 24.2,-14 24.2,14 0,28 -24.2,14 -24.2,-14" fill="none" stroke="url(#mg)" stroke-width="4" opacity="0.9"/>
+          <circle cx="-10" cy="-5" r="6" fill="#7ee787"/><circle cx="10" cy="-5" r="6" fill="#58a6ff"/><circle cx="0" cy="11" r="6" fill="#d2a8ff"/>
+          <line x1="-10" y1="-5" x2="10" y2="-5" stroke="#30363d" stroke-width="2"/><line x1="-10" y1="-5" x2="0" y2="11" stroke="#30363d" stroke-width="2"/><line x1="10" y1="-5" x2="0" y2="11" stroke="#30363d" stroke-width="2"/>
+        </g>
+      </svg>
+      <h2 style="background:linear-gradient(135deg,#7ee787,#58a6ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">the Hive</h2>
+      <p>Multiplayer Claude -- enter your name to join</p>
       <div>
         <input id="name-input" type="text" placeholder="your name" maxlength="20" autofocus>
         <button id="join-btn">Join</button>
@@ -155,13 +175,23 @@
     </div>
   </div>
   <div id="header">
-    <h1>Claude <span>Collab</span></h1>
+    <h1>
+      <svg class="logo-hex" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#7ee787"/><stop offset="100%" stop-color="#58a6ff"/></linearGradient></defs>
+        <g transform="translate(32,32)">
+          <polygon points="0,-28 24.2,-14 24.2,14 0,28 -24.2,14 -24.2,-14" fill="none" stroke="url(#hg)" stroke-width="4" opacity="0.9"/>
+          <circle cx="-10" cy="-5" r="6" fill="#7ee787"/><circle cx="10" cy="-5" r="6" fill="#58a6ff"/><circle cx="0" cy="11" r="6" fill="#d2a8ff"/>
+          <line x1="-10" y1="-5" x2="10" y2="-5" stroke="#30363d" stroke-width="2"/><line x1="-10" y1="-5" x2="0" y2="11" stroke="#30363d" stroke-width="2"/><line x1="10" y1="-5" x2="0" y2="11" stroke="#30363d" stroke-width="2"/>
+        </g>
+      </svg>
+      <span class="brand-the">the</span><span class="brand-hive">Hive</span>
+    </h1>
     <div id="users-bar"></div>
   </div>
   <div id="session-bar">
     <button id="new-session-btn">+ New Session</button>
   </div>
-  <div id="lobby-view">Select a session above or create a new one</div>
+  <div id="lobby-view">Pick a session above or start a new one</div>
   <div id="terminal-container"></div>
   <div id="bottom-panel" class="collapsed">
     <div id="chat-toggle">
@@ -201,13 +231,21 @@
     term.loadAddon(fitAddon);
     term.open(document.getElementById('terminal-container'));
     fitAddon.fit();
-    // Simple scroll tracking - removed overcomplicated version
+    // Smart scroll: only auto-scroll if user is near the bottom
+    let userScrolledUp = false;
+    term.element.addEventListener('wheel', () => {
+      const viewport = term.element.querySelector('.xterm-viewport');
+      if (!viewport) return;
+      const atBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 50;
+      userScrolledUp = !atBottom;
+    }, { passive: true });
     window.addEventListener('resize', () => fitAddon.fit());
     new ResizeObserver(() => fitAddon.fit()).observe(document.getElementById('terminal-container'));
 
     let ws, myName = '', currentSessionId = null, sessionList = [], pendingJoin = null;
     let scrollTimer = null;
     function smartScroll() {
+      if (userScrolledUp) return;
       clearTimeout(scrollTimer);
       scrollTimer = setTimeout(() => term.scrollToBottom(), 50);
     }
@@ -374,7 +412,7 @@
           const res = await fetch('/api/upload-image', { method: 'POST', body: fd });
           const data = await res.json();
           if (data.path) {
-            input.value = (input.value ? input.value + ' ' : '') + data.path;
+            input.value = (input.value ? input.value + ' ' : '') + data.path + ' ';
             input.focus();
           } else {
             addSystem('Image upload failed: ' + (data.error || 'unknown error'));
