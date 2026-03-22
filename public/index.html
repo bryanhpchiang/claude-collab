@@ -327,7 +327,8 @@
 
       const menu = document.createElement('div');
       menu.id = 'new-session-menu';
-      menu.style.cssText = 'position:absolute;top:36px;left:16px;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:8px 0;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:300px;max-height:400px;overflow-y:auto;';
+      const btnRect = e.currentTarget.getBoundingClientRect();
+      menu.style.cssText = `position:fixed;top:${btnRect.bottom + 4}px;left:${btnRect.left}px;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:8px 0;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:340px;max-height:400px;overflow-y:auto;`;
 
       // New session option
       const newOpt = document.createElement('div');
@@ -359,8 +360,7 @@
       loading.style.cssText = 'padding:8px 16px;font-size:12px;color:#8b949e;';
       menu.appendChild(loading);
 
-      document.getElementById('session-bar').style.position = 'relative';
-      document.getElementById('session-bar').appendChild(menu);
+      document.body.appendChild(menu);
 
       // Fetch disk sessions
       const res = await fetch('/api/disk-sessions');
