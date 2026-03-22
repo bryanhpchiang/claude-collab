@@ -1,0 +1,11 @@
+{
+  "name": "claude-collab",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "bun run server.ts"
+  },
+  "dependencies": {
+    "bun-pty": "^0.4.8",
+    "node-pty": "^1.0.0"
+  }
+}

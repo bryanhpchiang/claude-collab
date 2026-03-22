@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Collab</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0d1117;
+      color: #e6edf3;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      flex-shrink: 0;
+    }
+    #header h1 {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+    #header h1 span { color: #7ee787; }
+    #users-bar {
+      font-size: 12px;
+      color: #8b949e;
+    }
+    .user-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #3fb950;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    #terminal-container {
+      flex: 1;
+      min-height: 0;
+      padding: 4px;
+    }
+
+    #bottom-panel {
+      flex-shrink: 0;
+      border-top: 1px solid #30363d;
+      display: flex;
+      flex-direction: column;
+      max-height: 220px;
+    }
+
+    #chat-log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 12px;
+      font-size: 13px;
+      min-height: 80px;
+      max-height: 150px;
+    }
+    #chat-log::-webkit-scrollbar { width: 6px; }
+    #chat-log::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+    .chat-msg { margin: 3px 0; line-height: 1.4; }
+    .chat-msg .name { font-weight: 600; }
+    .chat-msg .text { color: #c9d1d9; }
+    .chat-msg.system { color: #8b949e; font-style: italic; font-size: 12px; }
+
+    #input-area {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      gap: 8px;
+      background: #161b22;
+      border-top: 1px solid #30363d;
+    }
+    #input-area .name-tag {
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+      padding: 6px 10px;
+      background: #21262d;
+      border-radius: 6px;
+      border: 1px solid #30363d;
+    }
+    #msg-input {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #e6edf3;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    #msg-input:focus { border-color: #58a6ff; }
+    #msg-input:disabled { opacity: 0.5; }
+    #send-btn {
+      background: #238636;
+      color: white;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    #send-btn:hover { background: #2ea043; }
+    #send-btn:active { background: #238636; }
+    #send-btn:disabled { opacity: 0.5; cursor: default; }
+
+    #key-bar {
+      display: flex;
+      gap: 4px;
+      padding: 6px 12px;
+      background: #161b22;
+      border-top: 1px solid #30363d;
+      flex-wrap: wrap;
+    }
+    .key-btn {
+      background: #21262d;
+      color: #c9d1d9;
+      border: 1px solid #30363d;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: 'SF Mono', Monaco, monospace;
+      transition: background 0.1s;
+    }
+    .key-btn:hover { background: #30363d; }
+    .key-btn:active { background: #484f58; }
+
+    /* Name modal */
+    #name-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      backdrop-filter: blur(4px);
+    }
+    .modal-box {
+      background: #161b22;
+      padding: 32px;
+      border-radius: 12px;
+      border: 1px solid #30363d;
+      text-align: center;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+    }
+    .modal-box h2 {
+      margin-bottom: 6px;
+      font-size: 20px;
+    }
+    .modal-box p {
+      color: #8b949e;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+    .modal-box input {
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #e6edf3;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 16px;
+      width: 220px;
+      outline: none;
+      text-align: center;
+    }
+    .modal-box input:focus { border-color: #58a6ff; }
+    .modal-box button {
+      background: #238636;
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      margin-left: 8px;
+    }
+    .modal-box button:hover { background: #2ea043; }
+  </style>
+</head>
+<body>
+
+  <div id="name-modal">
+    <div class="modal-box">
+      <h2>Claude Collab</h2>
+      <p>Enter your name to join the session</p>
+      <div>
+        <input id="name-input" type="text" placeholder="your name" maxlength="20" autofocus>
+        <button id="join-btn">Join</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="header">
+    <h1>Claude <span>Collab</span></h1>
+    <div id="users-bar"></div>
+  </div>
+
+  <div id="terminal-container"></div>
+
+  <div id="bottom-panel">
+    <div id="key-bar">
+      <button class="key-btn" data-seq="\r" data-label="Enter">Enter</button>
+      <button class="key-btn" data-seq="\x1b" data-label="Esc">Esc</button>
+      <button class="key-btn" data-seq="\t" data-label="Tab">Tab</button>
+      <button class="key-btn" data-seq=" " data-label="Space">Space</button>
+      <button class="key-btn" data-seq="\x1b[A" data-label="Up">Up</button>
+      <button class="key-btn" data-seq="\x1b[B" data-label="Down">Down</button>
+      <button class="key-btn" data-seq="\x1b[D" data-label="Left">Left</button>
+      <button class="key-btn" data-seq="\x1b[C" data-label="Right">Right</button>
+      <button class="key-btn" data-seq="\x03" data-label="Ctrl+C">Ctrl+C</button>
+      <button class="key-btn" data-seq="y" data-label="y">y</button>
+      <button class="key-btn" data-seq="n" data-label="n">n</button>
+    </div>
+    <div id="chat-log"></div>
+    <div id="input-area">
+      <div class="name-tag" id="my-name-tag" style="display:none"></div>
+      <input id="msg-input" type="text" placeholder="Type a message to Claude..." disabled>
+      <button id="send-btn" disabled>Send</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
+  <script>
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 14,
+      fontFamily: '"JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
+      theme: {
+        background: '#0d1117',
+        foreground: '#e6edf3',
+        cursor: '#58a6ff',
+        selectionBackground: '#264f78',
+      },
+      disableStdin: true,
+      scrollback: 5000,
+    });
+
+    const fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(document.getElementById('terminal-container'));
+    fitAddon.fit();
+
+    window.addEventListener('resize', () => fitAddon.fit());
+    new ResizeObserver(() => fitAddon.fit()).observe(document.getElementById('terminal-container'));
+
+    let ws;
+    let myName = '';
+
+    const COLORS = ['#ff7b72','#d2a8ff','#79c0ff','#7ee787','#ffa657','#f778ba','#a5d6ff','#ffd8b1'];
+    function nameColor(name) {
+      let h = 0;
+      for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+      return COLORS[Math.abs(h) % COLORS.length];
+    }
+
+    function esc(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
+    function addChat(name, text) {
+      const log = document.getElementById('chat-log');
+      const div = document.createElement('div');
+      div.className = 'chat-msg';
+      const isMine = name === myName;
+      div.innerHTML = `<span class="name" style="color:${nameColor(name)}">${esc(name)}</span>: <span class="text">${esc(text)}</span>`;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function addSystem(text) {
+      const log = document.getElementById('chat-log');
+      const div = document.createElement('div');
+      div.className = 'chat-msg system';
+      div.textContent = text;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function updateUsers(users) {
+      const bar = document.getElementById('users-bar');
+      bar.innerHTML = users.map(u =>
+        `<span class="user-dot"></span><span style="color:${nameColor(u)}">${esc(u)}</span>`
+      ).join('&nbsp;&nbsp;');
+    }
+
+    function connect() {
+      const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      ws = new WebSocket(`${proto}//${location.host}/ws`);
+
+      ws.onopen = () => {
+        ws.send(JSON.stringify({ type: 'join', name: myName }));
+        document.getElementById('msg-input').disabled = false;
+        document.getElementById('send-btn').disabled = false;
+        document.getElementById('msg-input').focus();
+      };
+
+      ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+
+        switch (msg.type) {
+          case 'output':
+            term.write(msg.data);
+            break;
+          case 'chat':
+            addChat(msg.name, msg.text);
+            break;
+          case 'system':
+            addSystem(msg.text);
+            break;
+          case 'users':
+            updateUsers(msg.users);
+            break;
+        }
+      };
+
+      ws.onclose = () => {
+        document.getElementById('msg-input').disabled = true;
+        document.getElementById('send-btn').disabled = true;
+        addSystem('Disconnected. Reconnecting...');
+        setTimeout(connect, 2000);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    function send() {
+      const input = document.getElementById('msg-input');
+      const text = input.value.trim();
+      if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify({ type: 'input', text }));
+      input.value = '';
+      input.focus();
+    }
+
+    document.getElementById('msg-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        send();
+      }
+    });
+    document.getElementById('send-btn').addEventListener('click', send);
+
+    // Key buttons - map labels to actual escape sequences
+    const KEY_MAP = {
+      'Enter': '\r',
+      'Esc': '\x1b',
+      'Tab': '\t',
+      'Space': ' ',
+      'Up': '\x1b[A',
+      'Down': '\x1b[B',
+      'Left': '\x1b[D',
+      'Right': '\x1b[C',
+      'Ctrl+C': '\x03',
+      'y': 'y',
+      'n': 'n',
+    };
+    document.getElementById('key-bar').addEventListener('click', (e) => {
+      const btn = e.target.closest('.key-btn');
+      if (!btn || !ws || ws.readyState !== WebSocket.OPEN) return;
+      const label = btn.dataset.label;
+      const seq = KEY_MAP[label];
+      if (seq) ws.send(JSON.stringify({ type: 'key', seq, label }));
+    });
+
+    function joinFlow() {
+      const name = document.getElementById('name-input').value.trim();
+      if (!name) return;
+      myName = name;
+      document.getElementById('name-modal').style.display = 'none';
+      document.getElementById('my-name-tag').textContent = name;
+      document.getElementById('my-name-tag').style.display = 'block';
+      document.getElementById('my-name-tag').style.color = nameColor(name);
+      connect();
+    }
+
+    document.getElementById('name-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') joinFlow();
+    });
+    document.getElementById('join-btn').addEventListener('click', joinFlow);
+  </script>
+</body>
+</html>
