@@ -14,6 +14,7 @@ import {
   ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { join, extname } from "path";
+import { buildJamInstanceUserData } from "./user-data";
 
 const PORT = Number(process.env.PORT) || 8080;
 
@@ -329,25 +330,7 @@ const server = Bun.serve({
 
         const jamId = genId();
 
-        const userData = Buffer.from(`#!/bin/bash
-set -ex
-# Install bun for ubuntu user if missing
-if [ ! -f /home/ubuntu/.bun/bin/bun ]; then
-  apt-get update && apt-get install -y curl git unzip
-  su - ubuntu -c "curl -fsSL https://bun.sh/install | bash"
-fi
-# Install claude if missing
-which claude || npm install -g @anthropic-ai/claude-code
-# Clone repo if missing
-if [ ! -d /opt/jam ]; then
-  git clone https://github.com/bryanhpchiang/claude-collab.git /opt/jam
-fi
-chown -R ubuntu:ubuntu /opt/jam
-cd /opt/jam
-git config user.name "Jam"
-git config user.email "jam@letsjam.now"
-su - ubuntu -c "export PATH=/home/ubuntu/.bun/bin:\$PATH && cd /opt/jam && git pull origin main && bun install && JAM_MODE=instance bun run server.ts &"
-`).toString("base64");
+        const userData = buildJamInstanceUserData();
 
         const run = await ec2.send(
           new RunInstancesCommand({
