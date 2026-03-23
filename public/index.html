@@ -234,19 +234,16 @@
     term.loadAddon(fitAddon);
     term.open(document.getElementById('terminal-container'));
     fitAddon.fit();
-    // Smart scroll: only auto-scroll if user hasn't scrolled up
-    let userScrolledUp = false;
-    let programmaticScroll = false;
-    // Only track USER-initiated scrolls (wheel/touch), ignore programmatic ones
+    // Scroll behavior: input focused = auto-scroll. Manual scroll = defocus input, stop auto-scroll.
     const viewport = term.element.querySelector('.xterm-viewport');
     if (viewport) {
-      viewport.addEventListener('wheel', () => {
-        const atBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 30;
-        userScrolledUp = !atBottom;
+      viewport.addEventListener('wheel', (e) => {
+        if (e.deltaY < 0) { // scrolling up
+          document.getElementById('msg-input').blur();
+        }
       }, { passive: true });
       viewport.addEventListener('touchmove', () => {
-        const atBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 30;
-        userScrolledUp = !atBottom;
+        document.getElementById('msg-input').blur();
       }, { passive: true });
     }
     window.addEventListener('resize', () => fitAddon.fit());
@@ -254,7 +251,7 @@
 
     let ws, myName = '', currentSessionId = null, sessionList = [], pendingJoin = null;
     function smartScroll() {
-      if (userScrolledUp) return;
+      if (document.activeElement !== document.getElementById('msg-input')) return;
       term.scrollToBottom();
     }
 
