@@ -2,6 +2,7 @@ import { spawn, type IPty } from "bun-pty";
 import { readdir, readFile, mkdir, stat } from "fs/promises";
 import { join } from "path";
 import { execSync } from "child_process";
+import { buildClaudeInput } from "./session-input";
 const UPLOAD_DIR = "/tmp/claude-uploads";
 
 const claudePath = process.env.CLAUDE_PATH || execSync("which claude").toString().trim();
@@ -515,7 +516,9 @@ const server = Bun.serve({
           const info = clientInfo.get(ws);
           const name = info?.name || "anon";
           broadcastToSession(sessionId, { type: "chat", name, text: data.text });
-          session.shell.write(`[${name}]: ${data.text}` + "\r");
+          session.shell.write(
+            buildClaudeInput({ name, text: data.text, direct: Boolean(data.direct) }),
+          );
 
           // Detect @mentions in the message
           const mentionRegex = /@(\w+)/g;

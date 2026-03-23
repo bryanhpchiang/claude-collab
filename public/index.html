@@ -623,21 +623,22 @@
       };
       ws.onerror = () => ws.close();
     }
-    function send() {
+    function send({ direct = false } = {}) {
       const input = document.getElementById('msg-input');
       const text = input.value.trim();
       if (!text || !ws || ws.readyState !== WebSocket.OPEN || !currentSessionId) return;
-      ws.send(JSON.stringify({ type: 'input', text }));
+      ws.send(JSON.stringify({ type: 'input', text, direct }));
       input.value = ''; input.focus();
     }
     document.getElementById('msg-input').addEventListener('keydown', (e) => {
       // Don't send if mention dropdown is open and Enter is used to select
       const md = document.getElementById('mention-dropdown');
       if (md && md.style.display === 'block' && (e.key === 'Enter' || e.key === 'Tab' || e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Escape')) return;
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === 'Enter') {
         e.preventDefault();
-        const wantEsc = e.metaKey || e.ctrlKey;
-        send();
+        const direct = e.shiftKey;
+        const wantEsc = !direct && (e.metaKey || e.ctrlKey);
+        send({ direct });
         if (wantEsc && ws && ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'key', seq: '\x1b', label: 'Esc' }));
         }

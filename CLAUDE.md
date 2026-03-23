@@ -22,7 +22,7 @@ There is no build step required for development -- `server.ts` runs directly wit
 
 1. The **Bun server** (`server.ts`) spawns Claude Code CLI processes using `bun-pty` (a pseudo-terminal library), one per session.
 2. The **browser client** (`public/index.html`) connects over WebSocket and renders the Claude terminal output using xterm.js.
-3. When a user types a message, it is sent via WebSocket to the server, which writes `[username]: message` into the Claude PTY's stdin.
+3. When a user types a message, it is sent via WebSocket to the server. Standard sends write `[username]: message` into the Claude PTY's stdin, while `Shift+Enter` sends the raw message text directly.
 4. Claude's terminal output is broadcast to all clients subscribed to that session.
 
 ### Data flow
@@ -43,7 +43,7 @@ Browser (xterm.js) <--WebSocket--> Bun Server <--PTY--> Claude Code CLI
 
 **Client -> Server:**
 - `join-session` -- join/switch to a session (includes `sessionId` and `name`)
-- `input` -- send a text message to Claude (written to PTY as `[name]: text`)
+- `input` -- send a text message to Claude (written to PTY as `[name]: text` by default, or raw text when `direct: true`)
 - `key` -- send a raw keypress sequence to the PTY (Enter, Esc, Ctrl+C, etc.)
 
 **Server -> Client:**
