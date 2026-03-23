@@ -39,6 +39,37 @@
       display: inline-block; width: 7px; height: 7px; border-radius: 50%;
       background: #3fb950; margin-right: 4px; vertical-align: middle;
     }
+    #project-bar {
+      display: flex; align-items: center; gap: 4px; padding: 4px 16px;
+      background: #161b22; border-bottom: 1px solid #21262d; flex-shrink: 0; overflow-x: auto;
+    }
+    #project-bar::-webkit-scrollbar { height: 0; }
+    .project-tab {
+      padding: 3px 10px; border-radius: 12px; font-size: 11px; cursor: pointer;
+      white-space: nowrap; border: 1px solid transparent; background: transparent; color: #8b949e;
+      transition: all 0.15s;
+    }
+    .project-tab:hover { color: #e6edf3; background: #21262d; }
+    .project-tab.active {
+      background: linear-gradient(135deg, rgba(255,154,86,0.15), rgba(255,107,107,0.15));
+      border-color: rgba(255,154,86,0.3); color: #ff9a56;
+    }
+    .project-tab .proj-count {
+      font-size: 9px; background: #30363d; padding: 0 4px; border-radius: 6px; margin-left: 3px;
+      color: #8b949e;
+    }
+    .project-tab.active .proj-count { background: rgba(255,154,86,0.2); color: #ff9a56; }
+    .project-tab .proj-close {
+      display: none; margin-left: 3px; padding: 0 2px; border: none; background: none;
+      color: #484f58; font-size: 12px; line-height: 1; cursor: pointer; border-radius: 3px;
+    }
+    .project-tab:hover .proj-close.visible { display: inline-block; }
+    .project-tab .proj-close:hover { color: #f85149; background: rgba(248,81,73,0.15); }
+    #new-project-btn {
+      padding: 3px 8px; border-radius: 12px; font-size: 11px; cursor: pointer;
+      border: 1px dashed #30363d; background: transparent; color: #8b949e; white-space: nowrap;
+    }
+    #new-project-btn:hover { border-color: #ff9a56; color: #ff9a56; background: #161b22; }
     #session-bar {
       display: flex; align-items: center; gap: 4px; padding: 6px 16px;
       background: #0d1117; border-bottom: 1px solid #30363d; flex-shrink: 0; overflow-x: auto;
@@ -368,6 +399,9 @@
       #header .brand-link .brand-jam { font-size: 15px; }
       #users-bar { font-size: 11px; max-width: 50%; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+      #project-bar { padding: 3px 8px; gap: 2px; }
+      .project-tab { padding: 2px 7px; font-size: 10px; }
+      #new-project-btn { padding: 2px 6px; font-size: 10px; }
       #session-bar { padding: 4px 8px; gap: 3px; }
       .session-tab { padding: 4px 8px; font-size: 11px; }
       .session-tab .user-count { font-size: 9px; padding: 1px 4px; }
@@ -404,9 +438,52 @@
     @media (max-width: 375px) {
       #header .brand-link .brand-jam { font-size: 14px; }
       #users-bar { display: none; }
+      .project-tab { padding: 2px 5px; font-size: 9px; }
+      #new-project-btn { font-size: 9px; }
       .session-tab { padding: 3px 6px; font-size: 10px; }
       #input-area .name-tag { display: none; }
       .key-btn { padding: 5px 6px; font-size: 10px; }
+    }
+
+    /* Treats/reactions */
+    #treats-wrap { position: relative; }
+    #treats-btn {
+      display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px;
+      border-radius: 6px; font-size: 12px; font-weight: 500; color: #ff9a56;
+      border: 1px solid #30363d; background: #161b22; cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    #treats-btn:hover { border-color: #ff9a56; background: #1c2129; }
+    #treats-popup {
+      display: none; position: absolute; top: 100%; right: 0; margin-top: 6px;
+      background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+      padding: 6px; z-index: 200; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      flex-direction: row; gap: 2px;
+    }
+    #treats-popup.open { display: flex; }
+    .treat-opt {
+      background: none; border: none; font-size: 20px; cursor: pointer;
+      padding: 6px 8px; border-radius: 6px; transition: background .15s;
+    }
+    .treat-opt:hover { background: #21262d; }
+    #reaction-overlay {
+      position: fixed; inset: 0; pointer-events: none; z-index: 9999; overflow: hidden;
+    }
+    .r-particle {
+      position: absolute; pointer-events: none; will-change: transform, opacity;
+      font-size: 24px;
+    }
+    @keyframes fall-down {
+      0% { transform: translateY(-40px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+    }
+    @keyframes float-up {
+      0% { transform: translateY(20px) scale(0.5); opacity: 1; }
+      100% { transform: translateY(-110vh) scale(1.2); opacity: 0; }
+    }
+    @keyframes burst-out {
+      0% { transform: translate(0,0) scale(0.3); opacity: 1; }
+      100% { opacity: 0; }
     }
   </style>
 </head>
@@ -451,7 +528,7 @@
     </div>
   </div>
   <div id="header">
-    <a href="https://letsjam.now" rel="noopener" style="display:flex;align-items:center;gap:8px;text-decoration:none;cursor:pointer;" title="Back to Jam lobby">
+    <a href="https://letsjam.now" rel="noopener" class="brand-link" title="Back to Jam lobby">
       <svg class="logo-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
         <defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff9a56"/><stop offset="100%" stop-color="#ff6b6b"/></linearGradient></defs>
         <g transform="translate(32,34)">
@@ -463,9 +540,20 @@
       <span class="brand-jam">Jam</span>
     </a>
     <div style="display:flex;align-items:center;gap:12px;">
-      <a href="https://buymeacoffee.com/jam" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;color:#ff9a56;border:1px solid #30363d;background:#161b22;text-decoration:none;transition:border-color .2s,background .2s;" onmouseover="this.style.borderColor='#ff9a56';this.style.background='#1c2129'" onmouseout="this.style.borderColor='#30363d';this.style.background='#161b22'"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Donate</a>
+      <div id="treats-wrap">
+        <button id="treats-btn" onclick="document.getElementById('treats-popup').classList.toggle('open')">🎉 Treats</button>
+        <div id="treats-popup">
+          <button class="treat-opt" onclick="fireTreat('confetti')" title="Confetti">🎉</button>
+          <button class="treat-opt" onclick="fireTreat('hearts')" title="Hearts">❤️</button>
+          <button class="treat-opt" onclick="fireTreat('stars')" title="Stars">⭐</button>
+          <button class="treat-opt" onclick="fireTreat('fire')" title="Fire">🔥</button>
+        </div>
+      </div>
       <div id="users-bar"></div>
     </div>
+  </div>
+  <div id="project-bar">
+    <button id="new-project-btn">+ Project</button>
   </div>
   <div id="session-bar">
     <button id="new-session-btn">+ New Session</button>
@@ -542,10 +630,10 @@
     term.open(document.getElementById('terminal-container'));
     fitAddon.fit();
     let userScrolledUp = false;
-    let autoScrolling = false;
     const isNearBottom = () => term.buffer.active.viewportY >= term.buffer.active.baseY - 5;
-    term.element.addEventListener('wheel', () => { if (!isNearBottom()) userScrolledUp = true; else userScrolledUp = false; }, { passive: true });
-    term.element.addEventListener('touchmove', () => { if (!isNearBottom()) userScrolledUp = true; else userScrolledUp = false; }, { passive: true });
+    term.element.addEventListener('wheel', () => { userScrolledUp = !isNearBottom(); }, { passive: true });
+    term.element.addEventListener('touchmove', () => { userScrolledUp = !isNearBottom(); }, { passive: true });
+    term.element.addEventListener('keydown', (e) => { if (e.key === 'PageUp' || e.key === 'ArrowUp') userScrolledUp = true; }, { passive: true });
     window.addEventListener('resize', () => {
       const mobile = window.innerWidth <= 600;
       const newSize = mobile ? 10 : 14;
@@ -556,6 +644,7 @@
 
     const DEFAULT_SESSION_SENTINEL = '__default__';
     let ws, myName = '', currentSessionId = null, sessionList = [], pendingJoin = null;
+    let projectList = [], currentProjectId = null;
     let connectedUsers = []; // Track users in current session for @mention autocomplete
     let notificationPermission = 'default'; // Track notification permission state
     let interactiveTerminalMode = false;
@@ -790,9 +879,10 @@
       hideErrorOverlay();
       const name = 'Session ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
       try {
-        const res = await fetch('/api/sessions', {
+        const url = currentProjectId ? `/api/projects/${currentProjectId}/sessions` : '/api/sessions';
+        const res = await fetch(url, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name }),
+          body: JSON.stringify({ name, projectId: currentProjectId }),
         });
         const session = await res.json();
         if (session.id) joinSession(session.id);
@@ -806,12 +896,56 @@
         `<span class="user-dot"></span><span style="color:${nameColor(u)}">${esc(u)}</span>`
       ).join('&nbsp;&nbsp;');
     }
+    function renderProjectTabs() {
+      const bar = document.getElementById('project-bar');
+      bar.querySelectorAll('.project-tab').forEach(t => t.remove());
+      const btn = document.getElementById('new-project-btn');
+      const showClose = projectList.length > 1;
+      projectList.forEach(p => {
+        const tab = document.createElement('div');
+        tab.className = 'project-tab' + (p.id === currentProjectId ? ' active' : '');
+        tab.dataset.id = p.id;
+        tab.title = p.cwd;
+        tab.innerHTML = `<span class="proj-name">${esc(p.name)}</span><span class="proj-count">${p.sessionCount}</span><button class="proj-close${showClose ? ' visible' : ''}" title="Delete project">&times;</button>`;
+        tab.querySelector('.proj-close').addEventListener('click', (e) => { e.stopPropagation(); deleteProject(p.id); });
+        tab.addEventListener('click', () => switchProject(p.id));
+        bar.insertBefore(tab, btn);
+      });
+    }
+    function switchProject(projectId) {
+      if (currentProjectId === projectId) return;
+      currentProjectId = projectId;
+      renderProjectTabs();
+      renderSessionTabs();
+      // Auto-join first session in this project
+      const projSessions = sessionList.filter(s => s.projectId === projectId);
+      if (projSessions.length > 0) {
+        const general = projSessions.find(s => s.name === 'General') || projSessions[0];
+        joinSession(general.id);
+      } else {
+        currentSessionId = null;
+        document.body.classList.add('in-lobby');
+      }
+    }
+    async function deleteProject(projectId) {
+      if (projectList.length <= 1) return;
+      const p = projectList.find(p => p.id === projectId);
+      const totalUsers = (p?.sessions || []).reduce((n, s) => n + s.users.length, 0);
+      if (totalUsers > 0 && !confirm(`There ${totalUsers === 1 ? 'is 1 user' : 'are ' + totalUsers + ' users'} in this project. Delete it?`)) return;
+      await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
+      if (currentProjectId === projectId) {
+        const other = projectList.find(p => p.id !== projectId);
+        if (other) switchProject(other.id);
+      }
+    }
     function renderSessionTabs() {
       const bar = document.getElementById('session-bar');
       bar.querySelectorAll('.session-tab').forEach(t => t.remove());
       const btn = document.getElementById('new-session-btn');
-      const showClose = sessionList.length > 1;
-      sessionList.forEach(s => {
+      // Filter sessions to current project
+      const filtered = currentProjectId ? sessionList.filter(s => s.projectId === currentProjectId) : sessionList;
+      const showClose = filtered.length > 1;
+      filtered.forEach(s => {
         const tab = document.createElement('div');
         tab.className = 'session-tab' + (s.id === currentSessionId ? ' active' : '');
         tab.dataset.id = s.id;
@@ -847,11 +981,12 @@
       });
     }
     async function deleteSession(id, userCount) {
-      if (sessionList.length <= 1) return;
+      const projSessions = sessionList.filter(s => s.projectId === currentProjectId);
+      if (projSessions.length <= 1) return;
       if (userCount > 0 && !confirm(`There ${userCount === 1 ? 'is 1 user' : 'are ' + userCount + ' users'} in this session. Close it?`)) return;
       await fetch('/api/sessions', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
       if (currentSessionId === id) {
-        const other = sessionList.find(s => s.id !== id);
+        const other = projSessions.find(s => s.id !== id);
         if (other) joinSession(other.id);
         else {
           currentSessionId = null;
@@ -865,6 +1000,12 @@
     function joinSession(sessionId) {
       if (currentSessionId === sessionId) return;
       currentSessionId = sessionId;
+      // Update current project to match this session
+      const targetSession = sessionList.find(s => s.id === sessionId);
+      if (targetSession && targetSession.projectId && targetSession.projectId !== currentProjectId) {
+        currentProjectId = targetSession.projectId;
+        renderProjectTabs();
+      }
       awaitingClaudeReady = true;
       hideOauthModal();
       hideErrorOverlay();
@@ -902,11 +1043,36 @@
       ws.onmessage = (e) => {
         const msg = JSON.parse(e.data);
         switch (msg.type) {
-          case 'sessions':
-            sessionList = msg.sessions; renderSessionTabs();
+          case 'projects':
+            projectList = msg.projects || [];
+            sessionList = msg.sessions || [];
+            // Auto-select first project if none selected
+            if (!currentProjectId && projectList.length > 0) currentProjectId = projectList[0].id;
+            renderProjectTabs();
+            renderSessionTabs();
             if (pendingJoin) {
               if (pendingJoin === DEFAULT_SESSION_SENTINEL) {
-                const defaultSession = sessionList.find(s => s.name === 'General') || sessionList[0];
+                const filteredSessions = sessionList.filter(s => s.projectId === currentProjectId);
+                const defaultSession = filteredSessions.find(s => s.name === 'General') || filteredSessions[0];
+                if (defaultSession) joinSession(defaultSession.id);
+              } else if (sessionList.find(s => s.id === pendingJoin)) {
+                // Switch to the project that owns this session
+                const target = sessionList.find(s => s.id === pendingJoin);
+                if (target && target.projectId) currentProjectId = target.projectId;
+                renderProjectTabs();
+                renderSessionTabs();
+                joinSession(pendingJoin);
+              }
+              pendingJoin = null;
+            }
+            break;
+          case 'sessions':
+            sessionList = msg.sessions || [];
+            renderSessionTabs();
+            if (pendingJoin) {
+              if (pendingJoin === DEFAULT_SESSION_SENTINEL) {
+                const filteredSessions = sessionList.filter(s => s.projectId === currentProjectId);
+                const defaultSession = filteredSessions.find(s => s.name === 'General') || filteredSessions[0];
                 if (defaultSession) joinSession(defaultSession.id);
               } else if (sessionList.find(s => s.id === pendingJoin)) {
                 joinSession(pendingJoin);
@@ -915,11 +1081,15 @@
             }
             break;
           case 'output':
-            term.write(colorizeOutput(msg.data), () => {
-              if (!userScrolledUp) { autoScrolling = true; term.scrollToBottom(); autoScrolling = false; }
-              maybeShowOauthModal();
-              maybeDisableDirectTypeOnClaudeReady(msg.data);
-            });
+            {
+              const vp = userScrolledUp ? term.buffer.active.viewportY : -1;
+              term.write(colorizeOutput(msg.data), () => {
+                if (vp >= 0) term.scrollLines(vp - term.buffer.active.viewportY);
+                else term.scrollToBottom();
+                maybeShowOauthModal();
+                maybeDisableDirectTypeOnClaudeReady(msg.data);
+              });
+            }
             break;
           case 'chat': addChat(msg.name, msg.text); break;
           case 'system':
@@ -1100,9 +1270,10 @@
         menu.remove();
         const name = prompt('Session name:');
         if (!name) return;
-        const res = await fetch('/api/sessions', {
+        const url = currentProjectId ? `/api/projects/${currentProjectId}/sessions` : '/api/sessions';
+        const res = await fetch(url, {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name }),
+          body: JSON.stringify({ name, projectId: currentProjectId }),
         });
         const session = await res.json();
         joinSession(session.id);
@@ -1149,9 +1320,10 @@
           opt.onclick = async () => {
             menu.remove();
             const name = ds.firstMessage.slice(0, 30) || ds.claudeSessionId.slice(0, 8);
-            const r = await fetch('/api/sessions', {
+            const url = currentProjectId ? `/api/projects/${currentProjectId}/sessions` : '/api/sessions';
+            const r = await fetch(url, {
               method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ name, resumeId: ds.claudeSessionId }),
+              body: JSON.stringify({ name, resumeId: ds.claudeSessionId, projectId: currentProjectId }),
             });
             const session = await r.json();
             joinSession(session.id);
@@ -1169,6 +1341,52 @@
       };
       setTimeout(() => document.addEventListener('click', closeMenu), 0);
     });
+    // New Project button
+    document.getElementById('new-project-btn').addEventListener('click', async (e) => {
+      const existing = document.getElementById('new-project-menu');
+      if (existing) { existing.remove(); return; }
+      const menu = document.createElement('div');
+      menu.id = 'new-project-menu';
+      const btnRect = e.currentTarget.getBoundingClientRect();
+      menu.style.cssText = `position:fixed;top:${btnRect.bottom + 4}px;left:${btnRect.left}px;background:#161b22;border:1px solid #30363d;border-radius:8px;padding:12px 16px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.4);min-width:280px;`;
+      menu.innerHTML = `
+        <div style="font-size:13px;font-weight:600;color:#e6edf3;margin-bottom:8px;">New Project</div>
+        <input id="np-name" type="text" placeholder="Project name" style="width:100%;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:6px 10px;border-radius:6px;font-size:13px;outline:none;margin-bottom:6px;">
+        <input id="np-cwd" type="text" placeholder="Working directory (optional)" style="width:100%;background:#0d1117;border:1px solid #30363d;color:#8b949e;padding:6px 10px;border-radius:6px;font-size:12px;outline:none;margin-bottom:8px;">
+        <div style="font-size:11px;color:#484f58;margin-bottom:8px;">Leave directory blank to auto-create in /opt/jam/projects/</div>
+        <button id="np-create" style="background:#238636;color:white;border:none;padding:6px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:500;width:100%;">Create</button>
+      `;
+      document.body.appendChild(menu);
+      const nameInput = document.getElementById('np-name');
+      nameInput.focus();
+      const createFn = async () => {
+        const name = nameInput.value.trim();
+        if (!name) return;
+        const cwd = document.getElementById('np-cwd').value.trim() || undefined;
+        menu.remove();
+        const res = await fetch('/api/projects', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, cwd }),
+        });
+        const proj = await res.json();
+        if (proj.id) {
+          currentProjectId = proj.id;
+          renderProjectTabs();
+          renderSessionTabs();
+          // Join the default General session returned by the server
+          if (proj.defaultSessionId) joinSession(proj.defaultSessionId);
+        }
+      };
+      document.getElementById('np-create').addEventListener('click', createFn);
+      nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); createFn(); } });
+      const closeMenu = (ev) => {
+        if (!menu.contains(ev.target) && ev.target !== e.currentTarget) {
+          menu.remove(); document.removeEventListener('click', closeMenu);
+        }
+      };
+      setTimeout(() => document.addEventListener('click', closeMenu), 0);
+    });
+
     function joinFlow() {
       const name = document.getElementById('name-input').value.trim();
       if (!name) return;
@@ -1457,6 +1675,67 @@
 
     function stopStatePolling() {
       if (statePollTimer) { clearInterval(statePollTimer); statePollTimer = null; }
+    }
+
+    // Treats/reactions
+    document.addEventListener('click', e => {
+      const wrap = document.getElementById('treats-wrap');
+      if (wrap && !wrap.contains(e.target)) document.getElementById('treats-popup').classList.remove('open');
+    });
+
+    function fireTreat(kind) {
+      document.getElementById('treats-popup').classList.remove('open');
+      const overlay = document.createElement('div');
+      overlay.id = 'reaction-overlay';
+      document.body.appendChild(overlay);
+      const count = 40;
+      const colors = ['#ff9a56','#ff6b6b','#58a6ff','#3fb950','#d29922'];
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.className = 'r-particle';
+        const delay = Math.random() * 0.8;
+        const dur = 2 + Math.random() * 1.2;
+        const x = Math.random() * 100;
+        const sz = 16 + Math.random() * 20;
+        p.style.fontSize = sz + 'px';
+        p.style.left = x + 'vw';
+        p.style.animationDelay = delay + 's';
+        p.style.animationDuration = dur + 's';
+        p.style.animationFillMode = 'forwards';
+        if (kind === 'confetti') {
+          const shapes = ['\u25A0','\u25CF','\u25B2','\u2605'];
+          p.textContent = shapes[i % shapes.length];
+          p.style.color = colors[i % colors.length];
+          p.style.top = '-30px';
+          p.style.animation = `fall-down ${dur}s ${delay}s ease-in forwards`;
+        } else if (kind === 'hearts') {
+          p.textContent = ['❤️','💕','💖','💗'][i % 4];
+          p.style.bottom = '-30px'; p.style.top = 'auto';
+          p.style.animation = `float-up ${dur}s ${delay}s ease-out forwards`;
+        } else if (kind === 'stars') {
+          p.textContent = ['⭐','✨','🌟','💫'][i % 4];
+          p.style.left = '50vw'; p.style.top = '50vh';
+          const angle = (i / count) * Math.PI * 2;
+          const dist = 40 + Math.random() * 50;
+          const tx = Math.cos(angle) * dist + 'vw';
+          const ty = Math.sin(angle) * dist + 'vh';
+          p.style.animation = `burst-out ${dur}s ${delay}s ease-out forwards`;
+          p.style.setProperty('--tx', tx); p.style.setProperty('--ty', ty);
+          p.animate([
+            { transform: 'translate(0,0) scale(0.3)', opacity: 1 },
+            { transform: `translate(${tx},${ty}) scale(1.2)`, opacity: 0 }
+          ], { duration: dur * 1000, delay: delay * 1000, fill: 'forwards' });
+          p.style.animation = 'none';
+        } else if (kind === 'fire') {
+          p.textContent = ['🔥','🔥','💥','✨'][i % 4];
+          p.style.bottom = '-30px'; p.style.top = 'auto';
+          p.style.animation = `float-up ${dur}s ${delay}s ease-out forwards`;
+        }
+        overlay.appendChild(p);
+      }
+      const label = { confetti: 'confetti', hearts: 'hearts', stars: 'stars', fire: 'fire' }[kind];
+      addChat({ type: 'system', text: `${myName || 'Someone'} sent ${label}!` });
+      setTimeout(() => overlay.remove(), 3500);
     }
   </script>
 </body>

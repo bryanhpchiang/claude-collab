@@ -24,10 +24,19 @@ const systemPrompt = [
 interface Session {
   id: string;
   name: string;
+  projectId: string; // which project this session belongs to
   claudeSessionId?: string; // UUID from claude's own session system
   shell: IPty;
   scrollback: string;
   chatHistory: object[];
+  createdAt: number;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  cwd: string;
+  sessions: Map<string, Session>;
   createdAt: number;
 }
 
@@ -39,9 +48,11 @@ interface DiskSession {
   lastModified: string;
 }
 
+const projects = new Map<string, Project>();
+// Flat lookup: sessionId -> Session (kept in sync for quick access)
 const sessions = new Map<string, Session>();
 const clientSession = new Map<any, string>();
-const clientInfo = new Map<any, { name: string }>();
+const clientInfo = new Map<any, { name: string; projectId?: string }>();
 const MAX_CHAT_HISTORY = 200;
 
 // Pending @mentions for users who are offline
@@ -137,8 +148,24 @@ function spawnClaude(args: string[], cwd?: string): IPty {
   });
 }
 
-function createSession(name: string, resumeId?: string, cwd?: string): Session {
+function createProject(name: string, cwd?: string): Project {
   const id = genId();
+  const project: Project = {
+    id,
+    name,
+    cwd: cwd || process.env.JAM_CWD || process.cwd(),
+    sessions: new Map(),
+    createdAt: Date.now(),
+  };
+  projects.set(id, project);
+  console.log(`Project created: ${id} "${name}" cwd=${project.cwd}`);
+  return project;
+}
+
+function createSession(name: string, projectId: string, resumeId?: string, cwdOverride?: string): Session {
+  const id = genId();
+  const project = projects.get(projectId);
+  const cwd = cwdOverride || project?.cwd;
   const args = resumeId
     ? ["--resume", resumeId, "--append-system-prompt", systemPrompt]
     : ["--append-system-prompt", systemPrompt];
@@ -148,6 +175,7 @@ function createSession(name: string, resumeId?: string, cwd?: string): Session {
   const session: Session = {
     id,
     name,
+    projectId,
     claudeSessionId: resumeId,
     shell,
     scrollback: "",
@@ -173,7 +201,8 @@ function createSession(name: string, resumeId?: string, cwd?: string): Session {
   });
 
   sessions.set(id, session);
-  console.log(`Session created: ${id} "${name}"${resumeId ? ` (resume: ${resumeId})` : ""} (pid: ${shell.pid})`);
+  if (project) project.sessions.set(id, session);
+  console.log(`Session created: ${id} "${name}" project=${projectId}${resumeId ? ` (resume: ${resumeId})` : ""} (pid: ${shell.pid})`);
   return session;
 }
 
@@ -205,13 +234,44 @@ function getSessionList() {
   return [...sessions.values()].map(s => ({
     id: s.id,
     name: s.name,
+    projectId: s.projectId,
     users: getSessionUsers(s.id),
     createdAt: s.createdAt,
   }));
 }
 
-// Create default session
-createSession("General");
+function getProjectList() {
+  return [...projects.values()].map(p => ({
+    id: p.id,
+    name: p.name,
+    cwd: p.cwd,
+    sessionCount: p.sessions.size,
+    sessions: [...p.sessions.values()].map(s => ({
+      id: s.id,
+      name: s.name,
+      projectId: s.projectId,
+      users: getSessionUsers(s.id),
+      createdAt: s.createdAt,
+    })),
+    createdAt: p.createdAt,
+  }));
+}
+
+// Defined as a function that uses the `server` variable (hoisted, assigned after Bun.serve)
+let broadcastLobby = () => {};
+function initBroadcastLobby(srv: any) {
+  broadcastLobby = () => {
+    srv.publish("lobby", JSON.stringify({
+      type: "projects",
+      projects: getProjectList(),
+      sessions: getSessionList(),
+    }));
+  };
+}
+
+// Create default project and session
+const defaultProject = createProject("Default", process.env.JAM_CWD || process.cwd());
+createSession("General", defaultProject.id);
 
 const server = Bun.serve({
   port: 7681,
@@ -223,17 +283,74 @@ const server = Bun.serve({
       return new Response("WebSocket upgrade failed", { status: 400 });
     }
 
+    // --- Project API ---
+    if (url.pathname === "/api/projects") {
+      if (req.method === "GET") {
+        return Response.json(getProjectList());
+      }
+      if (req.method === "POST") {
+        return (async () => {
+          const body = await req.json() as { name?: string; cwd?: string };
+          const name = body.name || "Untitled";
+          // Default: create /opt/jam/projects/<slug> if no cwd given
+          const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || genId();
+          const cwd = body.cwd || `/opt/jam/projects/${slug}`;
+          await mkdir(cwd, { recursive: true });
+          const project = createProject(name, cwd);
+          // Create a default General session in the new project
+          const defaultSession = createSession("General", project.id);
+          broadcastLobby();
+          return Response.json({ id: project.id, name: project.name, cwd: project.cwd, defaultSessionId: defaultSession.id });
+        })();
+      }
+    }
+
+    // DELETE /api/projects/:id
+    const projectDeleteMatch = url.pathname.match(/^\/api\/projects\/([a-z0-9]+)$/);
+    if (projectDeleteMatch && req.method === "DELETE") {
+      const projectId = projectDeleteMatch[1];
+      if (projects.size <= 1) return Response.json({ error: "cannot delete last project" }, { status: 400 });
+      const project = projects.get(projectId);
+      if (!project) return Response.json({ error: "not found" }, { status: 404 });
+      // Kill all sessions in this project
+      for (const s of project.sessions.values()) {
+        try { s.shell.kill(); } catch {}
+        broadcastToSession(s.id, { type: "system", text: "Project deleted. Session closed." });
+        sessions.delete(s.id);
+      }
+      projects.delete(projectId);
+      broadcastLobby();
+      return Response.json({ ok: true });
+    }
+
+    // Project-scoped session creation: POST /api/projects/:id/sessions
+    const projectSessionMatch = url.pathname.match(/^\/api\/projects\/([a-z0-9]+)\/sessions$/);
+    if (projectSessionMatch && req.method === "POST") {
+      return (async () => {
+        const projectId = projectSessionMatch[1];
+        const project = projects.get(projectId);
+        if (!project) return Response.json({ error: "project not found" }, { status: 404 });
+        const body = await req.json() as { name?: string; resumeId?: string };
+        const name = body.name || "Untitled";
+        const session = createSession(name, projectId, body.resumeId);
+        broadcastLobby();
+        return Response.json({ id: session.id, name: session.name, projectId });
+      })();
+    }
+
     if (url.pathname === "/api/sessions") {
       if (req.method === "GET") {
         return Response.json(getSessionList());
       }
       if (req.method === "POST") {
         return (async () => {
-          const body = await req.json() as { name?: string; resumeId?: string };
+          const body = await req.json() as { name?: string; resumeId?: string; projectId?: string };
           const name = body.name || "Untitled";
-          const session = createSession(name, body.resumeId);
-          server.publish("lobby", JSON.stringify({ type: "sessions", sessions: getSessionList() }));
-          return Response.json({ id: session.id, name: session.name });
+          // Use specified project or fall back to first project
+          const projectId = body.projectId || [...projects.keys()][0];
+          const session = createSession(name, projectId, body.resumeId);
+          broadcastLobby();
+          return Response.json({ id: session.id, name: session.name, projectId: session.projectId });
         })();
       }
       if (req.method === "PATCH") {
@@ -242,20 +359,22 @@ const server = Bun.serve({
           const session = sessions.get(body.id);
           if (!session) return Response.json({ error: "not found" }, { status: 404 });
           session.name = body.name;
-          server.publish("lobby", JSON.stringify({ type: "sessions", sessions: getSessionList() }));
+          broadcastLobby();
           return Response.json({ id: session.id, name: session.name });
         })();
       }
       if (req.method === "DELETE") {
         return (async () => {
           const body = await req.json() as { id: string };
-          if (sessions.size <= 1) return Response.json({ error: "cannot delete last session" }, { status: 400 });
           const session = sessions.get(body.id);
           if (!session) return Response.json({ error: "not found" }, { status: 404 });
+          const project = projects.get(session.projectId);
+          if (project && project.sessions.size <= 1) return Response.json({ error: "cannot delete last session in project" }, { status: 400 });
           try { session.shell.kill(); } catch {}
           broadcastToSession(body.id, { type: "system", text: "Session closed." });
           sessions.delete(body.id);
-          server.publish("lobby", JSON.stringify({ type: "sessions", sessions: getSessionList() }));
+          if (project) project.sessions.delete(body.id);
+          broadcastLobby();
           return Response.json({ ok: true });
         })();
       }
@@ -346,7 +465,8 @@ const server = Bun.serve({
             const sessionName = body.repo
               ? body.repo.split("/").pop()?.replace(".git", "") || `jam-${jamId}`
               : `jam-${jamId}`;
-            const session = createSession(sessionName, undefined, cwd);
+            const defaultProjectId = [...projects.keys()][0];
+            const session = createSession(sessionName, defaultProjectId, undefined, cwd);
 
             jamSessions.set(jamId, {
               id: jamId,
@@ -356,7 +476,7 @@ const server = Bun.serve({
             });
 
             // Notify lobby
-            server.publish("lobby", JSON.stringify({ type: "sessions", sessions: getSessionList() }));
+            broadcastLobby();
 
             return Response.json({ id: jamId, url: `/j/${jamId}` });
           } catch (err: any) {
@@ -386,7 +506,7 @@ const server = Bun.serve({
       }
       jamSessions.delete(jamId);
       // Notify lobby
-      server.publish("lobby", JSON.stringify({ type: "sessions", sessions: getSessionList() }));
+      broadcastLobby();
       return Response.json({ ok: true });
     }
 
@@ -517,8 +637,8 @@ const server = Bun.serve({
   websocket: {
     open(ws) {
       ws.subscribe("lobby");
-      // Send session list
-      ws.send(JSON.stringify({ type: "sessions", sessions: getSessionList() }));
+      // Send projects and sessions
+      ws.send(JSON.stringify({ type: "projects", projects: getProjectList(), sessions: getSessionList() }));
     },
     message(ws, msg) {
       try {
@@ -657,4 +777,5 @@ const server = Bun.serve({
   },
 });
 
+initBroadcastLobby(server);
 console.log(`Jam running on http://localhost:7681`);
