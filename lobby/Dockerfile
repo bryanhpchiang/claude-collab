@@ -10,9 +10,6 @@ RUN curl -fsSL https://bun.sh/install | bash
 ENV BUN_INSTALL="/root/.bun"
 ENV PATH="${BUN_INSTALL}/bin:${PATH}"
 
-ARG VITE_CLERK_PUBLISHABLE_KEY
-ENV VITE_CLERK_PUBLISHABLE_KEY="${VITE_CLERK_PUBLISHABLE_KEY}"
-
 # Install client dependencies and build
 COPY client/package.json client/bun.lock ./client/
 RUN cd client && bun install --frozen-lockfile

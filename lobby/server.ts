@@ -4,7 +4,6 @@ import {
   DescribeInstancesCommand,
   TerminateInstancesCommand,
 } from "@aws-sdk/client-ec2";
-import { createClerkClient } from "@clerk/backend";
 import { join, extname } from "path";
 
 const PORT = Number(process.env.PORT) || 8080;
@@ -34,6 +33,7 @@ const MIME_TYPES: Record<string, string> = {
   ".map": "application/json",
   ".txt": "text/plain",
 };
+
 const AWS_REGION =
   process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || "us-east-1";
 const AMI_ID = process.env.JAM_AMI_ID || "ami-0b694e8fc9890bec7";
@@ -42,93 +42,61 @@ const SECURITY_GROUP =
 const INSTANCE_TYPE = process.env.JAM_INSTANCE_TYPE || "t3.medium";
 const TAG_PREFIX = process.env.JAM_TAG_PREFIX || "jam-";
 
-// Clerk auth
-const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || "";
-const CLERK_PUBLISHABLE_KEY =
-  process.env.CLERK_PUBLISHABLE_KEY ||
-  "pk_test_Y2FwYWJsZS1oZXJtaXQtMTUuY2xlcmsuYWNjb3VudHMuZGV2JA";
-
-const clerk = createClerkClient({ secretKey: CLERK_SECRET_KEY });
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || "";
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || "";
+const BASE_URL = process.env.BASE_URL || "";
+const GITHUB_OAUTH_ENABLED = Boolean(
+  GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET,
+);
 
 const ec2 = new EC2Client({ region: AWS_REGION });
+
+type SessionUser = {
+  login: string;
+  name: string;
+  avatar_url: string;
+};
+
+const sessions = new Map<string, SessionUser>();
 
 function genId(): string {
   return Math.random().toString(36).slice(2, 8);
 }
 
-interface ClerkUser {
-  userId: string;
-  name: string;
-  avatar_url: string;
+function genToken(): string {
+  return (
+    Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+  );
 }
 
-// Cache Clerk user info to avoid fetching on every request (5 min TTL)
-const userCache = new Map<string, { user: ClerkUser; expiresAt: number }>();
-const USER_CACHE_TTL = 5 * 60 * 1000;
-
-/** Extract and verify a Clerk JWT from the Authorization header */
-async function getUser(req: Request): Promise<ClerkUser | undefined> {
-  const requestUrl = new URL(req.url);
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    console.warn("Clerk auth missing bearer token", {
-      path: requestUrl.pathname,
-      hasAuthorizationHeader: Boolean(authHeader),
-      authorizationScheme: authHeader?.split(" ")[0] || null,
-    });
-    return undefined;
+function parseCookies(header: string | null): Record<string, string> {
+  if (!header) return {};
+  const cookies: Record<string, string> = {};
+  for (const pair of header.split(";")) {
+    const [k, ...v] = pair.trim().split("=");
+    if (k) cookies[k] = v.join("=");
   }
+  return cookies;
+}
 
-  const token = authHeader.slice(7);
-  let payload;
+function getUser(req: Request) {
+  const cookies = parseCookies(req.headers.get("cookie"));
+  const token = cookies["jam_session"];
+  return token ? sessions.get(token) : undefined;
+}
 
-  try {
-    payload = await clerk.verifyToken(token, {
-      authorizedParties: [],
-    });
-  } catch (error) {
-    console.warn("Clerk token verification failed", {
-      path: requestUrl.pathname,
-      tokenLength: token.length,
-      hasClerkSecretKey: Boolean(CLERK_SECRET_KEY),
-      error:
-        error instanceof Error
-          ? { name: error.name, message: error.message }
-          : String(error),
-    });
-    return undefined;
-  }
+function getBaseUrl(req: Request) {
+  return BASE_URL || new URL(req.url).origin;
+}
 
-  const userId = payload.sub;
+function getSecureCookieAttribute(req: Request) {
+  return getBaseUrl(req).startsWith("https://") ? "; Secure" : "";
+}
 
-  // Check cache
-  const cached = userCache.get(userId);
-  if (cached && cached.expiresAt > Date.now()) return cached.user;
-
-  try {
-    // Fetch full user info from Clerk
-    const clerkUser = await clerk.users.getUser(userId);
-    const user: ClerkUser = {
-      userId,
-      name:
-        [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") ||
-        clerkUser.username ||
-        userId,
-      avatar_url: clerkUser.imageUrl || "",
-    };
-    userCache.set(userId, { user, expiresAt: Date.now() + USER_CACHE_TTL });
-    return user;
-  } catch (error) {
-    console.warn("Clerk user lookup failed", {
-      path: requestUrl.pathname,
-      userId,
-      error:
-        error instanceof Error
-          ? { name: error.name, message: error.message }
-          : String(error),
-    });
-    return undefined;
-  }
+function apiHeaders() {
+  return {
+    "Access-Control-Allow-Origin": "*",
+  };
 }
 
 /** Poll until the instance has a public IP, up to ~60s */
@@ -178,41 +146,141 @@ async function listJamInstances() {
       });
     }
   }
+
   return results;
 }
-
-// -- Server --
 
 const server = Bun.serve({
   port: PORT,
   async fetch(req) {
     const url = new URL(req.url);
 
-    // --- CORS preflight for API routes ---
     if (req.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
         headers: {
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers": "Authorization, Content-Type",
+          "Access-Control-Allow-Headers": "Content-Type",
         },
       });
     }
 
-    const corsHeaders: Record<string, string> = {
-      "Access-Control-Allow-Origin": "*",
-    };
-
     if (url.pathname === "/health") {
-      return Response.json({ ok: true, service: "jam-lobby" }, { headers: corsHeaders });
+      return Response.json({ ok: true, service: "jam-lobby" }, { headers: apiHeaders() });
     }
 
-    // --- Create a Jam (auth required) ---
-    if (url.pathname === "/api/jams" && req.method === "POST") {
-      const user = await getUser(req);
+    if (url.pathname === "/auth/github") {
+      if (!GITHUB_OAUTH_ENABLED) {
+        return new Response("GitHub OAuth is not configured", { status: 503 });
+      }
+
+      const redirect = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(getBaseUrl(req) + "/auth/github/callback")}&scope=read:user`;
+      return Response.redirect(redirect, 302);
+    }
+
+    if (url.pathname === "/auth/github/callback") {
+      if (!GITHUB_OAUTH_ENABLED) {
+        return new Response("GitHub OAuth is not configured", { status: 503 });
+      }
+
+      const code = url.searchParams.get("code");
+      if (!code) {
+        return new Response("Missing code", { status: 400 });
+      }
+
+      try {
+        const tokenRes = await fetch(
+          "https://github.com/login/oauth/access_token",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify({
+              client_id: GITHUB_CLIENT_ID,
+              client_secret: GITHUB_CLIENT_SECRET,
+              code,
+            }),
+          },
+        );
+
+        const tokenData = (await tokenRes.json()) as {
+          access_token?: string;
+          error?: string;
+        };
+
+        if (!tokenData.access_token) {
+          return new Response(
+            "OAuth failed: " + (tokenData.error || "unknown"),
+            { status: 400 },
+          );
+        }
+
+        const userRes = await fetch("https://api.github.com/user", {
+          headers: {
+            Authorization: `Bearer ${tokenData.access_token}`,
+            "User-Agent": "jam-coordination-server",
+          },
+        });
+
+        if (!userRes.ok) {
+          return new Response("Failed to load GitHub user", { status: 400 });
+        }
+
+        const userData = (await userRes.json()) as {
+          login: string;
+          name: string | null;
+          avatar_url: string;
+        };
+
+        const token = genToken();
+        sessions.set(token, {
+          login: userData.login,
+          name: userData.name || userData.login,
+          avatar_url: userData.avatar_url,
+        });
+
+        return new Response(null, {
+          status: 302,
+          headers: {
+            Location: "/dashboard",
+            "Set-Cookie": `jam_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${getSecureCookieAttribute(req)}`,
+          },
+        });
+      } catch (err: any) {
+        console.error("OAuth callback error:", err);
+        return new Response("OAuth error: " + err.message, { status: 500 });
+      }
+    }
+
+    if (url.pathname === "/auth/logout") {
+      const cookies = parseCookies(req.headers.get("cookie"));
+      const token = cookies["jam_session"];
+      if (token) sessions.delete(token);
+
+      return new Response(null, {
+        status: 302,
+        headers: {
+          Location: "/",
+          "Set-Cookie": `jam_session=; Path=/; HttpOnly; Max-Age=0${getSecureCookieAttribute(req)}`,
+        },
+      });
+    }
+
+    if (url.pathname === "/api/me") {
+      const user = getUser(req);
       if (!user) {
-        return Response.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
+        return Response.json({ error: "Unauthorized" }, { status: 401, headers: apiHeaders() });
+      }
+      return Response.json(user, { headers: apiHeaders() });
+    }
+
+    if (url.pathname === "/api/jams" && req.method === "POST") {
+      const user = getUser(req);
+      if (!user) {
+        return Response.json({ error: "Unauthorized" }, { status: 401, headers: apiHeaders() });
       }
 
       try {
@@ -238,31 +306,33 @@ const server = Bun.serve({
         if (!instanceId) {
           return Response.json(
             { error: "Failed to launch instance" },
-            { status: 500, headers: corsHeaders },
+            { status: 500, headers: apiHeaders() },
           );
         }
 
         const ip = await waitForPublicIp(instanceId);
 
-        return Response.json({
-          id: jamId,
-          instanceId,
-          url: `http://${ip}:7681`,
-        }, { headers: corsHeaders });
+        return Response.json(
+          {
+            id: jamId,
+            instanceId,
+            url: `http://${ip}:7681`,
+          },
+          { headers: apiHeaders() },
+        );
       } catch (err: any) {
         console.error("POST /api/jams error:", err);
         return Response.json(
           { error: err.message || "Internal error" },
-          { status: 500, headers: corsHeaders },
+          { status: 500, headers: apiHeaders() },
         );
       }
     }
 
-    // --- List Jams (auth required) ---
     if (url.pathname === "/api/jams" && req.method === "GET") {
-      const user = await getUser(req);
+      const user = getUser(req);
       if (!user) {
-        return Response.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
+        return Response.json({ error: "Unauthorized" }, { status: 401, headers: apiHeaders() });
       }
 
       try {
@@ -274,23 +344,22 @@ const server = Bun.serve({
             url: j.ip ? `http://${j.ip}:7681` : null,
             state: j.state,
           })),
-          { headers: corsHeaders },
+          { headers: apiHeaders() },
         );
       } catch (err: any) {
         console.error("GET /api/jams error:", err);
         return Response.json(
           { error: err.message || "Internal error" },
-          { status: 500, headers: corsHeaders },
+          { status: 500, headers: apiHeaders() },
         );
       }
     }
 
-    // --- Delete a Jam (auth required) ---
     const deleteMatch = url.pathname.match(/^\/api\/jams\/([a-z0-9]+)$/);
     if (deleteMatch && req.method === "DELETE") {
-      const user = await getUser(req);
+      const user = getUser(req);
       if (!user) {
-        return Response.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
+        return Response.json({ error: "Unauthorized" }, { status: 401, headers: apiHeaders() });
       }
 
       const jamId = deleteMatch[1];
@@ -298,25 +367,26 @@ const server = Bun.serve({
         const jams = await listJamInstances();
         const jam = jams.find((j) => j.id === jamId);
         if (!jam) {
-          return Response.json({ error: "Jam not found" }, { status: 404, headers: corsHeaders });
+          return Response.json({ error: "Jam not found" }, { status: 404, headers: apiHeaders() });
         }
 
         await ec2.send(
           new TerminateInstancesCommand({ InstanceIds: [jam.instanceId] }),
         );
 
-        return Response.json({ ok: true, terminated: jam.instanceId }, { headers: corsHeaders });
+        return Response.json(
+          { ok: true, terminated: jam.instanceId },
+          { headers: apiHeaders() },
+        );
       } catch (err: any) {
         console.error("DELETE /api/jams error:", err);
         return Response.json(
           { error: err.message || "Internal error" },
-          { status: 500, headers: corsHeaders },
+          { status: 500, headers: apiHeaders() },
         );
       }
     }
 
-    // --- Static file serving for React client ---
-    // Try to serve a static file from client/dist/
     const filePath = join(CLIENT_DIST, url.pathname);
     const file = Bun.file(filePath);
     if (await file.exists()) {
@@ -327,7 +397,6 @@ const server = Bun.serve({
       });
     }
 
-    // --- SPA fallback: serve index.html for all other routes ---
     const indexFile = Bun.file(join(CLIENT_DIST, "index.html"));
     if (await indexFile.exists()) {
       return new Response(indexFile, {

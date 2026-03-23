@@ -48,11 +48,9 @@ jobs:
         shell: bash
         env:
           AWS_ACCOUNT_ID: ${{ steps.aws-account.outputs.account_id }}
-          VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.VITE_CLERK_PUBLISHABLE_KEY }}
         run: |
           ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME"
           docker build \
-            --build-arg "VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY" \
             --file lobby/Dockerfile \
             --tag "$ECR_URI:$GITHUB_SHA" \
             --tag "$ECR_URI:$DEPLOY_TAG" \

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import './Landing.css';
 
 const terminalLines = [
@@ -12,7 +11,6 @@ const terminalLines = [
 ];
 
 export default function Landing() {
-  const navigate = useNavigate();
   const termRef = useRef<HTMLDivElement>(null);
   const [joinInput, setJoinInput] = useState('');
   const animatedRef = useRef(false);
@@ -69,7 +67,7 @@ export default function Landing() {
           <a href="/" className="nav-brand">Jam</a>
           <div className="nav-links">
             <a href="https://github.com/bryanhpchiang/claude-collab" target="_blank" rel="noopener">GitHub</a>
-            <button className="nav-signin" onClick={() => navigate('/dashboard')}>Sign in</button>
+            <a className="nav-signin" href="/auth/github">Sign in</a>
           </div>
         </nav>
 
@@ -86,12 +84,12 @@ export default function Landing() {
           </p>
 
           <div className="hero-actions">
-            <button className="btn-start" onClick={() => navigate('/dashboard')}>
+            <a className="btn-start" href="/auth/github">
               <span className="icon">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
               </span>
               Start a Jam
-            </button>
+            </a>
 
             <div className="divider">or join an existing session</div>
 

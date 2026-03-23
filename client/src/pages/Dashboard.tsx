@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useUser, useAuth, UserButton, RedirectToSignIn } from '@clerk/clerk-react';
 import './Dashboard.css';
 
 interface Jam {
@@ -9,21 +8,44 @@ interface Jam {
   state: string;
 }
 
-export default function Dashboard() {
-  const { isSignedIn, isLoaded, user } = useUser();
-  const { getToken } = useAuth();
+interface SessionUser {
+  login: string;
+  name: string;
+  avatar_url: string;
+}
 
+export default function Dashboard() {
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [jams, setJams] = useState<Jam[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
+  const redirectToSignIn = () => {
+    window.location.href = '/auth/github';
+  };
+
+  const loadUser = useCallback(async () => {
+    const res = await fetch('/api/me');
+    if (res.status === 401) {
+      redirectToSignIn();
+      return null;
+    }
+    if (!res.ok) {
+      throw new Error(`Failed to load session (${res.status})`);
+    }
+    const data = await res.json();
+    setUser(data);
+    return data;
+  }, []);
+
   const fetchJams = useCallback(async () => {
     try {
-      const token = await getToken();
-      const res = await fetch('/api/jams', {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      });
+      const res = await fetch('/api/jams');
+      if (res.status === 401) {
+        redirectToSignIn();
+        return;
+      }
       if (!res.ok) throw new Error(`Failed to fetch jams (${res.status})`);
       const data = await res.json();
       setJams(data);
@@ -33,25 +55,37 @@ export default function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, []);
 
   useEffect(() => {
-    if (isSignedIn) fetchJams();
-  }, [isSignedIn, fetchJams]);
+    (async () => {
+      try {
+        const currentUser = await loadUser();
+        if (currentUser) {
+          await fetchJams();
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to load dashboard');
+        setLoading(false);
+      }
+    })();
+  }, [fetchJams, loadUser]);
 
-  const handleCreate = async () => {
+  const handleCreate = useCallback(async () => {
     setCreating(true);
     setError(null);
     try {
-      const token = await getToken();
       const res = await fetch('/api/jams', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({}),
       });
+      if (res.status === 401) {
+        redirectToSignIn();
+        return;
+      }
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `Failed to create instance (${res.status})`);
@@ -67,9 +101,9 @@ export default function Dashboard() {
     } finally {
       setCreating(false);
     }
-  };
+  }, [fetchJams]);
 
-  if (!isLoaded) {
+  if (loading) {
     return (
       <div className="dash-loading">
         <div className="dash-spinner" />
@@ -77,8 +111,8 @@ export default function Dashboard() {
     );
   }
 
-  if (!isSignedIn) {
-    return <RedirectToSignIn />;
+  if (!user) {
+    return null;
   }
 
   return (
@@ -88,9 +122,9 @@ export default function Dashboard() {
           <a href="/" className="dash-brand">Jam</a>
           <div className="dash-header-right">
             <span className="dash-greeting">
-              {user?.firstName ? `Hey, ${user.firstName}` : 'Dashboard'}
+              {user.name ? `Hey, ${user.name}` : user.login}
             </span>
-            <UserButton afterSignOutUrl="/" />
+            <a href="/auth/logout" className="dash-card-open">Sign out</a>
           </div>
         </div>
       </header>
@@ -120,11 +154,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {loading ? (
-          <div className="dash-loading-inline">
-            <div className="dash-spinner" />
-          </div>
-        ) : jams.length === 0 ? (
+        {jams.length === 0 ? (
           <div className="dash-empty">
             <p>No instances yet. Create one to get started.</p>
           </div>
