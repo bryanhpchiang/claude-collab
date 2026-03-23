@@ -21,6 +21,31 @@ const systemPrompt = [
   "Help the group stay coordinated: track who's working on what and prevent people from stepping on each other's toes.",
 ].join(" ");
 
+interface StateItem {
+  id: string;
+  text: string;
+  author: string;
+  checked?: boolean;
+  assignee?: string;
+  status?: 'todo' | 'in-progress' | 'done';
+  timestamp: number;
+}
+
+interface ActivityEntry {
+  id: string;
+  text: string;
+  author: string;
+  timestamp: number;
+}
+
+interface SessionState {
+  decisions: StateItem[];
+  inProgress: StateItem[];
+  actionItems: StateItem[];
+  pinnedMessages: StateItem[];
+  activity: ActivityEntry[];
+}
+
 interface Session {
   id: string;
   name: string;
@@ -29,6 +54,7 @@ interface Session {
   scrollback: string;
   chatHistory: object[];
   createdAt: number;
+  state: SessionState;
 }
 
 interface DiskSession {
@@ -43,6 +69,17 @@ const sessions = new Map<string, Session>();
 const clientSession = new Map<any, string>();
 const clientInfo = new Map<any, { name: string }>();
 const MAX_CHAT_HISTORY = 200;
+
+// Pending @mentions for users who are offline
+// Key: lowercase username, Value: array of mention objects
+interface PendingMention {
+  from: string;
+  text: string;
+  sessionId: string;
+  sessionName: string;
+  timestamp: number;
+}
+const pendingMentions = new Map<string, PendingMention[]>();
 
 // Track which sessions are "jam" sessions (created via /api/jams)
 const jamSessions = new Map<string, { id: string; sessionId: string; repo?: string; createdAt: number }>();
@@ -131,6 +168,13 @@ function createSession(name: string, resumeId?: string, cwd?: string): Session {
     scrollback: "",
     chatHistory: [],
     createdAt: Date.now(),
+    state: {
+      decisions: [],
+      inProgress: [],
+      actionItems: [],
+      pinnedMessages: [],
+      activity: [],
+    },
   };
 
   // Auto-accept trust prompt
@@ -415,9 +459,23 @@ const server = Bun.serve({
           for (const msg of session.chatHistory) {
             ws.send(JSON.stringify(msg));
           }
+          // Send current sidebar state
+          ws.send(JSON.stringify({ type: "state-sync", state: session.state }));
 
           broadcastToSession(sessionId, { type: "system", text: `${data.name} joined` });
           broadcastToSession(sessionId, { type: "users", users: getSessionUsers(sessionId) });
+
+          // Send any pending @mentions for this user
+          const nameLower = data.name.toLowerCase();
+          const pending = pendingMentions.get(nameLower);
+          if (pending && pending.length > 0) {
+            ws.send(JSON.stringify({
+              type: "unread-mentions",
+              mentions: pending,
+            }));
+            // Clear pending mentions after sending
+            pendingMentions.delete(nameLower);
+          }
         }
 
         if (data.type === "input") {
@@ -429,6 +487,38 @@ const server = Bun.serve({
           const name = info?.name || "anon";
           broadcastToSession(sessionId, { type: "chat", name, text: data.text });
           session.shell.write(`[${name}]: ${data.text}` + "\r");
+
+          // Detect @mentions in the message
+          const mentionRegex = /@(\w+)/g;
+          let match;
+          const sessionUsers = getSessionUsers(sessionId);
+          const sessionUsersLower = sessionUsers.map(u => u.toLowerCase());
+          while ((match = mentionRegex.exec(data.text)) !== null) {
+            const mentionedName = match[1];
+            const mentionedLower = mentionedName.toLowerCase();
+
+            // Broadcast a mention event to the session
+            broadcastToSession(sessionId, {
+              type: "mention",
+              from: name,
+              mentioned: mentionedName,
+              text: data.text,
+              timestamp: Date.now(),
+            });
+
+            // If the mentioned user is NOT currently in this session, store as pending
+            if (!sessionUsersLower.includes(mentionedLower)) {
+              const pending = pendingMentions.get(mentionedLower) || [];
+              pending.push({
+                from: name,
+                text: data.text,
+                sessionId,
+                sessionName: session.name,
+                timestamp: Date.now(),
+              });
+              pendingMentions.set(mentionedLower, pending);
+            }
+          }
         }
 
         if (data.type === "key") {
@@ -440,6 +530,99 @@ const server = Bun.serve({
           const name = info?.name || "anon";
           broadcastToSession(sessionId, { type: "system", text: `${name} pressed ${data.label || "key"}` });
           session.shell.write(data.seq);
+        }
+
+        if (data.type === "state-update") {
+          const sessionId = clientSession.get(ws);
+          if (!sessionId) return;
+          const session = sessions.get(sessionId);
+          if (!session) return;
+          const info = clientInfo.get(ws);
+          const userName = info?.name || "anon";
+          const { action, section, item, itemId } = data;
+          const arr = session.state[section as keyof SessionState] as any[];
+          if (!arr) return;
+
+          if (action === "add" && item) {
+            arr.push(item);
+            // Auto-log activity for actionItems and inProgress
+            if (section === "actionItems" || section === "inProgress") {
+              const label = section === "actionItems" ? "to-do" : "in-progress item";
+              session.state.activity.push({
+                id: Math.random().toString(36).slice(2, 10),
+                text: `${userName} added ${label}: "${item.text}"${item.assignee ? ` (assigned to ${item.assignee})` : ''}`,
+                author: userName,
+                timestamp: Date.now(),
+              });
+              if (session.state.activity.length > 100) session.state.activity.splice(0, session.state.activity.length - 100);
+            }
+          } else if (action === "delete" && itemId) {
+            const idx = arr.findIndex((i: any) => i.id === itemId);
+            if (idx !== -1) arr.splice(idx, 1);
+          } else if (action === "toggle" && itemId) {
+            const found = arr.find((i: any) => i.id === itemId);
+            if (found) found.checked = !found.checked;
+          } else if (action === "set-status" && itemId && data.status) {
+            const found = arr.find((i: any) => i.id === itemId);
+            if (found) {
+              const oldStatus = found.status || 'todo';
+              found.status = data.status;
+              if (data.status === 'done') found.checked = true;
+              else if (data.status === 'todo') found.checked = false;
+              session.state.activity.push({
+                id: Math.random().toString(36).slice(2, 10),
+                text: `${userName} moved "${found.text}" from ${oldStatus} to ${data.status}`,
+                author: userName,
+                timestamp: Date.now(),
+              });
+              if (session.state.activity.length > 100) session.state.activity.splice(0, session.state.activity.length - 100);
+            }
+          } else if (action === "set-assignee" && itemId && data.assignee !== undefined) {
+            const found = arr.find((i: any) => i.id === itemId);
+            if (found) {
+              found.assignee = data.assignee;
+              session.state.activity.push({
+                id: Math.random().toString(36).slice(2, 10),
+                text: `${userName} assigned "${found.text}" to ${data.assignee || 'unassigned'}`,
+                author: userName,
+                timestamp: Date.now(),
+              });
+              if (session.state.activity.length > 100) session.state.activity.splice(0, session.state.activity.length - 100);
+            }
+          } else if (action === "edit" && itemId && item) {
+            const found = arr.find((i: any) => i.id === itemId);
+            if (found) found.text = item.text;
+          } else if (action === "add-activity" && item) {
+            session.state.activity.push(item);
+            if (session.state.activity.length > 100) session.state.activity.splice(0, session.state.activity.length - 100);
+          }
+
+          // Broadcast updated state to all clients in this session
+          server.publish(`session:${sessionId}`, JSON.stringify({ type: "state-sync", state: session.state }));
+        }
+
+        if (data.type === "mark-mentions-read") {
+          const info = clientInfo.get(ws);
+          if (info) {
+            pendingMentions.delete(info.name.toLowerCase());
+          }
+        }
+
+        if (data.type === "pin-message") {
+          const sessionId = clientSession.get(ws);
+          if (!sessionId) return;
+          const session = sessions.get(sessionId);
+          if (!session) return;
+          const info = clientInfo.get(ws);
+          const name = info?.name || "anon";
+          const pinItem: StateItem = {
+            id: Math.random().toString(36).slice(2, 10),
+            text: data.text,
+            author: data.author || name,
+            timestamp: Date.now(),
+          };
+          session.state.pinnedMessages.push(pinItem);
+          server.publish(`session:${sessionId}`, JSON.stringify({ type: "state-sync", state: session.state }));
         }
       } catch {}
     },
