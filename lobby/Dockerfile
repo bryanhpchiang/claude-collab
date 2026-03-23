@@ -10,11 +10,18 @@ RUN curl -fsSL https://bun.sh/install | bash
 ENV BUN_INSTALL="/root/.bun"
 ENV PATH="${BUN_INSTALL}/bin:${PATH}"
 
-# Install dependencies
+# Install client dependencies and build
+COPY client/package.json client/bun.lock ./client/
+RUN cd client && bun install --frozen-lockfile
+
+COPY client/ ./client/
+RUN cd client && bun run build
+
+# Install lobby dependencies
 COPY lobby/package.json lobby/bun.lock ./lobby/
 RUN cd lobby && bun install --frozen-lockfile
 
-# Copy source
+# Copy lobby source
 COPY lobby/server.ts ./lobby/
 
 EXPOSE 8080
