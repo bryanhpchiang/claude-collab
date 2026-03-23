@@ -128,7 +128,7 @@ export default function Dashboard() {
 
   // Auto-poll while any instance is pending
   const hasPending = jams.some(j => j.state === 'pending');
-  const pollRef = useRef<ReturnType<typeof setInterval>>();
+  const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
   useEffect(() => {
     if (hasPending) {
       pollRef.current = setInterval(fetchJams, 3000);
