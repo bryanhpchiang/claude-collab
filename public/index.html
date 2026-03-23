@@ -513,31 +513,7 @@
     term.loadAddon(fitAddon);
     term.open(document.getElementById('terminal-container'));
     fitAddon.fit();
-    // Scroll behavior: auto-scroll when at bottom, pause when user scrolls up, resume when near bottom
-    let autoScroll = true;
-    const viewport = term.element.querySelector('.xterm-viewport');
-    function isAtBottom() {
-      if (!viewport) return true;
-      return viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 30;
-    }
-    if (viewport) {
-      viewport.addEventListener('wheel', (e) => {
-        if (e.deltaY < 0) {
-          autoScroll = false;
-        } else {
-          requestAnimationFrame(() => { if (isAtBottom()) autoScroll = true; });
-        }
-      }, { passive: true });
-      let touchStartY = 0;
-      viewport.addEventListener('touchstart', (e) => {
-        touchStartY = e.touches[0].clientY;
-      }, { passive: true });
-      viewport.addEventListener('touchmove', (e) => {
-        const dy = touchStartY - e.touches[0].clientY;
-        if (dy < -5) autoScroll = false;
-        else if (dy > 5) requestAnimationFrame(() => { if (isAtBottom()) autoScroll = true; });
-      }, { passive: true });
-    }
+    // No custom scroll — let xterm handle it natively
     window.addEventListener('resize', () => fitAddon.fit());
     new ResizeObserver(() => fitAddon.fit()).observe(document.getElementById('terminal-container'));
 
@@ -545,10 +521,6 @@
     let currentState = { decisions: [], inProgress: [], actionItems: [], pinnedMessages: [], activity: [] };
     let connectedUsers = []; // Track users in current session for @mention autocomplete
     let notificationPermission = 'default'; // Track notification permission state
-    function smartScroll() {
-      if (!autoScroll) return;
-      term.scrollToBottom();
-    }
 
     const COLORS = ['#ff7b72','#d2a8ff','#79c0ff','#7ee787','#ffa657','#f778ba','#a5d6ff','#ffd8b1'];
     function nameColor(n) { let h=0; for(let i=0;i<n.length;i++) h=n.charCodeAt(i)+((h<<5)-h); return COLORS[Math.abs(h)%COLORS.length]; }
@@ -684,7 +656,7 @@
               pendingJoin = null;
             }
             break;
-          case 'output': term.write(msg.data); smartScroll(); break;
+          case 'output': term.write(msg.data); break;
           case 'chat': addChat(msg.name, msg.text); break;
           case 'system': addSystem(msg.text); break;
           case 'users':
