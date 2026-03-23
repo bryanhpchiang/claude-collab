@@ -342,7 +342,7 @@ fi
 cd /opt/jam
 git pull origin main
 bun install
-bun run server.ts &
+JAM_MODE=instance bun run server.ts &
 `).toString("base64");
 
         const run = await ec2.send(

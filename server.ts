@@ -401,9 +401,10 @@ const server = Bun.serve({
       })();
     }
 
-    // --- Serve landing page at / ---
+    // --- Serve landing page at / (skip on EC2 instances) ---
     if (url.pathname === "/" || url.pathname === "/index.html") {
-      return new Response(Bun.file("public/landing.html"), {
+      const file = process.env.JAM_MODE === "instance" ? "public/index.html" : "public/landing.html";
+      return new Response(Bun.file(file), {
         headers: { "Content-Type": "text/html" },
       });
     }
