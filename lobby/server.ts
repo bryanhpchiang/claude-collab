@@ -344,6 +344,8 @@ if [ ! -d /opt/jam ]; then
 fi
 chown -R ubuntu:ubuntu /opt/jam
 cd /opt/jam
+git config user.name "Jam"
+git config user.email "jam@letsjam.now"
 su - ubuntu -c "export PATH=/home/ubuntu/.bun/bin:\$PATH && cd /opt/jam && git pull origin main && bun install && JAM_MODE=instance bun run server.ts &"
 `).toString("base64");
 

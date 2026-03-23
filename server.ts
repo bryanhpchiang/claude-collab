@@ -432,18 +432,63 @@ const server = Bun.serve({
     }
 
     if (url.pathname === "/api/state-summary" && req.method === "GET") {
-      return (async () => {
-        try {
-          const file = Bun.file(join(process.cwd(), "STATE.md"));
-          const exists = await file.exists();
-          if (!exists) return Response.json({ markdown: "", lastModified: 0 });
-          const markdown = await file.text();
-          const lastModified = file.lastModified;
-          return Response.json({ markdown, lastModified });
-        } catch {
-          return Response.json({ markdown: "", lastModified: 0 });
+      const lines: string[] = ["# State of Things\n"];
+
+      // Active Sessions
+      lines.push("## Active Sessions\n");
+      if (sessions.size === 0) {
+        lines.push("_No active sessions_\n");
+      } else {
+        for (const s of sessions.values()) {
+          const users = getSessionUsers(s.id);
+          const age = Date.now() - s.createdAt;
+          const mins = Math.floor(age / 60000);
+          const timeStr = mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ${mins % 60}m ago`;
+          let alive = false;
+          try { alive = !!s.shell.pid && process.kill(s.shell.pid, 0) === true; } catch { alive = false; }
+          const status = alive ? "running" : "exited";
+          lines.push(`- **${s.name}** — ${users.length} user${users.length !== 1 ? "s" : ""} · created ${timeStr} · Claude: \`${status}\``);
         }
-      })();
+        lines.push("");
+      }
+
+      // Connected Users
+      lines.push("## Connected Users\n");
+      const allUsers: { name: string; session: string }[] = [];
+      for (const [ws, sid] of clientSession) {
+        const info = clientInfo.get(ws);
+        const session = sessions.get(sid);
+        if (info && session) allUsers.push({ name: info.name, session: session.name });
+      }
+      if (allUsers.length === 0) {
+        lines.push("_No users connected_\n");
+      } else {
+        for (const u of allUsers) lines.push(`- **${u.name}** in _${u.session}_`);
+        lines.push("");
+      }
+
+      // Recent Activity
+      lines.push("## Recent Activity\n");
+      const recent: { text: string; name?: string; session: string; type: string; ts?: number }[] = [];
+      for (const s of sessions.values()) {
+        for (const msg of s.chatHistory.slice(-10)) {
+          const m = msg as any;
+          if (m.type === "chat") recent.push({ text: m.text, name: m.name, session: s.name, type: "chat", ts: m.timestamp });
+          else if (m.type === "system") recent.push({ text: m.text, session: s.name, type: "system", ts: m.timestamp });
+        }
+      }
+      const last5 = recent.slice(-5);
+      if (last5.length === 0) {
+        lines.push("_No recent activity_\n");
+      } else {
+        for (const r of last5) {
+          const prefix = r.type === "chat" ? `**${r.name}**` : "_system_";
+          lines.push(`- [${r.session}] ${prefix}: ${r.text.slice(0, 120)}`);
+        }
+        lines.push("");
+      }
+
+      return Response.json({ markdown: lines.join("\n"), lastModified: Date.now() });
     }
 
     // --- Serve React build static assets ---
