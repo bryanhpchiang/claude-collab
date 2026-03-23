@@ -14,7 +14,6 @@ import {
   ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { join, extname } from "path";
-import { waitForPublicIp } from "./ec2";
 
 const PORT = Number(process.env.PORT) || 8080;
 
@@ -46,7 +45,7 @@ const MIME_TYPES: Record<string, string> = {
 
 const AWS_REGION =
   process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || "us-east-1";
-const AMI_ID = process.env.JAM_AMI_ID || "ami-0b694e8fc9890bec7";
+const AMI_ID = process.env.JAM_AMI_ID || "ami-0f5833d39069b6186";
 const SECURITY_GROUP =
   process.env.JAM_SECURITY_GROUP_ID || "sg-092ad16c7428104a3";
 const INSTANCE_TYPE = process.env.JAM_INSTANCE_TYPE || "t3.medium";
@@ -327,10 +326,10 @@ const server = Bun.serve({
 
         const userData = Buffer.from(`#!/bin/bash
 set -ex
-cd /opt/jam
-git pull origin main
 export BUN_INSTALL="/root/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+cd /opt/jam
+git pull origin main
 bun install
 bun run server.ts &
 `).toString("base64");
@@ -360,6 +359,8 @@ bun run server.ts &
           );
         }
 
+        const created_at = new Date().toISOString();
+
         await putInstance({
           id: jamId,
           instance_id: instanceId,
@@ -367,25 +368,17 @@ bun run server.ts &
           creator_name: user.name,
           creator_avatar: user.avatar_url,
           state: "pending",
-          created_at: new Date().toISOString(),
+          created_at,
         });
-
-        const ip = await waitForPublicIp(async () => {
-          const desc = await ec2.send(
-            new DescribeInstancesCommand({ InstanceIds: [instanceId] }),
-          );
-          return desc.Reservations?.[0]?.Instances?.[0];
-        });
-
-        await updateInstanceState(jamId, "running", ip);
 
         return Response.json(
           {
             id: jamId,
             instanceId,
-            url: `http://${ip}:7681`,
+            url: null,
+            state: "pending",
             creator: { login: user.login, name: user.name, avatar_url: user.avatar_url },
-            created_at: new Date().toISOString(),
+            created_at,
           },
           { headers: apiHeaders() },
         );
@@ -401,6 +394,38 @@ bun run server.ts &
     if (url.pathname === "/api/jams" && req.method === "GET") {
       try {
         const instances = await scanActiveInstances();
+
+        // Resolve pending instances: get IP, then health-check
+        await Promise.all(instances.map(async (inst) => {
+          if (inst.state !== "pending") return;
+
+          // Step 1: resolve IP if missing
+          if (!inst.ip) {
+            try {
+              const desc = await ec2.send(
+                new DescribeInstancesCommand({ InstanceIds: [inst.instance_id] }),
+              );
+              const ec2Inst = desc.Reservations?.[0]?.Instances?.[0];
+              if (ec2Inst?.PublicIpAddress) {
+                inst.ip = ec2Inst.PublicIpAddress;
+                await updateInstanceState(inst.id, "pending", inst.ip);
+              }
+            } catch {}
+          }
+
+          // Step 2: health-check the server
+          if (inst.ip) {
+            try {
+              const res = await fetch(`http://${inst.ip}:7681/`, {
+                signal: AbortSignal.timeout(3000),
+              });
+              if (res.ok) {
+                inst.state = "running";
+                await updateInstanceState(inst.id, "running", inst.ip);
+              }
+            } catch {}
+          }
+        }));
 
         return Response.json(
           instances.map((inst) => ({
