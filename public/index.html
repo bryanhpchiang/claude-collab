@@ -230,30 +230,28 @@
     term.loadAddon(fitAddon);
     term.open(document.getElementById('terminal-container'));
     fitAddon.fit();
-    // Smart scroll: only auto-scroll if user is near the bottom
+    // Smart scroll: only auto-scroll if user hasn't scrolled up
     let userScrolledUp = false;
-    let scrollResumeTimer = null;
-    // Track scroll position via xterm's scroll event (works for all scroll methods)
-    term.onScroll(() => {
-      const base = term.buffer.active.baseY;
-      const viewport = term.buffer.active.viewportY;
-      const atBottom = viewport >= base;
-      userScrolledUp = !atBottom;
-      // Auto-resume scrolling after 10s of inactivity if still scrolled up
-      clearTimeout(scrollResumeTimer);
-      if (userScrolledUp) {
-        scrollResumeTimer = setTimeout(() => { userScrolledUp = false; }, 10000);
-      }
-    });
+    let programmaticScroll = false;
+    // Only track USER-initiated scrolls (wheel/touch), ignore programmatic ones
+    const viewport = term.element.querySelector('.xterm-viewport');
+    if (viewport) {
+      viewport.addEventListener('wheel', () => {
+        const atBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 30;
+        userScrolledUp = !atBottom;
+      }, { passive: true });
+      viewport.addEventListener('touchmove', () => {
+        const atBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 30;
+        userScrolledUp = !atBottom;
+      }, { passive: true });
+    }
     window.addEventListener('resize', () => fitAddon.fit());
     new ResizeObserver(() => fitAddon.fit()).observe(document.getElementById('terminal-container'));
 
     let ws, myName = '', currentSessionId = null, sessionList = [], pendingJoin = null;
-    let scrollTimer = null;
     function smartScroll() {
       if (userScrolledUp) return;
-      clearTimeout(scrollTimer);
-      scrollTimer = setTimeout(() => term.scrollToBottom(), 50);
+      term.scrollToBottom();
     }
 
     const COLORS = ['#ff7b72','#d2a8ff','#79c0ff','#7ee787','#ffa657','#f778ba','#a5d6ff','#ffd8b1'];
