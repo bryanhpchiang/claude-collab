@@ -165,6 +165,40 @@
       border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: 500; margin-left: 8px;
     }
     .modal-box button:hover { background: #2ea043; }
+    #oauth-modal { display: none; z-index: 120; }
+    #oauth-modal.visible {
+      display: flex;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.78);
+      align-items: center; justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .oauth-modal-box {
+      width: min(640px, calc(100vw - 32px));
+      text-align: left;
+    }
+    .oauth-modal-actions {
+      display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px;
+    }
+    .oauth-modal-actions button { margin-left: 0; }
+    .oauth-modal-actions .secondary-btn {
+      background: transparent;
+      border: 1px solid #30363d;
+      color: #c9d1d9;
+    }
+    .oauth-modal-actions .secondary-btn:hover { background: #21262d; }
+    #oauth-url-preview {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #30363d;
+      background: #0d1117;
+      color: #79c0ff;
+      font-size: 12px;
+      line-height: 1.5;
+      word-break: break-all;
+      font-family: 'SF Mono', Monaco, monospace;
+    }
     #lobby-view {
       display: none; flex: 1; align-items: center; justify-content: center;
       color: #8b949e; font-size: 14px;
@@ -369,6 +403,17 @@
       </div>
     </div>
   </div>
+  <div id="oauth-modal">
+    <div class="modal-box oauth-modal-box">
+      <h2>Claude Sign In</h2>
+      <p>Claude Code is asking you to finish OAuth in the browser.</p>
+      <div id="oauth-url-preview"></div>
+      <div class="oauth-modal-actions">
+        <button class="secondary-btn" id="oauth-close-btn">Dismiss</button>
+        <button id="oauth-open-btn">Open Sign In</button>
+      </div>
+    </div>
+  </div>
   <div id="header">
     <h1>
       <svg class="logo-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
@@ -463,8 +508,24 @@
     let notificationPermission = 'default'; // Track notification permission state
     let interactiveTerminalMode = false;
     let awaitingClaudeReady = false;
+    let oauthUrl = '';
     const terminalContainer = document.getElementById('terminal-container');
     const terminalModeBtn = document.getElementById('terminal-mode-btn');
+    const oauthModal = document.getElementById('oauth-modal');
+    const oauthUrlPreview = document.getElementById('oauth-url-preview');
+    const oauthOpenBtn = document.getElementById('oauth-open-btn');
+
+    function hideOauthModal() {
+      oauthModal.classList.remove('visible');
+      oauthUrl = '';
+      oauthUrlPreview.textContent = '';
+    }
+
+    function showOauthModal(url) {
+      oauthUrl = url;
+      oauthUrlPreview.textContent = url;
+      oauthModal.classList.add('visible');
+    }
 
     function updateTerminalModeUI() {
       term.options.disableStdin = !interactiveTerminalMode;
@@ -495,6 +556,11 @@
       if (terminalModeBtn.disabled) return;
       setInteractiveTerminalMode(!interactiveTerminalMode);
     });
+    document.getElementById('oauth-close-btn').addEventListener('click', hideOauthModal);
+    oauthOpenBtn.addEventListener('click', () => {
+      if (!oauthUrl) return;
+      window.open(oauthUrl, '_blank', 'noopener,noreferrer');
+    });
 
     const COLORS = ['#ff7b72','#d2a8ff','#79c0ff','#7ee787','#ffa657','#f778ba','#a5d6ff','#ffd8b1'];
     function nameColor(n) { let h=0; for(let i=0;i<n.length;i++) h=n.charCodeAt(i)+((h<<5)-h); return COLORS[Math.abs(h)%COLORS.length]; }
@@ -510,10 +576,43 @@
       return hasPrompt && hasStatusLine;
     }
 
+    function getCurrentTerminalText() {
+      const buffer = term.buffer.active;
+      const start = Math.max(0, buffer.length - term.rows - 20);
+      const lines = [];
+      for (let i = start; i < buffer.length; i++) {
+        const line = buffer.getLine(i);
+        if (line) lines.push(line.translateToString(true));
+      }
+      return lines.join('\n');
+    }
+
+    function extractOauthUrlFromCurrentScreen() {
+      const squashed = getCurrentTerminalText().replace(/\s+/g, '');
+      const prefix = 'https://claude.ai/oauth/authorize?';
+      const start = squashed.lastIndexOf(prefix);
+      if (start === -1) return '';
+      const afterStart = squashed.slice(start);
+      const endMarker = afterStart.indexOf('Pastecodehereifprompted>');
+      const candidate = endMarker === -1 ? afterStart : afterStart.slice(0, endMarker);
+      const match = candidate.match(/^https:\/\/claude\.ai\/oauth\/authorize\?[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]*/);
+      return match ? match[0] : '';
+    }
+
+    function maybeShowOauthModal() {
+      const foundUrl = extractOauthUrlFromCurrentScreen();
+      if (foundUrl) {
+        if (foundUrl !== oauthUrl) showOauthModal(foundUrl);
+        return;
+      }
+      if (oauthUrl) hideOauthModal();
+    }
+
     function maybeDisableDirectTypeOnClaudeReady(data) {
       if (!awaitingClaudeReady || !isClaudeReadyScreen(data)) return;
       awaitingClaudeReady = false;
       setInteractiveTerminalMode(false);
+      hideOauthModal();
       document.getElementById('msg-input').focus();
     }
 
@@ -648,6 +747,7 @@
           currentSessionId = null;
           terminalModeBtn.disabled = true;
           awaitingClaudeReady = false;
+          hideOauthModal();
           setInteractiveTerminalMode(false);
           document.body.classList.add('in-lobby');
         }
@@ -657,6 +757,7 @@
       if (currentSessionId === sessionId) return;
       currentSessionId = sessionId;
       awaitingClaudeReady = true;
+      hideOauthModal();
       term.clear(); term.reset();
       document.getElementById('chat-log').innerHTML = '';
       document.getElementById('state-summary-content').innerHTML = '<div id="state-summary-empty">No activity yet. Start chatting and an AI summary will appear here.</div>';
@@ -700,9 +801,11 @@
             }
             break;
           case 'output':
-            term.write(colorizeOutput(msg.data));
-            term.scrollToBottom();
-            maybeDisableDirectTypeOnClaudeReady(msg.data);
+            term.write(colorizeOutput(msg.data), () => {
+              term.scrollToBottom();
+              maybeShowOauthModal();
+              maybeDisableDirectTypeOnClaudeReady(msg.data);
+            });
             break;
           case 'chat': addChat(msg.name, msg.text); break;
           case 'system': addSystem(msg.text); break;
@@ -749,6 +852,7 @@
         document.getElementById('send-btn').disabled = true;
         terminalModeBtn.disabled = true;
         awaitingClaudeReady = false;
+        hideOauthModal();
         setInteractiveTerminalMode(false);
         addSystem('Disconnected. Reconnecting...');
         setTimeout(connect, 2000);
