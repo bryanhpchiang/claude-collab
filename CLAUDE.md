@@ -131,6 +131,13 @@ Single-file architecture -- all HTML, CSS, and JS in one file. No build tools, n
 - Error handling via empty `catch {}` blocks (fail silently, keep going)
 - No logging framework -- plain `console.log`
 
+## Solve The Real Requirement
+
+- Implement the underlying capability the user asked for, not a superficial approximation of it.
+- Do not satisfy a product requirement with hardcoded UI, simulated behavior, guessed values, mock data, or placeholder logic unless the user explicitly asked for a prototype or mock.
+- If the requested UX depends on missing backend support, instrumentation, or real state, build that support first or clearly report the blocker. Do not quietly replace it with a fake frontend-only version.
+- When a request is ambiguous, optimize for the user's actual outcome, not the cheapest interpretation that makes the ticket look complete.
+
 ## Gotchas and Important Notes
 
 - The server must be restarted if `server.ts` changes. There is no hot-reload.
