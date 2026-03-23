@@ -470,6 +470,19 @@ const server = Bun.serve({
       return Response.json({ ok: true });
     }
 
+    if (url.pathname === "/api/restart" && req.method === "POST") {
+      setTimeout(() => {
+        const child = Bun.spawn([process.env.HOME + "/.bun/bin/bun", "run", "server.ts"], {
+          cwd: process.cwd(),
+          stdio: ["ignore", "ignore", "ignore"],
+          env: process.env,
+        });
+        child.unref();
+        process.exit(0);
+      }, 500);
+      return Response.json({ ok: true });
+    }
+
     if (url.pathname === "/api/deploy" && req.method === "POST") {
       return (async () => {
         try {

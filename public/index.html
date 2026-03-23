@@ -339,6 +339,13 @@
       width: 4px; height: 4px; border-radius: 50%; background: #ff9a56;
       animation: pulse-dot 1.2s ease-in-out infinite;
     }
+    #restart-server-btn {
+      background: transparent; border: 1px solid #30363d; color: #8b949e;
+      padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;
+      white-space: nowrap;
+    }
+    #restart-server-btn:hover { border-color: #8b949e; color: #e6edf3; background: #161b22; }
+    #restart-server-btn:disabled { opacity: 0.5; cursor: default; }
 
     /* Secrets panel */
     #secrets-section {
@@ -679,6 +686,7 @@
     </div>
     <div id="state-summary-footer">
       <span id="state-last-updated"></span>
+      <button id="restart-server-btn">Restart Server</button>
       <span id="state-updating-indicator"><span class="dot"></span> Updating...</span>
     </div>
   </div>
@@ -1657,6 +1665,15 @@
       stateSidebar.classList.toggle('open');
       stateToggleBtn.classList.toggle('shifted');
       if (opening) { fetchStateSummary(); fetchSecrets(); }
+    });
+
+    // ===== Restart Server =====
+    document.getElementById('restart-server-btn').addEventListener('click', async () => {
+      if (!confirm('Restart server? All sessions will briefly disconnect.')) return;
+      const btn = document.getElementById('restart-server-btn');
+      btn.disabled = true;
+      btn.textContent = 'Restarting...';
+      try { await fetch('/api/restart', { method: 'POST' }); } catch {}
     });
 
     // ===== Secrets Panel =====
