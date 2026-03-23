@@ -290,6 +290,55 @@
       border-left: 2px solid rgba(255,154,86,0.4);
     }
     #mentions-banner .banner-msg .banner-from { color: #ff9a56; font-weight: 600; }
+
+    /* Mobile responsive */
+    @media (max-width: 600px) {
+      #header { padding: 6px 10px; }
+      #header h1 { font-size: 14px; gap: 6px; }
+      #header h1 .logo-icon { width: 18px; height: 18px; }
+      #header h1 .brand-jam { font-size: 15px; }
+      #users-bar { font-size: 11px; max-width: 50%; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      #session-bar { padding: 4px 8px; gap: 3px; }
+      .session-tab { padding: 4px 8px; font-size: 11px; }
+      .session-tab .user-count { font-size: 9px; padding: 1px 4px; }
+      #new-session-btn { padding: 4px 8px; font-size: 11px; }
+
+      #terminal-container { padding: 2px; }
+
+      #bottom-panel { max-height: 260px; }
+      #chat-log { min-height: 60px; max-height: 120px; padding: 4px 8px; font-size: 12px; }
+
+      #input-area { padding: 6px 8px; gap: 4px; flex-wrap: wrap; }
+      #input-area .name-tag { font-size: 11px; padding: 5px 7px; }
+      #msg-input { font-size: 16px; padding: 8px 10px; min-width: 0; flex: 1 1 0; }
+      #send-btn { padding: 8px 14px; font-size: 13px; }
+
+      #key-bar { padding: 4px 8px; gap: 3px; justify-content: center; }
+      .key-btn { padding: 6px 8px; font-size: 11px; }
+
+      /* State sidebar full-width on mobile */
+      #state-sidebar { width: 100vw; right: -100vw; }
+      #state-sidebar.open { right: 0; }
+      #state-toggle-btn.shifted { right: 100vw; }
+
+      /* Mention dropdown */
+      #mention-dropdown { border-radius: 6px; }
+      #mention-dropdown .mention-option { padding: 10px 12px; font-size: 12px; }
+
+      /* Modal */
+      .modal-box { padding: 24px 20px; margin: 0 16px; }
+      .modal-box input { width: 180px; font-size: 16px; }
+    }
+
+    /* Extra small (iPhone SE etc) */
+    @media (max-width: 375px) {
+      #header h1 .brand-jam { font-size: 14px; }
+      #users-bar { display: none; }
+      .session-tab { padding: 3px 6px; font-size: 10px; }
+      #input-area .name-tag { display: none; }
+      .key-btn { padding: 5px 6px; font-size: 10px; }
+    }
   </style>
 </head>
 <body class="in-lobby">
@@ -379,18 +428,24 @@
   <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.min.js"></script>
   <script>
+    const isMobile = window.innerWidth <= 600;
     const term = new Terminal({
-      cursorBlink: true, fontSize: 14,
+      cursorBlink: true, fontSize: isMobile ? 10 : 14,
       fontFamily: '"JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
       theme: { background: '#0d1117', foreground: '#e6edf3', cursor: '#58a6ff', selectionBackground: '#264f78' },
-      disableStdin: true, scrollback: 5000,
+      disableStdin: true, scrollback: isMobile ? 2000 : 5000,
     });
     const fitAddon = new FitAddon.FitAddon();
     term.loadAddon(fitAddon);
     term.open(document.getElementById('terminal-container'));
     fitAddon.fit();
     // No custom scroll — let xterm handle it natively
-    window.addEventListener('resize', () => fitAddon.fit());
+    window.addEventListener('resize', () => {
+      const mobile = window.innerWidth <= 600;
+      const newSize = mobile ? 10 : 14;
+      if (term.options.fontSize !== newSize) term.options.fontSize = newSize;
+      fitAddon.fit();
+    });
     new ResizeObserver(() => fitAddon.fit()).observe(document.getElementById('terminal-container'));
 
     let ws, myName = '', currentSessionId = null, sessionList = [], pendingJoin = null;
