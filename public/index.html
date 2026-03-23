@@ -462,6 +462,7 @@
     let connectedUsers = []; // Track users in current session for @mention autocomplete
     let notificationPermission = 'default'; // Track notification permission state
     let interactiveTerminalMode = false;
+    let awaitingClaudeReady = false;
     const terminalContainer = document.getElementById('terminal-container');
     const terminalModeBtn = document.getElementById('terminal-mode-btn');
 
@@ -497,6 +498,24 @@
 
     const COLORS = ['#ff7b72','#d2a8ff','#79c0ff','#7ee787','#ffa657','#f778ba','#a5d6ff','#ffd8b1'];
     function nameColor(n) { let h=0; for(let i=0;i<n.length;i++) h=n.charCodeAt(i)+((h<<5)-h); return COLORS[Math.abs(h)%COLORS.length]; }
+
+    function stripAnsi(text) {
+      return text.replace(/\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])/g, '');
+    }
+
+    function isClaudeReadyScreen(text) {
+      const plain = stripAnsi(text).replace(/\r/g, '');
+      const hasPrompt = /(^|\n)\s*❯/.test(plain);
+      const hasStatusLine = plain.includes('/effort') || plain.includes('? for shortcuts');
+      return hasPrompt && hasStatusLine;
+    }
+
+    function maybeDisableDirectTypeOnClaudeReady(data) {
+      if (!awaitingClaudeReady || !isClaudeReadyScreen(data)) return;
+      awaitingClaudeReady = false;
+      setInteractiveTerminalMode(false);
+      document.getElementById('msg-input').focus();
+    }
 
     // Convert hex color to ANSI truecolor escape code
     function hexToAnsi(hex) {
@@ -628,6 +647,7 @@
         else {
           currentSessionId = null;
           terminalModeBtn.disabled = true;
+          awaitingClaudeReady = false;
           setInteractiveTerminalMode(false);
           document.body.classList.add('in-lobby');
         }
@@ -636,20 +656,21 @@
     function joinSession(sessionId) {
       if (currentSessionId === sessionId) return;
       currentSessionId = sessionId;
+      awaitingClaudeReady = true;
       term.clear(); term.reset();
       document.getElementById('chat-log').innerHTML = '';
       document.getElementById('state-summary-content').innerHTML = '<div id="state-summary-empty">No activity yet. Start chatting and an AI summary will appear here.</div>';
       document.getElementById('state-last-updated').textContent = '';
       document.getElementById('state-updating-indicator').classList.remove('visible');
       document.body.classList.remove('in-lobby');
-      ws.send(JSON.stringify({ type: 'join-session', sessionId, name: myName }));
-      const url = new URL(location.href); url.searchParams.set('s', sessionId);
-      history.replaceState(null, '', url);
-      renderSessionTabs();
       document.getElementById('msg-input').disabled = false;
       document.getElementById('send-btn').disabled = false;
       terminalModeBtn.disabled = false;
       setInteractiveTerminalMode(true);
+      ws.send(JSON.stringify({ type: 'join-session', sessionId, name: myName }));
+      const url = new URL(location.href); url.searchParams.set('s', sessionId);
+      history.replaceState(null, '', url);
+      renderSessionTabs();
       setTimeout(() => fitAddon.fit(), 50);
       // Fetch state summary and start polling
       lastStateMarkdown = '';
@@ -678,7 +699,11 @@
               pendingJoin = null;
             }
             break;
-          case 'output': term.write(colorizeOutput(msg.data)); term.scrollToBottom(); break;
+          case 'output':
+            term.write(colorizeOutput(msg.data));
+            term.scrollToBottom();
+            maybeDisableDirectTypeOnClaudeReady(msg.data);
+            break;
           case 'chat': addChat(msg.name, msg.text); break;
           case 'system': addSystem(msg.text); break;
           case 'users':
@@ -723,6 +748,7 @@
         document.getElementById('msg-input').disabled = true;
         document.getElementById('send-btn').disabled = true;
         terminalModeBtn.disabled = true;
+        awaitingClaudeReady = false;
         setInteractiveTerminalMode(false);
         addSystem('Disconnected. Reconnecting...');
         setTimeout(connect, 2000);
