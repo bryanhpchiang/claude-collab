@@ -325,6 +325,16 @@ const server = Bun.serve({
 
         const jamId = genId();
 
+        const userData = Buffer.from(`#!/bin/bash
+set -ex
+cd /opt/jam
+git pull origin main
+export BUN_INSTALL="/root/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+bun install
+bun run server.ts &
+`).toString("base64");
+
         const run = await ec2.send(
           new RunInstancesCommand({
             ImageId: AMI_ID,
@@ -332,6 +342,7 @@ const server = Bun.serve({
             MinCount: 1,
             MaxCount: 1,
             SecurityGroupIds: [SECURITY_GROUP],
+            UserData: userData,
             TagSpecifications: [
               {
                 ResourceType: "instance",
