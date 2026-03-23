@@ -155,10 +155,6 @@ function createSession(name: string, resumeId?: string, cwd?: string): Session {
     createdAt: Date.now(),
   };
 
-  // Auto-accept trust prompt
-  setTimeout(() => shell.write("\r"), 3000);
-  setTimeout(() => shell.write("\r"), 5000);
-
   shell.onData((data: string) => {
     session.scrollback += data;
     if (session.scrollback.length > 200000) {
