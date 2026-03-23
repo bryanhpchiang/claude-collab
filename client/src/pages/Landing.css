@@ -457,6 +457,17 @@ footer {
   color: #21262d;
 }
 
+.nav-donate, .footer-donate {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #ff9a56;
+}
+
+.nav-donate:hover, .footer-donate:hover {
+  color: #ff6b6b;
+}
+
 /* Loading spinner for button */
 .spinner {
   width: 18px;

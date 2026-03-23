@@ -66,6 +66,7 @@ export default function Landing() {
         <nav>
           <a href="/" className="nav-brand">Jam</a>
           <div className="nav-links">
+            <a href="https://buymeacoffee.com/jam" target="_blank" rel="noopener" className="nav-donate"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Donate</a>
             <a href="https://github.com/bryanhpchiang/claude-collab" target="_blank" rel="noopener">GitHub</a>
             <a className="nav-signin" href="/auth/github">Sign in</a>
           </div>
@@ -156,6 +157,8 @@ export default function Landing() {
           <span className="footer-brand">letsjam.now</span>
           <span className="footer-sep">|</span>
           <a href="https://github.com/bryanhpchiang/claude-collab" target="_blank" rel="noopener">GitHub</a>
+          <span className="footer-sep">|</span>
+          <a href="https://buymeacoffee.com/jam" target="_blank" rel="noopener" className="footer-donate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Donate</a>
           <span className="footer-sep">|</span>
           <span>Built with Claude</span>
         </div>
