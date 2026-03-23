@@ -2,13 +2,16 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import { ClerkProvider } from '@clerk/clerk-react';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
+import { resolveClerkPublishableKey } from './config';
 import './styles/global.css';
 
 function ClerkWithRoutes() {
   const navigate = useNavigate();
   return (
     <ClerkProvider
-      publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || 'pk_test_Y2FwYWJsZS1oZXJtaXQtMTUuY2xlcmsuYWNjb3VudHMuZGV2JA'}
+      publishableKey={resolveClerkPublishableKey(
+        import.meta.env as { VITE_CLERK_PUBLISHABLE_KEY?: string },
+      )}
       routerPush={(to: string) => navigate(to)}
       routerReplace={(to: string) => navigate(to, { replace: true })}
     >
