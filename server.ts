@@ -28,7 +28,6 @@ interface Session {
   scrollback: string;
   chatHistory: object[];
   createdAt: number;
-  lastSummaryTime: number;
 }
 
 interface DiskSession {
@@ -58,79 +57,6 @@ const pendingMentions = new Map<string, PendingMention[]>();
 // Track which sessions are "jam" sessions (created via /api/jams)
 const jamSessions = new Map<string, { id: string; sessionId: string; repo?: string; createdAt: number }>();
 const JAMS_DIR = "/tmp/claude-jams";
-
-const anthropic = new Anthropic();
-
-const SUMMARY_DEBOUNCE_MS = 10000;   // 10s after first chat message
-const SUMMARY_INTERVAL_MS = 60000;   // regenerate every 60s
-const SUMMARY_IDLE_MS = 120000;      // stop after 2min idle
-
-async function generateSummary(session: Session): Promise<string> {
-  const chatMsgs = session.chatHistory
-    .filter((m: any) => m.type === "chat" || m.type === "system")
-    .slice(-50)
-    .map((m: any) => {
-      if (m.type === "chat") return `[${m.name}]: ${m.text}`;
-      return `(system: ${m.text})`;
-    });
-  if (chatMsgs.length === 0) return "";
-  try {
-    const resp = await anthropic.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 512,
-      system: "You are summarizing a multiplayer Claude Code session. Generate a concise structured markdown summary of what's happening. Use these sections: ## What's Happening, ## Key Decisions, ## Open Questions, ## Who's Doing What. Be brief and direct. Skip sections that have nothing to report. Use bullet points. Max ~300 words.",
-      messages: [{ role: "user", content: "Here are the recent messages from the session:\n\n" + chatMsgs.join("\n") }],
-    });
-    const text = resp.content[0];
-    return text.type === "text" ? text.text : "";
-  } catch (e) {
-    console.log("Summary generation failed:", e);
-    return session.stateSummary || "";
-  }
-}
-
-function scheduleSummary(session: Session) {
-  session.lastChatTime = Date.now();
-
-  // If already generating, just note the new activity
-  if (session.summaryGenerating) return;
-
-  // If there's already an interval running, the lastChatTime update is enough
-  if (session.summaryInterval) return;
-
-  // Clear any pending debounce timer and set a new one
-  if (session.summaryTimer) clearTimeout(session.summaryTimer);
-
-  session.summaryTimer = setTimeout(async () => {
-    // Generate first summary
-    await runSummary(session);
-
-    // Start interval for repeated generation
-    session.summaryInterval = setInterval(async () => {
-      // Check if chat has gone idle
-      if (Date.now() - (session.lastChatTime || 0) > SUMMARY_IDLE_MS) {
-        if (session.summaryInterval) clearInterval(session.summaryInterval);
-        session.summaryInterval = undefined;
-        return;
-      }
-      await runSummary(session);
-    }, SUMMARY_INTERVAL_MS);
-  }, SUMMARY_DEBOUNCE_MS);
-}
-
-async function runSummary(session: Session) {
-  if (session.summaryGenerating) return;
-  session.summaryGenerating = true;
-  broadcastToSession(session.id, { type: "state-summary-status", status: "updating" });
-  try {
-    const md = await generateSummary(session);
-    if (md) {
-      session.stateSummary = md;
-      broadcastToSession(session.id, { type: "state-summary", markdown: md });
-    }
-  } catch {}
-  session.summaryGenerating = false;
-}
 
 function genId(): string {
   return Math.random().toString(36).slice(2, 8);
@@ -216,7 +142,6 @@ function createSession(name: string, resumeId?: string, cwd?: string): Session {
     scrollback: "",
     chatHistory: [],
     createdAt: Date.now(),
-    stateSummary: "",
   };
 
   // Auto-accept trust prompt
@@ -311,6 +236,19 @@ const server = Bun.serve({
           session.name = body.name;
           server.publish("lobby", JSON.stringify({ type: "sessions", sessions: getSessionList() }));
           return Response.json({ id: session.id, name: session.name });
+        })();
+      }
+      if (req.method === "DELETE") {
+        return (async () => {
+          const body = await req.json() as { id: string };
+          if (sessions.size <= 1) return Response.json({ error: "cannot delete last session" }, { status: 400 });
+          const session = sessions.get(body.id);
+          if (!session) return Response.json({ error: "not found" }, { status: 404 });
+          try { session.shell.kill(); } catch {}
+          broadcastToSession(body.id, { type: "system", text: "Session closed." });
+          sessions.delete(body.id);
+          server.publish("lobby", JSON.stringify({ type: "sessions", sessions: getSessionList() }));
+          return Response.json({ ok: true });
         })();
       }
     }
@@ -462,6 +400,21 @@ const server = Bun.serve({
       });
     }
 
+    if (url.pathname === "/api/state-summary" && req.method === "GET") {
+      return (async () => {
+        try {
+          const file = Bun.file("/home/exedev/claude-collab/STATE.md");
+          const exists = await file.exists();
+          if (!exists) return Response.json({ markdown: "", lastModified: 0 });
+          const markdown = await file.text();
+          const lastModified = file.lastModified;
+          return Response.json({ markdown, lastModified });
+        } catch {
+          return Response.json({ markdown: "", lastModified: 0 });
+        }
+      })();
+    }
+
     return new Response("Not found", { status: 404 });
   },
   websocket: {
@@ -501,11 +454,6 @@ const server = Bun.serve({
           for (const msg of session.chatHistory) {
             ws.send(JSON.stringify(msg));
           }
-          // Send current state summary if available
-          if (session.stateSummary) {
-            ws.send(JSON.stringify({ type: "state-summary", markdown: session.stateSummary }));
-          }
-
           broadcastToSession(sessionId, { type: "system", text: `${data.name} joined` });
           broadcastToSession(sessionId, { type: "users", users: getSessionUsers(sessionId) });
 
@@ -531,7 +479,6 @@ const server = Bun.serve({
           const name = info?.name || "anon";
           broadcastToSession(sessionId, { type: "chat", name, text: data.text });
           session.shell.write(`[${name}]: ${data.text}` + "\r");
-          scheduleSummary(session);
 
           // Detect @mentions in the message
           const mentionRegex = /@(\w+)/g;

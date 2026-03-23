@@ -52,6 +52,12 @@
     .session-tab .user-count {
       font-size: 10px; background: #30363d; padding: 1px 5px; border-radius: 8px; margin-left: 4px;
     }
+    .session-tab .close-btn {
+      display: none; margin-left: 4px; padding: 0 3px; border: none; background: none;
+      color: #484f58; font-size: 14px; line-height: 1; cursor: pointer; border-radius: 3px;
+    }
+    .session-tab:hover .close-btn.visible { display: inline-block; }
+    .session-tab .close-btn:hover { color: #f85149; background: rgba(248,81,73,0.15); }
     #new-session-btn {
       padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;
       border: 1px dashed #30363d; background: transparent; color: #ff9a56; white-space: nowrap;
@@ -449,11 +455,13 @@
       const bar = document.getElementById('session-bar');
       bar.querySelectorAll('.session-tab').forEach(t => t.remove());
       const btn = document.getElementById('new-session-btn');
+      const showClose = sessionList.length > 1;
       sessionList.forEach(s => {
         const tab = document.createElement('div');
         tab.className = 'session-tab' + (s.id === currentSessionId ? ' active' : '');
         tab.dataset.id = s.id;
-        tab.innerHTML = `<span class="tab-name">${esc(s.name)}</span><span class="user-count">${s.users.length}</span>`;
+        tab.innerHTML = `<span class="tab-name">${esc(s.name)}</span><span class="user-count">${s.users.length}</span><button class="close-btn${showClose ? ' visible' : ''}" title="Close session">&times;</button>`;
+        tab.querySelector('.close-btn').addEventListener('click', (e) => { e.stopPropagation(); deleteSession(s.id, s.users.length); });
         tab.addEventListener('click', () => joinSession(s.id));
         tab.addEventListener('dblclick', (e) => {
           e.stopPropagation();
@@ -483,6 +491,16 @@
         bar.insertBefore(tab, btn);
       });
     }
+    async function deleteSession(id, userCount) {
+      if (sessionList.length <= 1) return;
+      if (userCount > 0 && !confirm(`There ${userCount === 1 ? 'is 1 user' : 'are ' + userCount + ' users'} in this session. Close it?`)) return;
+      await fetch('/api/sessions', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      if (currentSessionId === id) {
+        const other = sessionList.find(s => s.id !== id);
+        if (other) joinSession(other.id);
+        else { currentSessionId = null; document.body.classList.add('in-lobby'); }
+      }
+    }
     function joinSession(sessionId) {
       if (currentSessionId === sessionId) return;
       currentSessionId = sessionId;
@@ -500,6 +518,10 @@
       document.getElementById('send-btn').disabled = false;
       document.getElementById('msg-input').focus();
       setTimeout(() => fitAddon.fit(), 50);
+      // Fetch state summary and start polling
+      lastStateMarkdown = '';
+      fetchStateSummary();
+      startStatePolling();
     }
     function connect() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -532,14 +554,6 @@
               const s = sessionList.find(s => s.id === currentSessionId);
               if (s) s.users = msg.users;
               renderSessionTabs();
-            }
-            break;
-          case 'state-summary':
-            renderStateSummary(msg.markdown);
-            break;
-          case 'state-summary-status':
-            if (msg.status === 'updating') {
-              document.getElementById('state-updating-indicator').classList.add('visible');
             }
             break;
           case 'mention':
@@ -942,8 +956,10 @@
     const stateToggleBtn = document.getElementById('state-toggle-btn');
 
     stateToggleBtn.addEventListener('click', () => {
+      const opening = !stateSidebar.classList.contains('open');
       stateSidebar.classList.toggle('open');
       stateToggleBtn.classList.toggle('shifted');
+      if (opening) fetchStateSummary();
     });
     document.getElementById('state-close-btn').addEventListener('click', () => {
       stateSidebar.classList.remove('open');
@@ -990,19 +1006,46 @@
       return s;
     }
 
-    function renderStateSummary(markdown) {
+    let lastStateMarkdown = '';
+    let statePollTimer = null;
+
+    function renderStateSummary(markdown, lastModified) {
       const container = document.getElementById('state-summary-content');
       const indicator = document.getElementById('state-updating-indicator');
       indicator.classList.remove('visible');
       if (!markdown || !markdown.trim()) {
         container.innerHTML = '<div id="state-summary-empty">No activity yet. Start chatting and an AI summary will appear here.</div>';
+        document.getElementById('state-last-updated').textContent = '';
         return;
       }
       container.innerHTML = markdownToHtml(markdown);
-      // Update timestamp
       const ts = document.getElementById('state-last-updated');
-      const now = new Date();
-      ts.textContent = 'Updated ' + now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      if (lastModified && lastModified > 0) {
+        const d = new Date(lastModified);
+        ts.textContent = 'Updated ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      } else {
+        ts.textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      }
+    }
+
+    async function fetchStateSummary() {
+      try {
+        const res = await fetch('/api/state-summary');
+        const data = await res.json();
+        if (data.markdown !== lastStateMarkdown) {
+          lastStateMarkdown = data.markdown;
+          renderStateSummary(data.markdown, data.lastModified);
+        }
+      } catch {}
+    }
+
+    function startStatePolling() {
+      if (statePollTimer) clearInterval(statePollTimer);
+      statePollTimer = setInterval(fetchStateSummary, 15000);
+    }
+
+    function stopStatePolling() {
+      if (statePollTimer) { clearInterval(statePollTimer); statePollTimer = null; }
     }
   </script>
 </body>
