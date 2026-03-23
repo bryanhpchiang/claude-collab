@@ -268,12 +268,51 @@
   justify-content: space-between;
 }
 
-.dash-card-users {
+.dash-card-own {
+  border-color: rgba(255, 154, 86, 0.3);
+}
+
+.dash-card-creator {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-size: 13px;
   color: #8b949e;
+}
+
+.dash-card-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.dash-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-card-delete {
+  padding: 8px 18px;
+  border: 1px solid rgba(248, 81, 73, 0.3);
+  border-radius: 8px;
+  background: transparent;
+  color: #f85149;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.dash-card-delete:hover {
+  border-color: #f85149;
+  background: rgba(248, 81, 73, 0.1);
+}
+
+.dash-card-delete:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .dash-card-open {

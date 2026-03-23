@@ -4,6 +4,15 @@ import {
   DescribeInstancesCommand,
   TerminateInstancesCommand,
 } from "@aws-sdk/client-ec2";
+import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+  GetCommand,
+  QueryCommand,
+  UpdateCommand,
+  ScanCommand,
+} from "@aws-sdk/lib-dynamodb";
 import { join, extname } from "path";
 import { waitForPublicIp } from "./ec2";
 
@@ -51,6 +60,77 @@ const GITHUB_OAUTH_ENABLED = Boolean(
 );
 
 const ec2 = new EC2Client({ region: AWS_REGION });
+const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGION }));
+const JAM_TABLE = process.env.JAM_TABLE_NAME || "jam-instances";
+
+type InstanceRecord = {
+  id: string;
+  instance_id: string;
+  creator_login: string;
+  creator_name: string;
+  creator_avatar: string;
+  ip?: string;
+  state: string;
+  created_at: string;
+};
+
+async function putInstance(item: InstanceRecord) {
+  await ddb.send(new PutCommand({
+    TableName: JAM_TABLE,
+    Item: item,
+    ConditionExpression: "attribute_not_exists(id)",
+  }));
+}
+
+async function getInstance(id: string): Promise<InstanceRecord | undefined> {
+  const res = await ddb.send(new GetCommand({ TableName: JAM_TABLE, Key: { id } }));
+  return res.Item as InstanceRecord | undefined;
+}
+
+async function getActiveByCreator(login: string): Promise<InstanceRecord[]> {
+  const [pending, running] = await Promise.all([
+    ddb.send(new QueryCommand({
+      TableName: JAM_TABLE,
+      IndexName: "creator-index",
+      KeyConditionExpression: "creator_login = :login AND #s = :state",
+      ExpressionAttributeNames: { "#s": "state" },
+      ExpressionAttributeValues: { ":login": login, ":state": "pending" },
+    })),
+    ddb.send(new QueryCommand({
+      TableName: JAM_TABLE,
+      IndexName: "creator-index",
+      KeyConditionExpression: "creator_login = :login AND #s = :state",
+      ExpressionAttributeNames: { "#s": "state" },
+      ExpressionAttributeValues: { ":login": login, ":state": "running" },
+    })),
+  ]);
+  return [...(pending.Items || []), ...(running.Items || [])] as InstanceRecord[];
+}
+
+async function updateInstanceState(id: string, state: string, ip?: string) {
+  const expr = ip
+    ? "SET #s = :state, ip = :ip"
+    : "SET #s = :state";
+  const values: Record<string, string> = { ":state": state };
+  if (ip) values[":ip"] = ip;
+  await ddb.send(new UpdateCommand({
+    TableName: JAM_TABLE,
+    Key: { id },
+    UpdateExpression: expr,
+    ExpressionAttributeNames: { "#s": "state" },
+    ExpressionAttributeValues: values,
+  }));
+}
+
+async function scanActiveInstances(): Promise<InstanceRecord[]> {
+  const res = await ddb.send(new ScanCommand({
+    TableName: JAM_TABLE,
+    FilterExpression: "#s = :pending OR #s = :running",
+    ExpressionAttributeNames: { "#s": "state" },
+    ExpressionAttributeValues: { ":pending": "pending", ":running": "running" },
+  }));
+  return (res.Items || []) as InstanceRecord[];
+}
 
 type SessionUser = {
   login: string;
@@ -100,39 +180,6 @@ function apiHeaders() {
   };
 }
 
-/** List running jam instances by tag */
-async function listJamInstances() {
-  const desc = await ec2.send(
-    new DescribeInstancesCommand({
-      Filters: [
-        { Name: "tag:Name", Values: [`${TAG_PREFIX}*`] },
-        { Name: "instance-state-name", Values: ["pending", "running"] },
-      ],
-    }),
-  );
-
-  const results: {
-    id: string;
-    instanceId: string;
-    ip: string | undefined;
-    state: string;
-  }[] = [];
-
-  for (const reservation of desc.Reservations || []) {
-    for (const inst of reservation.Instances || []) {
-      const nameTag = inst.Tags?.find((t) => t.Key === "Name")?.Value || "";
-      const jamId = nameTag.replace(TAG_PREFIX, "");
-      results.push({
-        id: jamId,
-        instanceId: inst.InstanceId!,
-        ip: inst.PublicIpAddress,
-        state: inst.State?.Name || "unknown",
-      });
-    }
-  }
-
-  return results;
-}
 
 const server = Bun.serve({
   port: PORT,
@@ -268,6 +315,14 @@ const server = Bun.serve({
       }
 
       try {
+        const active = await getActiveByCreator(user.login);
+        if (active.length > 0) {
+          return Response.json(
+            { error: "You already have a running instance" },
+            { status: 409, headers: apiHeaders() },
+          );
+        }
+
         const jamId = genId();
 
         const run = await ec2.send(
@@ -294,6 +349,16 @@ const server = Bun.serve({
           );
         }
 
+        await putInstance({
+          id: jamId,
+          instance_id: instanceId,
+          creator_login: user.login,
+          creator_name: user.name,
+          creator_avatar: user.avatar_url,
+          state: "pending",
+          created_at: new Date().toISOString(),
+        });
+
         const ip = await waitForPublicIp(async () => {
           const desc = await ec2.send(
             new DescribeInstancesCommand({ InstanceIds: [instanceId] }),
@@ -301,11 +366,15 @@ const server = Bun.serve({
           return desc.Reservations?.[0]?.Instances?.[0];
         });
 
+        await updateInstanceState(jamId, "running", ip);
+
         return Response.json(
           {
             id: jamId,
             instanceId,
             url: `http://${ip}:7681`,
+            creator: { login: user.login, name: user.name, avatar_url: user.avatar_url },
+            created_at: new Date().toISOString(),
           },
           { headers: apiHeaders() },
         );
@@ -319,19 +388,21 @@ const server = Bun.serve({
     }
 
     if (url.pathname === "/api/jams" && req.method === "GET") {
-      const user = getUser(req);
-      if (!user) {
-        return Response.json({ error: "Unauthorized" }, { status: 401, headers: apiHeaders() });
-      }
-
       try {
-        const jams = await listJamInstances();
+        const instances = await scanActiveInstances();
+
         return Response.json(
-          jams.map((j) => ({
-            id: j.id,
-            instanceId: j.instanceId,
-            url: j.ip ? `http://${j.ip}:7681` : null,
-            state: j.state,
+          instances.map((inst) => ({
+            id: inst.id,
+            instanceId: inst.instance_id,
+            url: inst.ip ? `http://${inst.ip}:7681` : null,
+            state: inst.state,
+            creator: {
+              login: inst.creator_login,
+              name: inst.creator_name,
+              avatar_url: inst.creator_avatar,
+            },
+            created_at: inst.created_at,
           })),
           { headers: apiHeaders() },
         );
@@ -353,18 +424,23 @@ const server = Bun.serve({
 
       const jamId = deleteMatch[1];
       try {
-        const jams = await listJamInstances();
-        const jam = jams.find((j) => j.id === jamId);
+        const jam = await getInstance(jamId);
         if (!jam) {
           return Response.json({ error: "Jam not found" }, { status: 404, headers: apiHeaders() });
         }
 
+        if (jam.creator_login !== user.login) {
+          return Response.json({ error: "Forbidden" }, { status: 403, headers: apiHeaders() });
+        }
+
         await ec2.send(
-          new TerminateInstancesCommand({ InstanceIds: [jam.instanceId] }),
+          new TerminateInstancesCommand({ InstanceIds: [jam.instance_id] }),
         );
 
+        await updateInstanceState(jamId, "terminated");
+
         return Response.json(
-          { ok: true, terminated: jam.instanceId },
+          { ok: true, terminated: jam.instance_id },
           { headers: apiHeaders() },
         );
       } catch (err: any) {

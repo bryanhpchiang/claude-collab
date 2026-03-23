@@ -22,7 +22,7 @@ COPY lobby/package.json lobby/bun.lock ./lobby/
 RUN cd lobby && bun install --frozen-lockfile
 
 # Copy lobby source
-COPY lobby/server.ts ./lobby/
+COPY lobby/*.ts ./lobby/
 
 EXPOSE 8080
 
