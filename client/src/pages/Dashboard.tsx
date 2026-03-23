@@ -28,15 +28,6 @@ const LOADING_WORDS = [
   'Preserving...',
 ];
 
-const PROGRESS_STEPS = [
-  { label: 'Provisioning server', delay: 3000 },
-  { label: 'Standing by for handshake', delay: 8000 },
-  { label: 'Setting security', delay: 12000 },
-  { label: 'Installing dependencies', delay: 18000 },
-  { label: 'Warming up Claude', delay: 25000 },
-  { label: 'Almost there...', delay: Infinity },
-];
-
 const PENDING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 function PendingProgress({ createdAt, onRestart }: { createdAt: string; onRestart?: () => void }) {
@@ -81,24 +72,10 @@ function PendingProgress({ createdAt, onRestart }: { createdAt: string; onRestar
   return (
     <div className="pending-progress">
       <div className="pending-word">{LOADING_WORDS[wordIdx]}</div>
-      <ul className="pending-steps">
-        {PROGRESS_STEPS.map((step, i) => {
-          const done = elapsed >= step.delay;
-          const isCurrent = !done && (i === 0 || elapsed >= PROGRESS_STEPS[i - 1].delay);
-          return (
-            <li key={i} className={`pending-step${done ? ' done' : ''}${isCurrent ? ' current' : ''}`}>
-              {done ? (
-                <span className="pending-check">&#10003;</span>
-              ) : isCurrent ? (
-                <span className="pending-pulse" />
-              ) : (
-                <span className="pending-bullet" />
-              )}
-              <span className={done ? 'pending-struck' : ''}>{step.label}</span>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="pending-copy">
+        <div className="pending-title">Starting instance</div>
+        <div className="pending-desc">Waiting for the instance to come online.</div>
+      </div>
     </div>
   );
 }
