@@ -365,7 +365,7 @@ export default function Dashboard() {
                       <button
                         className="dash-card-open"
                         disabled={!jam.url || jam.state !== 'running'}
-                        onClick={() => jam.url && window.open(jam.url + '?s=General', '_blank')}
+                        onClick={() => jam.url && window.open(jam.url, '_blank')}
                       >
                         Open
                       </button>

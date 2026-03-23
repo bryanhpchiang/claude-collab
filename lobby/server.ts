@@ -14,6 +14,7 @@ import {
   ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { join, extname } from "path";
+import { buildJamRedirectUrl, buildLobbyJamPath } from "./jam-links";
 import { buildJamInstanceUserData } from "./user-data";
 
 const PORT = Number(process.env.PORT) || 8080;
@@ -431,7 +432,7 @@ const server = Bun.serve({
           instances.map((inst) => ({
             id: inst.id,
             instanceId: inst.instance_id,
-            url: inst.state === "running" ? `/j/${inst.id}` : null,
+            url: inst.state === "running" ? buildLobbyJamPath(inst.id) : null,
             state: inst.state,
             creator: {
               login: inst.creator_login,
@@ -528,6 +529,22 @@ const server = Bun.serve({
           { status: 500, headers: apiHeaders() },
         );
       }
+    }
+
+    const jamPageMatch = url.pathname.match(/^\/j\/([a-z0-9]+)$/);
+    if (jamPageMatch && req.method === "GET") {
+      const jamId = jamPageMatch[1];
+      const jam = await getInstance(jamId);
+
+      if (!jam) {
+        return new Response("Jam not found", { status: 404 });
+      }
+
+      if (jam.state !== "running" || !jam.ip) {
+        return new Response("Jam not ready", { status: 409 });
+      }
+
+      return Response.redirect(buildJamRedirectUrl(jam.ip, req.url), 302);
     }
 
     const filePath = join(CLIENT_DIST, url.pathname);
