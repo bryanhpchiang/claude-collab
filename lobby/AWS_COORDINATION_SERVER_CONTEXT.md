@@ -1,13 +1,13 @@
 # AWS Coordination Server Context
 
-Provisional notes for the Jam coordination-server deployment. This file is intended to be updated as the remaining AWS setup is completed.
+Deployment notes for the Jam coordination-server on AWS. This is still in progress, but the CI path and the first App Runner deployment are now live.
 
 ## Purpose
 
-The target deployment flow is:
+The deployment model is:
 
 1. GitHub Actions runs on a CodeBuild-hosted runner.
-2. That workflow builds `lobby/Dockerfile`.
+2. The workflow builds `lobby/Dockerfile`.
 3. The workflow pushes the image to ECR.
 4. App Runner tracks the stable ECR tag and auto-deploys the coordination server.
 
@@ -26,7 +26,10 @@ Verified during this session against account `757208469216` in `us-east-1`.
 - Image scanning: enabled on push
 - Tag mutability: mutable
 - Lifecycle policy: keep last 25 images
-- Current image state: no images pushed yet
+- Current image state:
+  - tags: `main`, `01cc7a2cfdb78b08b08d0239eafe53e99d6c6e74`
+  - pushed at: `2026-03-22T21:09:31.654-07:00`
+  - digest: `sha256:f0f7fd5c8ecaef8975954965b4700c1f8f88216beff50cf669c5970371f1dc0a`
 
 ### CodeBuild Runner
 
@@ -79,25 +82,55 @@ The `CodeConnections` inline policy was required because the working `RebelCodeB
 
 ### Existing Jam Runtime Inputs
 
-These values are already established elsewhere and are intended to be passed into App Runner:
+These values are already established elsewhere and are passed into App Runner:
 
 - Jam base AMI: `ami-0b694e8fc9890bec7`
 - Jam security group: `sg-092ad16c7428104a3`
 - Jam instance tag prefix: `jam-`
-- Default Jam instance type currently expected in local code: `t3.medium`
+- Default Jam instance type in current code and App Runner config: `t3.medium`
 
 ### App Runner
 
-- `JamCoordinationServer` App Runner service has not been created yet.
-- No Jam coordination-server App Runner service exists in `aws apprunner list-services` as of this snapshot.
+- Service name: `JamCoordinationServer`
+- Service ID: `114290c495864fafb7d5dd61960deef7`
+- Service ARN: `arn:aws:apprunner:us-east-1:757208469216:service/JamCoordinationServer/114290c495864fafb7d5dd61960deef7`
+- Service URL: `https://vjqmk2uvpa.us-east-1.awsapprunner.com`
+- Created: `2026-03-22T21:11:30.380-07:00`
+- Source image: `757208469216.dkr.ecr.us-east-1.amazonaws.com/jam/coordination-server:main`
+- Auto deployments: enabled
+- Health check: HTTP `GET /health` on port `8080`
+- Runtime environment variables currently configured:
+  - `AWS_REGION=us-east-1`
+  - `JAM_AMI_ID=ami-0b694e8fc9890bec7`
+  - `JAM_SECURITY_GROUP_ID=sg-092ad16c7428104a3`
+  - `JAM_INSTANCE_TYPE=t3.medium`
+  - `JAM_TAG_PREFIX=jam-`
 
-## Repo Changes Prepared For This Flow
+Observed deployment result:
 
-These repo-side changes exist locally and are intended to support the deployment flow above:
+- App Runner service logs show:
+  - image pulled successfully from ECR
+  - instance provisioned
+  - health check passed on `/health`
+  - traffic routing started
+- External verification:
+  - `curl https://vjqmk2uvpa.us-east-1.awsapprunner.com/health`
+  - response: `{"ok":true,"service":"jam-lobby"}`
+
+Note: `describe-service` briefly continued to report `OPERATION_IN_PROGRESS` even after the health check succeeded and the public URL was already serving traffic.
+
+## Repo Changes Landed For This Flow
+
+These repo-side changes are pushed to `main` and are what produced the first ECR image:
 
 - Added `.github/workflows/deploy-coordination-server.yml`
 - Updated `lobby/Dockerfile`
 - Updated `lobby/server.ts`
+
+Relevant commits:
+
+- `1baf978` `feat: add coordination server deploy workflow`
+- `01cc7a2` `fix: avoid docker hub rate limits in coordination image build`
 
 The workflow expects:
 
@@ -113,14 +146,28 @@ The `lobby/server.ts` changes do the following:
 - disable GitHub sign-in UI when OAuth secrets are not configured
 - keep cookies secure-aware when served over HTTPS
 
+## GitHub Actions History
+
+Workflow: `Deploy Coordination Server`
+
+- First run:
+  - GitHub run ID: `23420960882`
+  - commit: `1baf978`
+  - result: `failure`
+  - cause: Docker Hub unauthenticated pull rate limit on `FROM oven/bun:1`
+- Second run:
+  - GitHub run ID: `23421007501`
+  - commit: `01cc7a2`
+  - result: `success`
+  - effect: pushed the first production image into ECR
+
 ## What Is Still Not Done
 
-- Push the local repo changes to GitHub `main`
-- Let GitHub Actions run on the CodeBuild-hosted runner
-- Push the first image to `jam/coordination-server`
-- Create the `JamCoordinationServer` App Runner service
-- Add `BASE_URL`, `GITHUB_CLIENT_ID`, and `GITHUB_CLIENT_SECRET` to App Runner
-- Verify App Runner can assume `JamCoordinationServerInstanceRole` and launch Jam EC2 instances correctly
+- Add `BASE_URL` to App Runner if the canonical URL should be pinned instead of derived from request origin
+- Add `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` to App Runner
+- Configure the GitHub OAuth app callback URL to match the chosen public base URL
+- Verify the live coordination server can assume `JamCoordinationServerInstanceRole` and launch Jam EC2 instances end-to-end
+- Decide whether the default public App Runner URL will remain the canonical URL or whether a custom domain will be attached later
 
 ## Known Debugging History
 
@@ -130,16 +177,19 @@ The `lobby/server.ts` changes do the following:
   - CodeBuild-hosted GitHub Actions runner projects use a normal `GITHUB` source plus a `WORKFLOW_JOB_QUEUED` webhook
   - the CodeBuild service role also needs CodeConnections permissions
   - the active CodeConnections GitHub connection must have access to the target repo owner
-- The first GitHub Actions run for `Deploy Coordination Server` reached CodeBuild and ECR login successfully, but failed at `docker build` because `FROM oven/bun:1` hit Docker Hub's unauthenticated pull-rate limit (`429 Too Many Requests`).
+- The first GitHub Actions run reached CodeBuild and ECR login successfully, but failed at `docker build` because `FROM oven/bun:1` hit Docker Hub's unauthenticated pull-rate limit (`429 Too Many Requests`).
 - The Dockerfile was then changed to use `public.ecr.aws/docker/library/debian:bookworm-slim` and install Bun explicitly, so future runs do not rely on Docker Hub for the base image.
 
-## Next Commands From Here
+## Next Likely Commands
 
-The next high-level steps are:
+Once OAuth details are known, the remaining App Runner update is expected to look like:
 
-1. Commit and push the local repo changes.
-2. Confirm GitHub Actions pushes `main` into ECR.
-3. Create App Runner pointing at `757208469216.dkr.ecr.us-east-1.amazonaws.com/jam/coordination-server:main`.
-4. Add OAuth secrets and canonical `BASE_URL`.
-
-This file should be updated once those steps are completed so future agents do not have to reconstruct the state again.
+1. Create or update secrets for `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
+2. Update App Runner runtime configuration to include:
+   - `BASE_URL=https://vjqmk2uvpa.us-east-1.awsapprunner.com` or a future custom domain
+   - `GITHUB_CLIENT_ID`
+   - `GITHUB_CLIENT_SECRET`
+3. Re-verify:
+   - `/health`
+   - GitHub login redirect flow
+   - Jam EC2 launch path
