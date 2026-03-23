@@ -45,7 +45,7 @@ const MIME_TYPES: Record<string, string> = {
 
 const AWS_REGION =
   process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || "us-east-1";
-const AMI_ID = process.env.JAM_AMI_ID || "ami-0f5833d39069b6186";
+const AMI_ID = process.env.JAM_AMI_ID || "ami-0e8752c8e684e0997";
 const SECURITY_GROUP =
   process.env.JAM_SECURITY_GROUP_ID || "sg-092ad16c7428104a3";
 const INSTANCE_TYPE = process.env.JAM_INSTANCE_TYPE || "t3.medium";
@@ -328,6 +328,17 @@ const server = Bun.serve({
 set -ex
 export BUN_INSTALL="/root/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+# Install bun if missing
+if [ ! -f /root/.bun/bin/bun ]; then
+  apt-get update && apt-get install -y curl git unzip
+  curl -fsSL https://bun.sh/install | bash
+fi
+# Install claude if missing
+which claude || npm install -g @anthropic-ai/claude-code
+# Clone repo if missing
+if [ ! -d /opt/jam ]; then
+  git clone https://github.com/bryanhpchiang/claude-collab.git /opt/jam
+fi
 cd /opt/jam
 git pull origin main
 bun install
