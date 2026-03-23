@@ -531,6 +531,7 @@ const server = Bun.serve({
               from: name,
               mentioned: mentionedName,
               text: data.text,
+              sessionId,
               timestamp: Date.now(),
             });
 
