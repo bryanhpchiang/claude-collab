@@ -8,12 +8,99 @@ interface Jam {
   state: string;
   creator: { login: string; name: string; avatar_url: string };
   created_at: string;
+  name: string | null;
 }
 
 interface SessionUser {
   login: string;
   name: string;
   avatar_url: string;
+}
+
+const LOADING_WORDS = [
+  'Flibbertigibbeting...',
+  'Discombobulating...',
+  'Cattywampusing...',
+  'Lollygagging...',
+  'Skedaddling...',
+  'Hullaballooing...',
+  'Persnicketing...',
+  'Wibble-wobbling...',
+];
+
+const PROGRESS_STEPS = [
+  { label: 'Provisioning server', delay: 3000 },
+  { label: 'Standing by for handshake', delay: 8000 },
+  { label: 'Setting security', delay: 12000 },
+  { label: 'Installing dependencies', delay: 18000 },
+  { label: 'Warming up Claude', delay: 25000 },
+  { label: 'Almost there...', delay: Infinity },
+];
+
+const PENDING_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes
+
+function PendingProgress({ createdAt, onRestart }: { createdAt: string; onRestart?: () => void }) {
+  const [wordIdx, setWordIdx] = useState(0);
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const start = new Date(createdAt).getTime();
+    const tick = () => setElapsed(Date.now() - start);
+    tick();
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, [createdAt]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setWordIdx(i => (i + 1) % LOADING_WORDS.length);
+    }, 2000);
+    return () => clearInterval(id);
+  }, []);
+
+  const isStuck = elapsed >= PENDING_TIMEOUT_MS;
+
+  if (isStuck) {
+    return (
+      <div className="pending-progress">
+        <div className="pending-stuck">
+          <div className="pending-stuck-title">Taking longer than expected</div>
+          <div className="pending-stuck-desc">
+            This instance may have failed to start. You can terminate it and try again.
+          </div>
+          {onRestart && (
+            <button className="pending-restart-btn" onClick={onRestart}>
+              Terminate &amp; Start Over
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="pending-progress">
+      <div className="pending-word">{LOADING_WORDS[wordIdx]}</div>
+      <ul className="pending-steps">
+        {PROGRESS_STEPS.map((step, i) => {
+          const done = elapsed >= step.delay;
+          const isCurrent = !done && (i === 0 || elapsed >= PROGRESS_STEPS[i - 1].delay);
+          return (
+            <li key={i} className={`pending-step${done ? ' done' : ''}${isCurrent ? ' current' : ''}`}>
+              {done ? (
+                <span className="pending-check">&#10003;</span>
+              ) : isCurrent ? (
+                <span className="pending-pulse" />
+              ) : (
+                <span className="pending-bullet" />
+              )}
+              <span className={done ? 'pending-struck' : ''}>{step.label}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 export default function Dashboard() {
@@ -23,6 +110,8 @@ export default function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [newName, setNewName] = useState('');
+  const [showNameInput, setShowNameInput] = useState(false);
 
   const redirectToSignIn = () => {
     window.location.href = '/auth/github';
@@ -79,7 +168,7 @@ export default function Dashboard() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ name: newName.trim() || undefined }),
       });
       if (res.status === 401) {
         redirectToSignIn();
@@ -93,13 +182,15 @@ export default function Dashboard() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `Failed to create instance (${res.status})`);
       }
+      setNewName('');
+      setShowNameInput(false);
       await fetchJams();
     } catch (err: any) {
       setError(err.message || 'Failed to create instance');
     } finally {
       setCreating(false);
     }
-  }, [fetchJams]);
+  }, [fetchJams, newName]);
 
   const handleDelete = useCallback(async (jamId: string) => {
     setDeleting(jamId);
@@ -148,6 +239,10 @@ export default function Dashboard() {
     return null;
   }
 
+  const hasActive = jams.some(
+    j => j.creator?.login === user?.login && (j.state === 'pending' || j.state === 'running')
+  );
+
   return (
     <div className="dash">
       <header className="dash-header">
@@ -165,34 +260,70 @@ export default function Dashboard() {
       <main className="dash-main">
         <div className="dash-top">
           <h2 className="dash-title">Instances</h2>
-          {(() => {
-            const hasActive = jams.some(
-              j => j.creator?.login === user?.login && (j.state === 'pending' || j.state === 'running')
-            );
-            return (
-              <button className="dash-create-btn" onClick={handleCreate} disabled={creating || hasActive}>
-                {creating ? (
-                  <>
-                    <div className="dash-spinner-sm" />
-                    Creating...
-                  </>
-                ) : hasActive ? (
-                  'Instance Running'
-                ) : (
-                  <>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                    Create Instance
-                  </>
-                )}
+          <div className="dash-create-area">
+            {showNameInput && !hasActive && (
+              <input
+                className="dash-name-input"
+                type="text"
+                placeholder="Name your jam (optional)"
+                value={newName}
+                onChange={e => setNewName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleCreate(); }}
+                maxLength={64}
+                autoFocus
+              />
+            )}
+            <button
+              className="dash-create-btn"
+              onClick={() => {
+                if (!showNameInput && !hasActive) {
+                  setShowNameInput(true);
+                } else {
+                  handleCreate();
+                }
+              }}
+              disabled={creating || hasActive}
+            >
+              {creating ? (
+                <>
+                  <div className="dash-spinner-sm" />
+                  Creating...
+                </>
+              ) : hasActive ? (
+                'Instance Running'
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  {showNameInput ? 'Launch' : 'Create Instance'}
+                </>
+              )}
+            </button>
+            {showNameInput && !hasActive && (
+              <button className="dash-cancel-btn" onClick={() => { setShowNameInput(false); setNewName(''); }}>
+                Cancel
               </button>
-            );
-          })()}
+            )}
+          </div>
         </div>
 
         {error && (
           <div className="dash-error">
-            <span>{error}</span>
-            <button className="dash-error-dismiss" onClick={() => setError(null)}>&times;</button>
+            <div className="dash-error-content">
+              <span>{error}</span>
+              {error.includes('already have a running') && (
+                <div className="dash-error-hint">
+                  Terminate your existing instance first, then create a new one.
+                </div>
+              )}
+            </div>
+            <div className="dash-error-actions">
+              {(error.includes('Failed') || error.includes('Internal')) && (
+                <button className="dash-error-retry" onClick={() => { setError(null); handleCreate(); }}>
+                  Try Again
+                </button>
+              )}
+              <button className="dash-error-dismiss" onClick={() => setError(null)}>&times;</button>
+            </div>
           </div>
         )}
 
@@ -204,16 +335,24 @@ export default function Dashboard() {
           <div className="dash-grid">
             {jams.map(jam => {
               const isOwner = jam.creator?.login === user?.login;
+              const isPending = jam.state === 'pending';
               return (
                 <div key={jam.id} className={`dash-card${isOwner ? ' dash-card-own' : ''}`}>
                   <div className="dash-card-header">
-                    <h3 className="dash-card-name">jam-{jam.id}</h3>
+                    <h3 className="dash-card-name">{jam.name || `jam-${jam.id}`}</h3>
                     <span className={`dash-status dash-status-${jam.state}`}>
                       <span className="dash-status-dot" />
                       {jam.state}
                     </span>
                   </div>
-                  <div className="dash-card-url">{jam.url || 'Starting up...'}</div>
+                  {isPending ? (
+                    <PendingProgress createdAt={jam.created_at} onRestart={isOwner ? async () => {
+                      await handleDelete(jam.id);
+                      await handleCreate();
+                    } : undefined} />
+                  ) : (
+                    <div className="dash-card-url">{jam.url ? `/j/${jam.id}` : 'Waiting...'}</div>
+                  )}
                   <div className="dash-card-footer">
                     <span className="dash-card-creator">
                       {jam.creator?.avatar_url && (
@@ -225,7 +364,7 @@ export default function Dashboard() {
                       <button
                         className="dash-card-open"
                         disabled={!jam.url || jam.state !== 'running'}
-                        onClick={() => jam.url && window.open(jam.url, '_blank')}
+                        onClick={() => jam.url && window.open(jam.url + '?session=General', '_blank')}
                       >
                         Open
                       </button>

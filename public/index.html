@@ -138,11 +138,6 @@
     }
     .key-btn:hover { background: #30363d; }
     .key-btn:active { background: #484f58; }
-    .key-btn.mode-btn.active {
-      background: rgba(88,166,255,0.18);
-      border-color: #58a6ff;
-      color: #e6edf3;
-    }
     #name-modal {
       position: fixed; inset: 0; background: rgba(0,0,0,0.75);
       display: flex; align-items: center; justify-content: center;
@@ -206,6 +201,36 @@
     }
     body.in-lobby #lobby-view { display: flex; }
     body.in-lobby #terminal-container, body.in-lobby #bottom-panel { display: none; }
+
+    /* Error/restart overlay */
+    #error-overlay {
+      display: none; position: absolute; bottom: 0; left: 0; right: 0;
+      background: rgba(13,17,23,0.95); border-top: 2px solid #da3633;
+      padding: 20px 24px; z-index: 50; text-align: center;
+      backdrop-filter: blur(4px);
+    }
+    #error-overlay.visible { display: block; }
+    #error-overlay .error-title {
+      font-size: 15px; font-weight: 600; color: #f85149; margin-bottom: 6px;
+    }
+    #error-overlay .error-desc {
+      font-size: 13px; color: #8b949e; margin-bottom: 14px; line-height: 1.5;
+    }
+    #error-overlay .error-actions {
+      display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+    }
+    #error-overlay .error-btn {
+      padding: 8px 18px; border-radius: 6px; cursor: pointer;
+      font-size: 13px; font-weight: 500; border: none;
+    }
+    #error-overlay .error-btn-primary {
+      background: #238636; color: white;
+    }
+    #error-overlay .error-btn-primary:hover { background: #2ea043; }
+    #error-overlay .error-btn-secondary {
+      background: transparent; color: #c9d1d9; border: 1px solid #30363d;
+    }
+    #error-overlay .error-btn-secondary:hover { background: #21262d; }
 
     /* State sidebar */
     #state-toggle-btn {
@@ -406,17 +431,27 @@
   </div>
   <div id="oauth-modal">
     <div class="modal-box oauth-modal-box">
-      <h2>Claude Sign In</h2>
-      <p>Claude Code is asking you to finish OAuth in the browser.</p>
+      <h2 id="oauth-modal-title">Claude Sign In</h2>
+      <p id="oauth-modal-desc">Claude Code is asking you to finish OAuth in the browser.</p>
       <div id="oauth-url-preview"></div>
-      <div class="oauth-modal-actions">
+      <div id="oauth-default-actions" class="oauth-modal-actions">
         <button class="secondary-btn" id="oauth-close-btn">Dismiss</button>
         <button id="oauth-open-btn">Open Sign In</button>
+      </div>
+      <div id="oauth-key-input" style="display:none;margin-top:18px;">
+        <p style="color:#8b949e;font-size:13px;margin-bottom:10px;">Paste the code from the sign-in page, or enter your Anthropic API key:</p>
+        <div style="display:flex;gap:8px;">
+          <input id="oauth-key-field" type="text" placeholder="Paste code or API key here..." style="flex:1;background:#0d1117;border:1px solid #30363d;color:#e6edf3;padding:10px 14px;border-radius:6px;font-size:14px;font-family:'SF Mono',Monaco,monospace;outline:none;">
+          <button id="oauth-key-submit" style="background:#238636;color:white;border:none;padding:10px 20px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:500;white-space:nowrap;">Submit</button>
+        </div>
+        <div class="oauth-modal-actions" style="margin-top:12px;">
+          <button class="secondary-btn" id="oauth-key-dismiss">Dismiss</button>
+        </div>
       </div>
     </div>
   </div>
   <div id="header">
-    <a href="https://letsjam.now" target="_blank" rel="noopener" class="brand-link">
+    <a href="https://letsjam.now" rel="noopener" style="display:flex;align-items:center;gap:8px;text-decoration:none;cursor:pointer;" title="Back to Jam lobby">
       <svg class="logo-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
         <defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ff9a56"/><stop offset="100%" stop-color="#ff6b6b"/></linearGradient></defs>
         <g transform="translate(32,34)">
@@ -433,14 +468,22 @@
     <button id="new-session-btn">+ New Session</button>
   </div>
   <div id="lobby-view">Pick a session above or start a new one</div>
-  <div id="terminal-container"></div>
+  <div id="terminal-container" style="position:relative">
+    <div id="error-overlay">
+      <div class="error-title" id="error-title">Session ended</div>
+      <div class="error-desc" id="error-desc">The Claude process has exited. You can start a new session or try reconnecting.</div>
+      <div class="error-actions">
+        <button class="error-btn error-btn-primary" id="error-new-session">Start New Session</button>
+        <button class="error-btn error-btn-secondary" id="error-dismiss">Dismiss</button>
+      </div>
+    </div>
+  </div>
   <div id="bottom-panel" class="collapsed">
     <div id="chat-toggle">
       <span class="toggle-label"><span class="toggle-arrow">&#9660;</span> Chat</span>
       <span id="chat-badge">0</span>
     </div>
     <div id="key-bar">
-      <button class="key-btn mode-btn" id="terminal-mode-btn" title="Capture your keyboard directly in the terminal" disabled>Direct Type: Off</button>
       <button class="key-btn" data-label="Enter">Enter</button>
       <button class="key-btn" data-label="Esc">Esc</button>
       <button class="key-btn" data-label="Tab">Tab</button>
@@ -495,7 +538,9 @@
     term.loadAddon(fitAddon);
     term.open(document.getElementById('terminal-container'));
     fitAddon.fit();
-    // No custom scroll — let xterm handle it natively
+    let userScrolledUp = false;
+    const isNearBottom = () => term.buffer.active.viewportY >= term.buffer.active.baseY - 3;
+    term.onScroll(() => { userScrolledUp = !isNearBottom(); });
     window.addEventListener('resize', () => {
       const mobile = window.innerWidth <= 600;
       const newSize = mobile ? 10 : 14;
@@ -511,32 +556,58 @@
     let interactiveTerminalMode = false;
     let awaitingClaudeReady = false;
     let oauthUrl = '';
+    let oauthSignInOpened = false; // Track if user clicked "Open Sign In"
     const terminalContainer = document.getElementById('terminal-container');
-    const terminalModeBtn = document.getElementById('terminal-mode-btn');
     const oauthModal = document.getElementById('oauth-modal');
     const oauthUrlPreview = document.getElementById('oauth-url-preview');
     const oauthOpenBtn = document.getElementById('oauth-open-btn');
+    const oauthDefaultActions = document.getElementById('oauth-default-actions');
+    const oauthKeyInput = document.getElementById('oauth-key-input');
+    const oauthKeyField = document.getElementById('oauth-key-field');
+    const oauthModalTitle = document.getElementById('oauth-modal-title');
+    const oauthModalDesc = document.getElementById('oauth-modal-desc');
 
     function hideOauthModal() {
       oauthModal.classList.remove('visible');
       oauthUrl = '';
       oauthUrlPreview.textContent = '';
+      oauthSignInOpened = false;
+      oauthDefaultActions.style.display = '';
+      oauthKeyInput.style.display = 'none';
+      oauthUrlPreview.style.display = '';
+      oauthModalTitle.textContent = 'Claude Sign In';
+      oauthModalDesc.textContent = 'Claude Code is asking you to finish OAuth in the browser.';
+      oauthKeyField.value = '';
     }
 
     function showOauthModal(url) {
       oauthUrl = url;
       oauthUrlPreview.textContent = url;
       oauthModal.classList.add('visible');
+      // If user already opened sign-in, show key input view
+      if (oauthSignInOpened) showOauthKeyInputView();
+    }
+
+    function showOauthKeyInputView() {
+      oauthDefaultActions.style.display = 'none';
+      oauthUrlPreview.style.display = 'none';
+      oauthKeyInput.style.display = 'block';
+      oauthModalTitle.textContent = 'Paste Your Code';
+      oauthModalDesc.textContent = 'Signed in? Paste the code from the browser below.';
+      setTimeout(() => oauthKeyField.focus(), 100);
+    }
+
+    function submitOauthKey() {
+      const key = oauthKeyField.value.trim();
+      if (!key || !ws || ws.readyState !== WebSocket.OPEN) return;
+      // Send the key as raw input to the PTY (it's waiting for "Paste code here if prompted>")
+      ws.send(JSON.stringify({ type: 'tty-input', data: key + '\r' }));
+      hideOauthModal();
     }
 
     function updateTerminalModeUI() {
       term.options.disableStdin = !interactiveTerminalMode;
       terminalContainer.classList.toggle('interactive', interactiveTerminalMode);
-      terminalModeBtn.classList.toggle('active', interactiveTerminalMode);
-      terminalModeBtn.textContent = interactiveTerminalMode ? 'Direct Type: On' : 'Direct Type: Off';
-      terminalModeBtn.title = interactiveTerminalMode
-        ? 'Keyboard input is going straight to the shared terminal'
-        : 'Capture your keyboard directly in the terminal';
     }
 
     function setInteractiveTerminalMode(next) {
@@ -554,14 +625,21 @@
     terminalContainer.addEventListener('click', () => {
       if (interactiveTerminalMode) term.focus();
     });
-    terminalModeBtn.addEventListener('click', () => {
-      if (terminalModeBtn.disabled) return;
-      setInteractiveTerminalMode(!interactiveTerminalMode);
-    });
     document.getElementById('oauth-close-btn').addEventListener('click', hideOauthModal);
     oauthOpenBtn.addEventListener('click', () => {
       if (!oauthUrl) return;
       window.open(oauthUrl, '_blank', 'noopener,noreferrer');
+      oauthSignInOpened = true;
+      showOauthKeyInputView();
+    });
+    document.getElementById('oauth-key-submit').addEventListener('click', submitOauthKey);
+    oauthKeyField.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submitOauthKey(); } });
+    document.getElementById('oauth-key-dismiss').addEventListener('click', hideOauthModal);
+    // When user returns to the tab after opening sign-in, switch to key input view
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && oauthSignInOpened && oauthModal.classList.contains('visible')) {
+        showOauthKeyInputView();
+      }
     });
 
     const COLORS = ['#ff7b72','#d2a8ff','#79c0ff','#7ee787','#ffa657','#f778ba','#a5d6ff','#ffd8b1'];
@@ -692,6 +770,31 @@
       log.appendChild(div); log.scrollTop = log.scrollHeight;
       if (typeof bumpChatBadge === 'function') bumpChatBadge();
     }
+    function showErrorOverlay(title, desc, showNewSession) {
+      const overlay = document.getElementById('error-overlay');
+      document.getElementById('error-title').textContent = title;
+      document.getElementById('error-desc').textContent = desc;
+      document.getElementById('error-new-session').style.display = showNewSession ? '' : 'none';
+      overlay.classList.add('visible');
+    }
+    function hideErrorOverlay() {
+      document.getElementById('error-overlay').classList.remove('visible');
+    }
+    document.getElementById('error-dismiss').addEventListener('click', hideErrorOverlay);
+    document.getElementById('error-new-session').addEventListener('click', async () => {
+      hideErrorOverlay();
+      const name = 'Session ' + new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      try {
+        const res = await fetch('/api/sessions', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        });
+        const session = await res.json();
+        if (session.id) joinSession(session.id);
+      } catch (err) {
+        addSystem('Failed to create new session: ' + err.message);
+      }
+    });
     function updateUsers(users) {
       connectedUsers = users;
       document.getElementById('users-bar').innerHTML = users.map(u =>
@@ -747,7 +850,6 @@
         if (other) joinSession(other.id);
         else {
           currentSessionId = null;
-          terminalModeBtn.disabled = true;
           awaitingClaudeReady = false;
           hideOauthModal();
           setInteractiveTerminalMode(false);
@@ -760,6 +862,7 @@
       currentSessionId = sessionId;
       awaitingClaudeReady = true;
       hideOauthModal();
+      hideErrorOverlay();
       term.clear(); term.reset();
       document.getElementById('chat-log').innerHTML = '';
       document.getElementById('state-summary-content').innerHTML = '<div id="state-summary-empty">No activity yet. Start chatting and an AI summary will appear here.</div>';
@@ -768,7 +871,6 @@
       document.body.classList.remove('in-lobby');
       document.getElementById('msg-input').disabled = false;
       document.getElementById('send-btn').disabled = false;
-      terminalModeBtn.disabled = false;
       setInteractiveTerminalMode(true);
       ws.send(JSON.stringify({ type: 'join-session', sessionId, name: myName }));
       const url = new URL(location.href); url.searchParams.set('s', sessionId);
@@ -809,13 +911,28 @@
             break;
           case 'output':
             term.write(colorizeOutput(msg.data), () => {
-              term.scrollToBottom();
+              if (!userScrolledUp) term.scrollToBottom();
               maybeShowOauthModal();
               maybeDisableDirectTypeOnClaudeReady(msg.data);
             });
             break;
           case 'chat': addChat(msg.name, msg.text); break;
-          case 'system': addSystem(msg.text); break;
+          case 'system':
+            addSystem(msg.text);
+            if (msg.text && msg.text.includes('process exited')) {
+              showErrorOverlay(
+                'Claude process exited',
+                'The Claude session has ended. This can happen if there was an error during startup or the process crashed. You can start a fresh session to try again.',
+                true
+              );
+            } else if (msg.text && msg.text.includes('Session closed')) {
+              showErrorOverlay(
+                'Session closed',
+                'This session has been shut down. Start a new session to continue.',
+                true
+              );
+            }
+            break;
           case 'users':
             updateUsers(msg.users);
             if (currentSessionId) {
@@ -857,7 +974,6 @@
       ws.onclose = () => {
         document.getElementById('msg-input').disabled = true;
         document.getElementById('send-btn').disabled = true;
-        terminalModeBtn.disabled = true;
         awaitingClaudeReady = false;
         hideOauthModal();
         setInteractiveTerminalMode(false);
@@ -879,6 +995,14 @@
       if (md && md.style.display === 'block' && (e.key === 'Enter' || e.key === 'Tab' || e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Escape')) return;
       if (e.key === 'Enter') {
         e.preventDefault();
+        const input = document.getElementById('msg-input');
+        // If input is empty, send raw Enter key to PTY (like clicking the Enter key button)
+        if (!input.value.trim()) {
+          if (ws && ws.readyState === WebSocket.OPEN && currentSessionId) {
+            ws.send(JSON.stringify({ type: 'key', seq: '\r', label: 'Enter' }));
+          }
+          return;
+        }
         const direct = e.shiftKey;
         const wantEsc = !direct && (e.metaKey || e.ctrlKey);
         send({ direct });

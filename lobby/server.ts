@@ -71,6 +71,7 @@ type InstanceRecord = {
   ip?: string;
   state: string;
   created_at: string;
+  name?: string;
 };
 
 async function putInstance(item: InstanceRecord) {
@@ -314,6 +315,9 @@ const server = Bun.serve({
       }
 
       try {
+        const body = await req.json().catch(() => ({})) as { name?: string };
+        const jamName = typeof body.name === "string" ? body.name.trim().slice(0, 64) : undefined;
+
         const active = await getActiveByCreator(user.login);
         if (active.length > 0) {
           return Response.json(
@@ -377,6 +381,7 @@ su - ubuntu -c "export PATH=/home/ubuntu/.bun/bin:\$PATH && cd /opt/jam && git p
           creator_avatar: user.avatar_url,
           state: "pending",
           created_at,
+          ...(jamName ? { name: jamName } : {}),
         });
 
         return Response.json(
@@ -387,6 +392,7 @@ su - ubuntu -c "export PATH=/home/ubuntu/.bun/bin:\$PATH && cd /opt/jam && git p
             state: "pending",
             creator: { login: user.login, name: user.name, avatar_url: user.avatar_url },
             created_at,
+            name: jamName || null,
           },
           { headers: apiHeaders() },
         );
@@ -439,7 +445,7 @@ su - ubuntu -c "export PATH=/home/ubuntu/.bun/bin:\$PATH && cd /opt/jam && git p
           instances.map((inst) => ({
             id: inst.id,
             instanceId: inst.instance_id,
-            url: inst.ip ? `http://${inst.ip}:7681` : null,
+            url: inst.state === "running" ? `/j/${inst.id}` : null,
             state: inst.state,
             creator: {
               login: inst.creator_login,
@@ -447,6 +453,7 @@ su - ubuntu -c "export PATH=/home/ubuntu/.bun/bin:\$PATH && cd /opt/jam && git p
               avatar_url: inst.creator_avatar,
             },
             created_at: inst.created_at,
+            name: inst.name || null,
           })),
           { headers: apiHeaders() },
         );

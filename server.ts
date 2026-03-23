@@ -165,9 +165,10 @@ function createSession(name: string, resumeId?: string, cwd?: string): Session {
 
   shell.onExit(({ exitCode, signal }) => {
     console.log(`Session ${id} claude exited: code=${exitCode} signal=${signal}`);
+    const reason = exitCode === 0 ? 'normally' : signal ? `due to signal ${signal}` : `with error code ${exitCode}`;
     broadcastToSession(id, {
       type: "system",
-      text: `Claude process exited (code ${exitCode}). Create a new session to continue.`,
+      text: `Claude process exited ${reason}. Use the "Start New Session" button below or click "+ New Session" above to start over.`,
     });
   });
 
