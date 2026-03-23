@@ -82,12 +82,22 @@ async function getDiskSessions(): Promise<DiskSession[]> {
           const lines = content.split("\n").filter(Boolean);
           let firstMessage = "";
           let timestamp = "";
-          for (const line of lines) {
+          for (const line of lines.reverse()) {
             try {
               const entry = JSON.parse(line);
               if (entry.type === "user" && entry.message?.content) {
                 const msg = entry.message.content;
-                firstMessage = (typeof msg === "string" ? msg : JSON.stringify(msg)).slice(0, 80);
+                let text = "";
+                if (typeof msg === "string") {
+                  text = msg;
+                } else if (Array.isArray(msg)) {
+                  const textPart = msg.find((p: any) => p.type === "text");
+                  text = textPart?.text || "";
+                  if (!text) continue; // skip tool-result-only messages
+                }
+                // Skip empty, interrupts, and tool-result-only messages
+                if (!text || text.includes("[Request interrupted") || text.startsWith("tool_result")) continue;
+                firstMessage = text.slice(0, 80);
                 timestamp = entry.timestamp || "";
                 break;
               }

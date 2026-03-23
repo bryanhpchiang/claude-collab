@@ -545,7 +545,7 @@
               pendingJoin = null;
             }
             break;
-          case 'output': term.write(msg.data); break;
+          case 'output': term.write(msg.data); term.scrollToBottom(); break;
           case 'chat': addChat(msg.name, msg.text); break;
           case 'system': addSystem(msg.text); break;
           case 'users':
