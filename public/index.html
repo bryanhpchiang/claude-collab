@@ -649,8 +649,7 @@
       document.getElementById('msg-input').disabled = false;
       document.getElementById('send-btn').disabled = false;
       terminalModeBtn.disabled = false;
-      setInteractiveTerminalMode(false);
-      document.getElementById('msg-input').focus();
+      setInteractiveTerminalMode(true);
       setTimeout(() => fitAddon.fit(), 50);
       // Fetch state summary and start polling
       lastStateMarkdown = '';
