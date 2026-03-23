@@ -503,6 +503,7 @@
     });
     new ResizeObserver(() => fitAddon.fit()).observe(document.getElementById('terminal-container'));
 
+    const DEFAULT_SESSION_SENTINEL = '__default__';
     let ws, myName = '', currentSessionId = null, sessionList = [], pendingJoin = null;
     let connectedUsers = []; // Track users in current session for @mention autocomplete
     let notificationPermission = 'default'; // Track notification permission state
@@ -787,7 +788,7 @@
           pendingJoin = window.JAM_SESSION_ID;
         } else {
           const urlSession = new URL(location.href).searchParams.get('s');
-          if (urlSession) pendingJoin = urlSession;
+          pendingJoin = urlSession || DEFAULT_SESSION_SENTINEL;
         }
       };
       ws.onmessage = (e) => {
@@ -796,7 +797,12 @@
           case 'sessions':
             sessionList = msg.sessions; renderSessionTabs();
             if (pendingJoin) {
-              if (sessionList.find(s => s.id === pendingJoin)) joinSession(pendingJoin);
+              if (pendingJoin === DEFAULT_SESSION_SENTINEL) {
+                const defaultSession = sessionList.find(s => s.name === 'General') || sessionList[0];
+                if (defaultSession) joinSession(defaultSession.id);
+              } else if (sessionList.find(s => s.id === pendingJoin)) {
+                joinSession(pendingJoin);
+              }
               pendingJoin = null;
             }
             break;
