@@ -53,6 +53,7 @@ const TAG_PREFIX = process.env.JAM_TAG_PREFIX || "jam-";
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || "";
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || "";
+const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET || "";
 const BASE_URL = process.env.BASE_URL || "";
 const GITHUB_OAUTH_ENABLED = Boolean(
   GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET,
@@ -463,6 +464,59 @@ su - ubuntu -c "export PATH=/home/ubuntu/.bun/bin:\$PATH && cd /opt/jam && git p
           { error: err.message || "Internal error" },
           { status: 500, headers: apiHeaders() },
         );
+      }
+    }
+
+    if (url.pathname === "/api/webhook/github" && req.method === "POST") {
+      try {
+        const body = await req.text();
+
+        // Verify signature if secret is configured
+        if (GITHUB_WEBHOOK_SECRET) {
+          const sig = req.headers.get("x-hub-signature-256") || "";
+          const key = await crypto.subtle.importKey(
+            "raw",
+            new TextEncoder().encode(GITHUB_WEBHOOK_SECRET),
+            { name: "HMAC", hash: "SHA-256" },
+            false,
+            ["sign"],
+          );
+          const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body));
+          const expected = "sha256=" + [...new Uint8Array(mac)].map(b => b.toString(16).padStart(2, "0")).join("");
+          if (sig !== expected) {
+            return Response.json({ error: "Invalid signature" }, { status: 403, headers: apiHeaders() });
+          }
+        }
+
+        const payload = JSON.parse(body);
+        if (payload.ref !== "refs/heads/main") {
+          return Response.json({ ok: true, skipped: true, reason: "not main branch" }, { headers: apiHeaders() });
+        }
+
+        // Trigger deploy on all active running instances
+        const instances = await scanActiveInstances();
+        const running = instances.filter(i => i.state === "running" && i.ip);
+        const results = await Promise.allSettled(
+          running.map(async (inst) => {
+            const res = await fetch(`http://${inst.ip}:7681/api/deploy`, {
+              method: "POST",
+              signal: AbortSignal.timeout(30000),
+            });
+            return { id: inst.id, ip: inst.ip, status: res.status, body: await res.text().catch(() => "") };
+          }),
+        );
+
+        return Response.json({
+          ok: true,
+          instances: results.map((r, i) => ({
+            id: running[i].id,
+            ip: running[i].ip,
+            result: r.status === "fulfilled" ? r.value : { error: (r as PromiseRejectedResult).reason?.message },
+          })),
+        }, { headers: apiHeaders() });
+      } catch (err: any) {
+        console.error("Webhook error:", err);
+        return Response.json({ error: err.message }, { status: 500, headers: apiHeaders() });
       }
     }
 

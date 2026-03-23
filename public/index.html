@@ -542,8 +542,10 @@
     term.open(document.getElementById('terminal-container'));
     fitAddon.fit();
     let userScrolledUp = false;
-    const isNearBottom = () => term.buffer.active.viewportY >= term.buffer.active.baseY - 3;
-    term.onScroll(() => { userScrolledUp = !isNearBottom(); });
+    let autoScrolling = false;
+    const isNearBottom = () => term.buffer.active.viewportY >= term.buffer.active.baseY - 5;
+    term.element.addEventListener('wheel', () => { if (!isNearBottom()) userScrolledUp = true; else userScrolledUp = false; }, { passive: true });
+    term.element.addEventListener('touchmove', () => { if (!isNearBottom()) userScrolledUp = true; else userScrolledUp = false; }, { passive: true });
     window.addEventListener('resize', () => {
       const mobile = window.innerWidth <= 600;
       const newSize = mobile ? 10 : 14;
@@ -914,7 +916,7 @@
             break;
           case 'output':
             term.write(colorizeOutput(msg.data), () => {
-              if (!userScrolledUp) term.scrollToBottom();
+              if (!userScrolledUp) { autoScrolling = true; term.scrollToBottom(); autoScrolling = false; }
               maybeShowOauthModal();
               maybeDisableDirectTypeOnClaudeReady(msg.data);
             });

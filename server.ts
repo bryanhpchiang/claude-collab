@@ -283,6 +283,23 @@ const server = Bun.serve({
       })();
     }
 
+    if (url.pathname === "/api/deploy" && req.method === "POST") {
+      return (async () => {
+        try {
+          const cwd = process.cwd();
+          const proc = Bun.spawn(["git", "pull", "origin", "main"], { cwd, stdout: "pipe", stderr: "pipe" });
+          const [stdout, stderr] = await Promise.all([
+            new Response(proc.stdout).text(),
+            new Response(proc.stderr).text(),
+          ]);
+          const exitCode = await proc.exited;
+          return Response.json({ ok: exitCode === 0, stdout, stderr, exitCode });
+        } catch (err: any) {
+          return Response.json({ error: err.message }, { status: 500 });
+        }
+      })();
+    }
+
     // --- Jam API ---
 
     if (url.pathname === "/api/jams") {

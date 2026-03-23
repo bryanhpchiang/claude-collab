@@ -18,14 +18,14 @@ interface SessionUser {
 }
 
 const LOADING_WORDS = [
-  'Flibbertigibbeting...',
-  'Discombobulating...',
-  'Cattywampusing...',
-  'Lollygagging...',
-  'Skedaddling...',
-  'Hullaballooing...',
-  'Persnicketing...',
-  'Wibble-wobbling...',
+  'Smearing...',
+  'Toasting...',
+  'Flipping...',
+  'Spreading...',
+  'Buttering...',
+  'Simmering...',
+  'Jarring...',
+  'Preserving...',
 ];
 
 const PROGRESS_STEPS = [
