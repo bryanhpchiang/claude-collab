@@ -5,6 +5,7 @@ import {
   TerminateInstancesCommand,
 } from "@aws-sdk/client-ec2";
 import { join, extname } from "path";
+import { waitForPublicIp } from "./ec2";
 
 const PORT = Number(process.env.PORT) || 8080;
 
@@ -97,23 +98,6 @@ function apiHeaders() {
   return {
     "Access-Control-Allow-Origin": "*",
   };
-}
-
-/** Poll until the instance has a public IP, up to ~60s */
-async function waitForPublicIp(
-  instanceId: string,
-  maxAttempts = 20,
-  delayMs = 3000,
-): Promise<string> {
-  for (let i = 0; i < maxAttempts; i++) {
-    const desc = await ec2.send(
-      new DescribeInstancesCommand({ InstanceIds: [instanceId] }),
-    );
-    const inst = desc.Reservations?.[0]?.Instances?.[0];
-    if (inst?.PublicIpAddress) return inst.PublicIpAddress;
-    await new Promise((r) => setTimeout(r, delayMs));
-  }
-  throw new Error(`Timed out waiting for public IP on ${instanceId}`);
 }
 
 /** List running jam instances by tag */
@@ -310,7 +294,12 @@ const server = Bun.serve({
           );
         }
 
-        const ip = await waitForPublicIp(instanceId);
+        const ip = await waitForPublicIp(async () => {
+          const desc = await ec2.send(
+            new DescribeInstancesCommand({ InstanceIds: [instanceId] }),
+          );
+          return desc.Reservations?.[0]?.Instances?.[0];
+        });
 
         return Response.json(
           {
