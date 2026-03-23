@@ -334,4 +334,4 @@ const server = Bun.serve({
   },
 });
 
-console.log(`Claude Collab running on http://localhost:7681`);
+console.log(`Jam running on http://localhost:7681`);
