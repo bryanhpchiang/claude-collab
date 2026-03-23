@@ -340,6 +340,51 @@
       animation: pulse-dot 1.2s ease-in-out infinite;
     }
 
+    /* Secrets panel */
+    #secrets-section {
+      border-bottom: 1px solid #30363d; padding: 12px 16px; flex-shrink: 0;
+    }
+    #secrets-header {
+      display: flex; align-items: center; gap: 6px; cursor: pointer;
+      font-size: 12px; font-weight: 700; color: #8b949e; text-transform: uppercase;
+      letter-spacing: 0.5px; user-select: none;
+    }
+    #secrets-header:hover { color: #e6edf3; }
+    #secrets-header .lock-icon { width: 14px; height: 14px; flex-shrink: 0; }
+    #secrets-header .chevron {
+      margin-left: auto; font-size: 10px; transition: transform 0.15s;
+    }
+    #secrets-header .chevron.open { transform: rotate(90deg); }
+    #secrets-body { display: none; margin-top: 10px; }
+    #secrets-body.open { display: block; }
+    #secrets-form { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+    #secrets-form select, #secrets-form input {
+      background: #161b22; border: 1px solid #30363d; color: #e6edf3;
+      padding: 5px 8px; border-radius: 4px; font-size: 12px; width: 100%;
+    }
+    #secrets-form select:focus, #secrets-form input:focus { outline: none; border-color: #58a6ff; }
+    #secret-custom-name { display: none; }
+    #secrets-form button {
+      background: linear-gradient(135deg, #ff9a56, #ff6b6b); border: none;
+      color: #fff; padding: 5px 12px; border-radius: 4px; font-size: 12px;
+      font-weight: 600; cursor: pointer; align-self: flex-end;
+    }
+    #secrets-form button:hover { opacity: 0.85; }
+    #secrets-list { display: flex; flex-direction: column; gap: 4px; }
+    .secret-item {
+      display: flex; align-items: center; gap: 6px; padding: 4px 8px;
+      background: #161b22; border: 1px solid #21262d; border-radius: 4px; font-size: 12px;
+    }
+    .secret-item .secret-name { color: #e6edf3; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .secret-item .secret-mask { color: #484f58; font-size: 11px; letter-spacing: 1px; }
+    .secret-item .secret-del {
+      background: none; border: none; color: #484f58; cursor: pointer;
+      font-size: 14px; padding: 0 2px; border-radius: 3px; display: none;
+    }
+    .secret-item .secret-del.mine { display: inline-block; }
+    .secret-item .secret-del:hover { color: #f85149; background: rgba(248,81,73,0.15); }
+    .secret-item .secret-by { color: #484f58; font-size: 10px; }
+
     .chat-msg { position: relative; }
 
     /* @mention highlighting */
@@ -605,6 +650,29 @@
     <div id="state-sidebar-header">
       <h2>&#9881; State of Things</h2>
       <button id="state-close-btn">&times;</button>
+    </div>
+    <div id="secrets-section">
+      <div id="secrets-header">
+        <svg class="lock-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M4 4v2H3.5A1.5 1.5 0 0 0 2 7.5v5A1.5 1.5 0 0 0 3.5 14h9a1.5 1.5 0 0 0 1.5-1.5v-5A1.5 1.5 0 0 0 12.5 6H12V4a4 4 0 0 0-8 0zm6 0v2H6V4a2 2 0 1 1 4 0zm-1 7a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
+        Secrets
+        <span class="chevron">&#9654;</span>
+      </div>
+      <div id="secrets-body">
+        <div id="secrets-form">
+          <select id="secret-type">
+            <option value="GitHub Token">GitHub Token</option>
+            <option value="Anthropic API Key">Anthropic API Key</option>
+            <option value="Twilio SID">Twilio SID</option>
+            <option value="Twilio Auth Token">Twilio Auth Token</option>
+            <option value="Twilio Phone Number">Twilio Phone Number</option>
+            <option value="Custom">Custom</option>
+          </select>
+          <input id="secret-custom-name" type="text" placeholder="Secret name...">
+          <input id="secret-value" type="password" placeholder="Secret value...">
+          <button id="secret-save-btn">Save</button>
+        </div>
+        <div id="secrets-list"></div>
+      </div>
     </div>
     <div id="state-summary-content">
       <div id="state-summary-empty">No activity yet. Start chatting and an AI summary will appear here.</div>
@@ -1588,8 +1656,66 @@
       const opening = !stateSidebar.classList.contains('open');
       stateSidebar.classList.toggle('open');
       stateToggleBtn.classList.toggle('shifted');
-      if (opening) fetchStateSummary();
+      if (opening) { fetchStateSummary(); fetchSecrets(); }
     });
+
+    // ===== Secrets Panel =====
+    const secretsHeader = document.getElementById('secrets-header');
+    const secretsBody = document.getElementById('secrets-body');
+    const secretType = document.getElementById('secret-type');
+    const secretCustomName = document.getElementById('secret-custom-name');
+    const secretValue = document.getElementById('secret-value');
+    const secretSaveBtn = document.getElementById('secret-save-btn');
+    const secretsList = document.getElementById('secrets-list');
+
+    secretsHeader.addEventListener('click', () => {
+      secretsBody.classList.toggle('open');
+      secretsHeader.querySelector('.chevron').classList.toggle('open');
+      if (secretsBody.classList.contains('open')) fetchSecrets();
+    });
+
+    secretType.addEventListener('change', () => {
+      secretCustomName.style.display = secretType.value === 'Custom' ? 'block' : 'none';
+    });
+
+    secretSaveBtn.addEventListener('click', async () => {
+      const name = secretType.value === 'Custom' ? secretCustomName.value.trim() : secretType.value;
+      const value = secretValue.value;
+      if (!name || !value) return;
+      try {
+        await fetch('/api/secrets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, value, user: myName }),
+        });
+        secretValue.value = '';
+        secretCustomName.value = '';
+        fetchSecrets();
+      } catch {}
+    });
+
+    async function fetchSecrets() {
+      try {
+        const res = await fetch('/api/secrets');
+        const list = await res.json();
+        secretsList.innerHTML = '';
+        for (const s of list) {
+          const el = document.createElement('div');
+          el.className = 'secret-item';
+          const isMine = s.createdBy === myName;
+          el.innerHTML = `<span class="secret-name">${esc(s.name)}</span>`
+            + `<span class="secret-mask">\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022</span>`
+            + `<span class="secret-by">${esc(s.createdBy)}</span>`
+            + `<button class="secret-del${isMine ? ' mine' : ''}" data-name="${esc(s.name)}">&times;</button>`;
+          el.querySelector('.secret-del').addEventListener('click', async (e) => {
+            const n = e.target.dataset.name;
+            await fetch('/api/secrets/' + encodeURIComponent(n) + '?user=' + encodeURIComponent(myName), { method: 'DELETE' });
+            fetchSecrets();
+          });
+          secretsList.appendChild(el);
+        }
+      } catch {}
+    }
     document.getElementById('state-close-btn').addEventListener('click', () => {
       stateSidebar.classList.remove('open');
       stateToggleBtn.classList.remove('shifted');

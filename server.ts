@@ -70,6 +70,17 @@ const pendingMentions = new Map<string, PendingMention[]>();
 const jamSessions = new Map<string, { id: string; sessionId: string; repo?: string; createdAt: number }>();
 const JAMS_DIR = "/tmp/claude-jams";
 
+// Secrets store (in-memory only)
+interface Secret {
+  name: string;
+  value: string;
+  createdBy: string;
+  createdAt: number;
+}
+const secrets = new Map<string, Secret>();
+// Extra env vars to inject into Claude processes (set by secrets)
+const extraEnv: Record<string, string> = {};
+
 function genId(): string {
   return Math.random().toString(36).slice(2, 8);
 }
@@ -141,6 +152,7 @@ function spawnClaude(args: string[], cwd?: string): IPty {
     cwd: cwd || process.env.JAM_CWD || process.cwd(),
     env: {
       ...process.env as Record<string, string>,
+      ...extraEnv,
       TERM: "xterm-256color",
       HOME: process.env.HOME || "/root",
       CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1",
@@ -400,6 +412,62 @@ const server = Bun.serve({
           return Response.json({ error: "Upload failed" }, { status: 500 });
         }
       })();
+    }
+
+    // --- Secrets API ---
+    if (url.pathname === "/api/secrets") {
+      if (req.method === "GET") {
+        const list = [...secrets.values()].map(s => ({ name: s.name, createdBy: s.createdBy, createdAt: s.createdAt }));
+        return Response.json(list);
+      }
+      if (req.method === "POST") {
+        return (async () => {
+          const body = await req.json() as { name?: string; value?: string; user?: string };
+          if (!body.name || !body.value || !body.user) return Response.json({ error: "missing fields" }, { status: 400 });
+          secrets.set(body.name, { name: body.name, value: body.value, createdBy: body.user, createdAt: Date.now() });
+          // Auto-apply
+          try {
+            if (body.name === "GitHub Token") {
+              const cwd = process.env.JAM_CWD || process.cwd();
+              try {
+                const remote = execSync("git remote get-url origin", { cwd }).toString().trim();
+                const m = remote.match(/github\.com[:/](.+?)(?:\.git)?$/);
+                if (m) execSync(`git remote set-url origin https://${body.value}@github.com/${m[1]}.git`, { cwd });
+              } catch {}
+            } else if (body.name === "Anthropic API Key") {
+              extraEnv.ANTHROPIC_API_KEY = body.value;
+            } else if (body.name === "Twilio SID") {
+              extraEnv.TWILIO_ACCOUNT_SID = body.value;
+            } else if (body.name === "Twilio Auth Token") {
+              extraEnv.TWILIO_AUTH_TOKEN = body.value;
+            } else if (body.name === "Twilio Phone Number") {
+              extraEnv.TWILIO_PHONE_NUMBER = body.value;
+            } else {
+              // Custom secret: store as env var with sanitized name
+              const envKey = body.name.toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+              extraEnv[envKey] = body.value;
+            }
+          } catch {}
+          return Response.json({ ok: true, name: body.name });
+        })();
+      }
+    }
+
+    const secretDeleteMatch = url.pathname.match(/^\/api\/secrets\/(.+)$/);
+    if (secretDeleteMatch && req.method === "DELETE") {
+      const name = decodeURIComponent(secretDeleteMatch[1]);
+      const user = url.searchParams.get("user");
+      const secret = secrets.get(name);
+      if (!secret) return Response.json({ error: "not found" }, { status: 404 });
+      if (secret.createdBy !== user) return Response.json({ error: "unauthorized" }, { status: 403 });
+      secrets.delete(name);
+      // Clean up env
+      if (name === "Anthropic API Key") delete extraEnv.ANTHROPIC_API_KEY;
+      else if (name === "Twilio SID") delete extraEnv.TWILIO_ACCOUNT_SID;
+      else if (name === "Twilio Auth Token") delete extraEnv.TWILIO_AUTH_TOKEN;
+      else if (name === "Twilio Phone Number") delete extraEnv.TWILIO_PHONE_NUMBER;
+      else { const k = name.toUpperCase().replace(/[^A-Z0-9]+/g, "_"); delete extraEnv[k]; }
+      return Response.json({ ok: true });
     }
 
     if (url.pathname === "/api/deploy" && req.method === "POST") {
