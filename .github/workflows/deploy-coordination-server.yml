@@ -1,0 +1,66 @@
+name: Deploy Coordination Server
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - lobby/**
+      - .github/workflows/deploy-coordination-server.yml
+  workflow_dispatch:
+
+concurrency:
+  group: coordination-server-deploy
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Build and Push Coordination Server Image
+    runs-on:
+      - codebuild-JamCoordinationServerRunner-${{ github.run_id }}-${{ github.run_attempt }}
+    timeout-minutes: 30
+    env:
+      AWS_REGION: us-east-1
+      IMAGE_REPO_NAME: jam/coordination-server
+      DEPLOY_TAG: main
+      DOCKER_BUILDKIT: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Resolve AWS account ID
+        id: aws-account
+        shell: bash
+        run: echo "account_id=$(aws sts get-caller-identity --query Account --output text)" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to Amazon ECR
+        shell: bash
+        env:
+          AWS_ACCOUNT_ID: ${{ steps.aws-account.outputs.account_id }}
+        run: |
+          aws ecr get-login-password --region "$AWS_REGION" \
+            | docker login --username AWS --password-stdin "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+
+      - name: Build deployment image
+        shell: bash
+        env:
+          AWS_ACCOUNT_ID: ${{ steps.aws-account.outputs.account_id }}
+        run: |
+          ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME"
+          docker build \
+            --file lobby/Dockerfile \
+            --tag "$ECR_URI:$GITHUB_SHA" \
+            --tag "$ECR_URI:$DEPLOY_TAG" \
+            .
+
+      - name: Push deployment image
+        shell: bash
+        env:
+          AWS_ACCOUNT_ID: ${{ steps.aws-account.outputs.account_id }}
+        run: |
+          ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME"
+          docker push "$ECR_URI:$GITHUB_SHA"
+          docker push "$ECR_URI:$DEPLOY_TAG"

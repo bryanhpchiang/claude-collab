@@ -6,17 +6,23 @@ import {
 } from "@aws-sdk/client-ec2";
 
 const PORT = Number(process.env.PORT) || 8080;
-const AMI_ID = "ami-0b694e8fc9890bec7";
-const SECURITY_GROUP = "sg-092ad16c7428104a3";
-const INSTANCE_TYPE = "t3.small";
-const TAG_PREFIX = "jam-";
+const AWS_REGION =
+  process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || "us-east-1";
+const AMI_ID = process.env.JAM_AMI_ID || "ami-0b694e8fc9890bec7";
+const SECURITY_GROUP =
+  process.env.JAM_SECURITY_GROUP_ID || "sg-092ad16c7428104a3";
+const INSTANCE_TYPE = process.env.JAM_INSTANCE_TYPE || "t3.medium";
+const TAG_PREFIX = process.env.JAM_TAG_PREFIX || "jam-";
 
 // GitHub OAuth
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || "";
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || "";
-const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`;
+const BASE_URL = process.env.BASE_URL || "";
+const GITHUB_OAUTH_ENABLED = Boolean(
+  GITHUB_CLIENT_ID && GITHUB_CLIENT_SECRET
+);
 
-const ec2 = new EC2Client({});
+const ec2 = new EC2Client({ region: AWS_REGION });
 
 // Simple in-memory session store: token -> github user info
 const sessions = new Map<
@@ -29,7 +35,9 @@ function genId(): string {
 }
 
 function genToken(): string {
-  return Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  return (
+    Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+  );
 }
 
 function parseCookies(header: string | null): Record<string, string> {
@@ -48,15 +56,23 @@ function getUser(req: Request) {
   return token ? sessions.get(token) : undefined;
 }
 
+function getBaseUrl(req: Request) {
+  return BASE_URL || new URL(req.url).origin;
+}
+
+function getSecureCookieAttribute(req: Request) {
+  return getBaseUrl(req).startsWith("https://") ? "; Secure" : "";
+}
+
 /** Poll until the instance has a public IP, up to ~60s */
 async function waitForPublicIp(
   instanceId: string,
   maxAttempts = 20,
-  delayMs = 3000
+  delayMs = 3000,
 ): Promise<string> {
   for (let i = 0; i < maxAttempts; i++) {
     const desc = await ec2.send(
-      new DescribeInstancesCommand({ InstanceIds: [instanceId] })
+      new DescribeInstancesCommand({ InstanceIds: [instanceId] }),
     );
     const inst = desc.Reservations?.[0]?.Instances?.[0];
     if (inst?.PublicIpAddress) return inst.PublicIpAddress;
@@ -73,7 +89,7 @@ async function listJamInstances() {
         { Name: "tag:Name", Values: [`${TAG_PREFIX}*`] },
         { Name: "instance-state-name", Values: ["pending", "running"] },
       ],
-    })
+    }),
   );
 
   const results: {
@@ -100,7 +116,11 @@ async function listJamInstances() {
 
 // -- Landing page HTML --
 
-function renderPage(user?: { login: string; name: string; avatar_url: string }) {
+function renderPage(user?: {
+  login: string;
+  name: string;
+  avatar_url: string;
+}) {
   const userSection = user
     ? `<div style="display:flex;align-items:center;gap:8px;">
         <img src="${user.avatar_url}" width="24" height="24" style="border-radius:50%;">
@@ -112,7 +132,9 @@ function renderPage(user?: { login: string; name: string; avatar_url: string }) 
   const action = user
     ? `<button onclick="startJam()" id="startBtn" style="padding:8px 20px;background:#333;color:#fff;border:1px solid #555;cursor:pointer;font-size:14px;">Start a Jam</button>
        <div id="status" style="margin-top:8px;color:#888;font-size:13px;"></div>`
-    : `<a href="/auth/github" style="padding:8px 20px;background:#333;color:#fff;border:1px solid #555;text-decoration:none;font-size:14px;display:inline-block;">Sign in with GitHub</a>`;
+    : GITHUB_OAUTH_ENABLED
+      ? `<a href="/auth/github" style="padding:8px 20px;background:#333;color:#fff;border:1px solid #555;text-decoration:none;font-size:14px;display:inline-block;">Sign in with GitHub</a>`
+      : `<div style="padding:8px 20px;background:#161b22;color:#8b949e;border:1px solid #30363d;display:inline-block;font-size:14px;">GitHub OAuth is not configured yet.</div>`;
 
   return `<!DOCTYPE html>
 <html>
@@ -167,6 +189,10 @@ const server = Bun.serve({
   async fetch(req) {
     const url = new URL(req.url);
 
+    if (url.pathname === "/health") {
+      return Response.json({ ok: true, service: "jam-lobby" });
+    }
+
     // --- Landing page ---
     if (url.pathname === "/" || url.pathname === "/index.html") {
       const user = getUser(req);
@@ -177,12 +203,20 @@ const server = Bun.serve({
 
     // --- GitHub OAuth: redirect ---
     if (url.pathname === "/auth/github") {
-      const redirect = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(BASE_URL + "/auth/github/callback")}&scope=read:user`;
+      if (!GITHUB_OAUTH_ENABLED) {
+        return new Response("GitHub OAuth is not configured", { status: 503 });
+      }
+
+      const redirect = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(getBaseUrl(req) + "/auth/github/callback")}&scope=read:user`;
       return Response.redirect(redirect, 302);
     }
 
     // --- GitHub OAuth: callback ---
     if (url.pathname === "/auth/github/callback") {
+      if (!GITHUB_OAUTH_ENABLED) {
+        return new Response("GitHub OAuth is not configured", { status: 503 });
+      }
+
       const code = url.searchParams.get("code");
       if (!code) {
         return new Response("Missing code", { status: 400 });
@@ -203,16 +237,19 @@ const server = Bun.serve({
               client_secret: GITHUB_CLIENT_SECRET,
               code,
             }),
-          }
+          },
         );
         const tokenData = (await tokenRes.json()) as {
           access_token?: string;
           error?: string;
         };
         if (!tokenData.access_token) {
-          return new Response("OAuth failed: " + (tokenData.error || "unknown"), {
-            status: 400,
-          });
+          return new Response(
+            "OAuth failed: " + (tokenData.error || "unknown"),
+            {
+              status: 400,
+            },
+          );
         }
 
         // Get user info
@@ -236,7 +273,7 @@ const server = Bun.serve({
           status: 302,
           headers: {
             Location: "/",
-            "Set-Cookie": `jam_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`,
+            "Set-Cookie": `jam_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${getSecureCookieAttribute(req)}`,
           },
         });
       } catch (err: any) {
@@ -254,7 +291,7 @@ const server = Bun.serve({
         status: 302,
         headers: {
           Location: "/",
-          "Set-Cookie": "jam_session=; Path=/; HttpOnly; Max-Age=0",
+          "Set-Cookie": `jam_session=; Path=/; HttpOnly; Max-Age=0${getSecureCookieAttribute(req)}`,
         },
       });
     }
@@ -282,14 +319,14 @@ const server = Bun.serve({
                 Tags: [{ Key: "Name", Value: `${TAG_PREFIX}${jamId}` }],
               },
             ],
-          })
+          }),
         );
 
         const instanceId = run.Instances?.[0]?.InstanceId;
         if (!instanceId) {
           return Response.json(
             { error: "Failed to launch instance" },
-            { status: 500 }
+            { status: 500 },
           );
         }
 
@@ -304,7 +341,7 @@ const server = Bun.serve({
         console.error("POST /api/jams error:", err);
         return Response.json(
           { error: err.message || "Internal error" },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
@@ -319,13 +356,13 @@ const server = Bun.serve({
             instanceId: j.instanceId,
             url: j.ip ? `http://${j.ip}:7681` : null,
             state: j.state,
-          }))
+          })),
         );
       } catch (err: any) {
         console.error("GET /api/jams error:", err);
         return Response.json(
           { error: err.message || "Internal error" },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
@@ -342,7 +379,7 @@ const server = Bun.serve({
         }
 
         await ec2.send(
-          new TerminateInstancesCommand({ InstanceIds: [jam.instanceId] })
+          new TerminateInstancesCommand({ InstanceIds: [jam.instanceId] }),
         );
 
         return Response.json({ ok: true, terminated: jam.instanceId });
@@ -350,7 +387,7 @@ const server = Bun.serve({
         console.error("DELETE /api/jams error:", err);
         return Response.json(
           { error: err.message || "Internal error" },
-          { status: 500 }
+          { status: 500 },
         );
       }
     }
