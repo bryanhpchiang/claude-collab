@@ -326,12 +326,10 @@ const server = Bun.serve({
 
         const userData = Buffer.from(`#!/bin/bash
 set -ex
-export BUN_INSTALL="/root/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
-# Install bun if missing
-if [ ! -f /root/.bun/bin/bun ]; then
+# Install bun for ubuntu user if missing
+if [ ! -f /home/ubuntu/.bun/bin/bun ]; then
   apt-get update && apt-get install -y curl git unzip
-  curl -fsSL https://bun.sh/install | bash
+  su - ubuntu -c "curl -fsSL https://bun.sh/install | bash"
 fi
 # Install claude if missing
 which claude || npm install -g @anthropic-ai/claude-code
@@ -339,10 +337,9 @@ which claude || npm install -g @anthropic-ai/claude-code
 if [ ! -d /opt/jam ]; then
   git clone https://github.com/bryanhpchiang/claude-collab.git /opt/jam
 fi
+chown -R ubuntu:ubuntu /opt/jam
 cd /opt/jam
-git pull origin main
-bun install
-JAM_MODE=instance bun run server.ts &
+su - ubuntu -c "cd /opt/jam && git pull origin main && /home/ubuntu/.bun/bin/bun install && JAM_MODE=instance /home/ubuntu/.bun/bin/bun run server.ts &"
 `).toString("base64");
 
         const run = await ec2.send(
