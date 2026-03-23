@@ -234,16 +234,29 @@
     term.loadAddon(fitAddon);
     term.open(document.getElementById('terminal-container'));
     fitAddon.fit();
-    // Scroll behavior: input focused = auto-scroll. Manual scroll = defocus input, stop auto-scroll.
+    // Scroll behavior: auto-scroll when at bottom, pause when user scrolls up, resume when near bottom
+    let autoScroll = true;
     const viewport = term.element.querySelector('.xterm-viewport');
+    function isAtBottom() {
+      if (!viewport) return true;
+      return viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight - 30;
+    }
     if (viewport) {
       viewport.addEventListener('wheel', (e) => {
-        if (e.deltaY < 0) { // scrolling up
-          document.getElementById('msg-input').blur();
+        if (e.deltaY < 0) {
+          autoScroll = false;
+        } else {
+          requestAnimationFrame(() => { if (isAtBottom()) autoScroll = true; });
         }
       }, { passive: true });
-      viewport.addEventListener('touchmove', () => {
-        document.getElementById('msg-input').blur();
+      let touchStartY = 0;
+      viewport.addEventListener('touchstart', (e) => {
+        touchStartY = e.touches[0].clientY;
+      }, { passive: true });
+      viewport.addEventListener('touchmove', (e) => {
+        const dy = touchStartY - e.touches[0].clientY;
+        if (dy < -5) autoScroll = false;
+        else if (dy > 5) requestAnimationFrame(() => { if (isAtBottom()) autoScroll = true; });
       }, { passive: true });
     }
     window.addEventListener('resize', () => fitAddon.fit());
@@ -251,7 +264,7 @@
 
     let ws, myName = '', currentSessionId = null, sessionList = [], pendingJoin = null;
     function smartScroll() {
-      if (document.activeElement !== document.getElementById('msg-input')) return;
+      if (!autoScroll) return;
       term.scrollToBottom();
     }
 
@@ -355,8 +368,13 @@
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
       ws = new WebSocket(`${proto}//${location.host}/ws`);
       ws.onopen = () => {
-        const urlSession = new URL(location.href).searchParams.get('s');
-        if (urlSession) pendingJoin = urlSession;
+        // If loaded via /j/:id, JAM_SESSION_ID is set — auto-join that session
+        if (window.JAM_SESSION_ID) {
+          pendingJoin = window.JAM_SESSION_ID;
+        } else {
+          const urlSession = new URL(location.href).searchParams.get('s');
+          if (urlSession) pendingJoin = urlSession;
+        }
       };
       ws.onmessage = (e) => {
         const msg = JSON.parse(e.data);

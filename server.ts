@@ -1,6 +1,7 @@
 import { spawn, type IPty } from "bun-pty";
 import { readdir, readFile, mkdir, stat } from "fs/promises";
 import { join } from "path";
+import { execSync } from "child_process";
 
 const UPLOAD_DIR = "/tmp/claude-uploads";
 
@@ -42,6 +43,10 @@ const sessions = new Map<string, Session>();
 const clientSession = new Map<any, string>();
 const clientInfo = new Map<any, { name: string }>();
 const MAX_CHAT_HISTORY = 200;
+
+// Track which sessions are "jam" sessions (created via /api/jams)
+const jamSessions = new Map<string, { id: string; sessionId: string; repo?: string; createdAt: number }>();
+const JAMS_DIR = "/tmp/claude-jams";
 
 function genId(): string {
   return Math.random().toString(36).slice(2, 8);
@@ -92,7 +97,7 @@ async function getDiskSessions(): Promise<DiskSession[]> {
   return results;
 }
 
-function spawnClaude(args: string[]): IPty {
+function spawnClaude(args: string[], cwd?: string): IPty {
   return spawn(claudePath, [
     "--dangerously-skip-permissions",
     ...args,
@@ -100,7 +105,7 @@ function spawnClaude(args: string[]): IPty {
     name: "xterm-256color",
     cols: 100,
     rows: 30,
-    cwd: "/home/exedev/claude-collab",
+    cwd: cwd || "/home/exedev/claude-collab",
     env: {
       ...process.env as Record<string, string>,
       TERM: "xterm-256color",
@@ -110,13 +115,13 @@ function spawnClaude(args: string[]): IPty {
   });
 }
 
-function createSession(name: string, resumeId?: string): Session {
+function createSession(name: string, resumeId?: string, cwd?: string): Session {
   const id = genId();
   const args = resumeId
     ? ["--resume", resumeId, "--append-system-prompt", systemPrompt]
     : ["--append-system-prompt", systemPrompt];
 
-  const shell = spawnClaude(args);
+  const shell = spawnClaude(args, cwd);
 
   const session: Session = {
     id,
@@ -246,7 +251,126 @@ const server = Bun.serve({
       })();
     }
 
+    // --- Jam API ---
+
+    if (url.pathname === "/api/jams") {
+      if (req.method === "GET") {
+        // List active jam sessions with IDs and user counts
+        const jams = [...jamSessions.values()].map(j => {
+          const session = sessions.get(j.sessionId);
+          return {
+            id: j.id,
+            sessionId: j.sessionId,
+            repo: j.repo,
+            users: session ? getSessionUsers(j.sessionId) : [],
+            userCount: session ? getSessionUsers(j.sessionId).length : 0,
+            createdAt: j.createdAt,
+          };
+        });
+        return Response.json(jams);
+      }
+      if (req.method === "POST") {
+        return (async () => {
+          try {
+            const body = await req.json() as { repo?: string };
+            const jamId = genId();
+            let cwd: string | undefined;
+
+            // If repo provided, clone it
+            if (body.repo) {
+              await mkdir(JAMS_DIR, { recursive: true });
+              const repoDir = join(JAMS_DIR, jamId);
+              try {
+                execSync(`git clone ${body.repo} ${repoDir}`, {
+                  timeout: 60000,
+                  stdio: "pipe",
+                });
+                cwd = repoDir;
+              } catch (err: any) {
+                return Response.json(
+                  { error: "Failed to clone repo", details: err.stderr?.toString() || err.message },
+                  { status: 400 }
+                );
+              }
+            }
+
+            const sessionName = body.repo
+              ? body.repo.split("/").pop()?.replace(".git", "") || `jam-${jamId}`
+              : `jam-${jamId}`;
+            const session = createSession(sessionName, undefined, cwd);
+
+            jamSessions.set(jamId, {
+              id: jamId,
+              sessionId: session.id,
+              repo: body.repo,
+              createdAt: Date.now(),
+            });
+
+            // Notify lobby
+            server.publish("lobby", JSON.stringify({ type: "sessions", sessions: getSessionList() }));
+
+            return Response.json({ id: jamId, url: `/j/${jamId}` });
+          } catch (err: any) {
+            return Response.json({ error: err.message }, { status: 500 });
+          }
+        })();
+      }
+    }
+
+    // DELETE /api/jams/:id
+    const jamDeleteMatch = url.pathname.match(/^\/api\/jams\/([a-z0-9]+)$/);
+    if (jamDeleteMatch && req.method === "DELETE") {
+      const jamId = jamDeleteMatch[1];
+      const jam = jamSessions.get(jamId);
+      if (!jam) {
+        return Response.json({ error: "Jam not found" }, { status: 404 });
+      }
+      // Kill the session's Claude process
+      const session = sessions.get(jam.sessionId);
+      if (session) {
+        try { session.shell.kill(); } catch {}
+        broadcastToSession(jam.sessionId, {
+          type: "system",
+          text: "This jam session has been shut down.",
+        });
+        sessions.delete(jam.sessionId);
+      }
+      jamSessions.delete(jamId);
+      // Notify lobby
+      server.publish("lobby", JSON.stringify({ type: "sessions", sessions: getSessionList() }));
+      return Response.json({ ok: true });
+    }
+
+    // --- Jam page: /j/:id ---
+    const jamPageMatch = url.pathname.match(/^\/j\/([a-z0-9]+)$/);
+    if (jamPageMatch) {
+      const jamId = jamPageMatch[1];
+      const jam = jamSessions.get(jamId);
+      if (!jam) {
+        return new Response("Jam not found", { status: 404 });
+      }
+      // Serve index.html with the jam session ID embedded
+      return (async () => {
+        const html = await Bun.file("public/index.html").text();
+        const injected = html.replace(
+          "</head>",
+          `<script>window.JAM_SESSION_ID='${jam.sessionId}';</script>\n</head>`
+        );
+        return new Response(injected, {
+          headers: { "Content-Type": "text/html" },
+        });
+      })();
+    }
+
+    // --- Serve landing page at / ---
     if (url.pathname === "/" || url.pathname === "/index.html") {
+      return new Response(Bun.file("public/landing.html"), {
+        headers: { "Content-Type": "text/html" },
+      });
+    }
+
+    // --- Serve app at /app ---
+    if (url.pathname === "/app") {
       return new Response(Bun.file("public/index.html"), {
         headers: { "Content-Type": "text/html" },
       });
