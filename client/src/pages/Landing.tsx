@@ -16,6 +16,10 @@ export default function Landing() {
   const animatedRef = useRef(false);
 
   useEffect(() => {
+    fetch('/api/me').then(r => { if (r.ok) window.location.href = '/dashboard'; }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (animatedRef.current || !termRef.current) return;
     animatedRef.current = true;
     const el = termRef.current;
