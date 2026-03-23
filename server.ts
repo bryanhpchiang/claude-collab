@@ -95,6 +95,7 @@ async function getDiskSessions(): Promise<DiskSession[]> {
   try {
     const projects = await readdir(CLAUDE_PROJECTS_DIR);
     for (const project of projects) {
+      if (!project.includes("claude-collab")) continue;
       const projectDir = join(CLAUDE_PROJECTS_DIR, project);
       const files = await readdir(projectDir).catch(() => []);
       for (const file of files) {
@@ -140,8 +141,8 @@ function spawnClaude(args: string[], cwd?: string): IPty {
     ...args,
   ], {
     name: "xterm-256color",
-    cols: 100,
-    rows: 30,
+    cols: 120,
+    rows: 60,
     cwd: cwd || "/home/exedev/claude-collab",
     env: {
       ...process.env as Record<string, string>,
