@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jam — Multiplayer Claude</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d1117'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23ff9a56'/%3E%3Cstop offset='100%25' stop-color='%23ff6b6b'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg transform='translate(32,34)'%3E%3Crect x='-12' y='-18' width='24' height='28' rx='4' fill='none' stroke='url(%23g)' stroke-width='2.5'/%3E%3Crect x='-14' y='-20' width='28' height='8' rx='3' fill='url(%23g)' opacity='0.9'/%3E%3Ccircle cx='-4' cy='0' r='2.5' fill='%23ff9a56' opacity='0.8'/%3E%3Ccircle cx='4' cy='4' r='2' fill='%23ffcc80' opacity='0.7'/%3E%3Ccircle cx='-2' cy='6' r='1.5' fill='%23ff6b6b' opacity='0.6'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.min.css">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -25,6 +28,7 @@
       width: 22px; height: 22px; flex-shrink: 0;
     }
     #header h1 .brand-jam {
+      font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 18px; letter-spacing: 0.5px;
       background: linear-gradient(135deg, #ff9a56, #ff6b6b);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -165,7 +169,7 @@
           <circle cx="-4" cy="0" r="2.5" fill="#ff9a56" opacity="0.8"/><circle cx="4" cy="4" r="2" fill="#ffcc80" opacity="0.7"/><circle cx="-2" cy="6" r="1.5" fill="#ff6b6b" opacity="0.6"/>
         </g>
       </svg>
-      <h2 style="background:linear-gradient(135deg,#ff9a56,#ff6b6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Jam</h2>
+      <h2 style="font-family:'Fredoka',sans-serif;font-weight:700;letter-spacing:0.5px;background:linear-gradient(135deg,#ff9a56,#ff6b6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Jam</h2>
       <p>Multiplayer Claude — enter your name to join</p>
       <div>
         <input id="name-input" type="text" placeholder="your name" maxlength="20" autofocus>
