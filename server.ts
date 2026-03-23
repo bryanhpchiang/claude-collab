@@ -550,6 +550,15 @@ const server = Bun.serve({
           }
         }
 
+        if (data.type === "tty-input") {
+          const sessionId = clientSession.get(ws);
+          if (!sessionId) return;
+          const session = sessions.get(sessionId);
+          if (!session) return;
+          if (typeof data.data !== "string" || data.data.length === 0) return;
+          session.shell.write(data.data);
+        }
+
         if (data.type === "key") {
           const sessionId = clientSession.get(ws);
           if (!sessionId) return;
