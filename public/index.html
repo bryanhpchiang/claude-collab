@@ -193,117 +193,48 @@
     }
     #state-close-btn:hover { color: #e6edf3; background: #21262d; }
 
-    #state-sections {
-      flex: 1; overflow-y: auto; padding: 0;
+    /* State summary content */
+    #state-summary-content {
+      flex: 1; overflow-y: auto; padding: 16px;
+      font-size: 13px; color: #c9d1d9; line-height: 1.6;
     }
-    #state-sections::-webkit-scrollbar { width: 6px; }
-    #state-sections::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
-
-    .state-section {
-      border-bottom: 1px solid #30363d;
-    }
-    .state-section-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 16px; cursor: pointer; user-select: none;
-      font-size: 12px; font-weight: 600; color: #8b949e;
+    #state-summary-content::-webkit-scrollbar { width: 6px; }
+    #state-summary-content::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+    #state-summary-content h2 {
+      font-size: 13px; font-weight: 700; color: #ff9a56; margin: 14px 0 6px;
       text-transform: uppercase; letter-spacing: 0.5px;
     }
-    .state-section-header:hover { color: #e6edf3; background: #161b22; }
-    .state-section-header .section-arrow {
-      font-size: 10px; transition: transform 0.15s; color: #8b949e;
+    #state-summary-content h2:first-child { margin-top: 0; }
+    #state-summary-content ul {
+      margin: 0 0 8px 0; padding-left: 18px;
     }
-    .state-section.collapsed .section-arrow { transform: rotate(-90deg); }
-    .state-section.collapsed .state-section-body { display: none; }
+    #state-summary-content li {
+      margin: 3px 0; color: #c9d1d9;
+    }
+    #state-summary-content p {
+      margin: 6px 0; color: #c9d1d9;
+    }
+    #state-summary-content strong { color: #e6edf3; }
+    #state-summary-empty {
+      color: #484f58; font-size: 13px; text-align: center; padding: 40px 16px;
+    }
+    #state-summary-footer {
+      padding: 8px 16px; border-top: 1px solid #30363d;
+      font-size: 11px; color: #484f58; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    #state-updating-indicator {
+      color: #ff9a56; font-size: 11px; font-weight: 600;
+      display: none; align-items: center; gap: 4px;
+    }
+    #state-updating-indicator.visible { display: flex; }
+    @keyframes pulse-dot { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+    #state-updating-indicator .dot {
+      width: 4px; height: 4px; border-radius: 50%; background: #ff9a56;
+      animation: pulse-dot 1.2s ease-in-out infinite;
+    }
 
-    .state-section-body { padding: 0 12px 8px; }
-
-    .state-item {
-      display: flex; align-items: flex-start; gap: 8px; padding: 5px 4px;
-      border-radius: 4px; font-size: 13px; color: #c9d1d9;
-      position: relative; group: state-item;
-    }
-    .state-item:hover { background: #161b22; }
-    .state-item .item-text { flex: 1; word-break: break-word; line-height: 1.4; }
-    .state-item .item-content { flex: 1; min-width: 0; }
-    .state-item .item-meta {
-      display: flex; align-items: center; gap: 6px; margin-top: 2px; flex-wrap: wrap;
-    }
-    .state-item .item-assignee {
-      font-size: 10px; color: #ff9a56; cursor: pointer; white-space: nowrap;
-      background: #21262d; padding: 1px 6px; border-radius: 8px; border: 1px solid #30363d;
-    }
-    .state-item .item-assignee:hover { border-color: #ff9a56; }
-    .state-item .item-assignee.unassigned { color: #484f58; font-style: italic; }
-    .item-status-badge {
-      font-size: 10px; padding: 1px 6px; border-radius: 8px; cursor: pointer;
-      white-space: nowrap; border: 1px solid transparent; font-weight: 600;
-    }
-    .item-status-badge.s-todo { background: #21262d; color: #8b949e; border-color: #30363d; }
-    .item-status-badge.s-in-progress { background: #0c2d6b; color: #58a6ff; border-color: #1f6feb; }
-    .item-status-badge.s-done { background: #0d2818; color: #3fb950; border-color: #238636; }
-    .state-item .item-author { font-size: 10px; color: #8b949e; white-space: nowrap; }
-    .state-item .item-delete {
-      background: none; border: none; color: #8b949e; cursor: pointer;
-      font-size: 14px; padding: 0 4px; border-radius: 3px; flex-shrink: 0;
-      opacity: 0; transition: opacity 0.1s; align-self: flex-start; margin-top: 2px;
-    }
-    .state-item:hover .item-delete { opacity: 1; }
-    .state-item .item-delete:hover { color: #da3633; background: #21262d; }
-    .state-item.done-item .item-text { text-decoration: line-through; color: #8b949e; }
-
-    .delegation-item {
-      display: flex; align-items: center; gap: 8px; padding: 5px 4px;
-      border-radius: 4px; font-size: 13px; color: #c9d1d9;
-    }
-    .delegation-item:hover { background: #161b22; }
-    .delegation-item .deleg-who {
-      font-size: 11px; font-weight: 600; color: #ff9a56; white-space: nowrap; min-width: 60px;
-    }
-    .delegation-item .deleg-what { flex: 1; word-break: break-word; line-height: 1.4; }
-    .delegation-item .item-delete {
-      background: none; border: none; color: #8b949e; cursor: pointer;
-      font-size: 14px; padding: 0 4px; border-radius: 3px; flex-shrink: 0;
-      opacity: 0; transition: opacity 0.1s;
-    }
-    .delegation-item:hover .item-delete { opacity: 1; }
-    .delegation-item .item-delete:hover { color: #da3633; background: #21262d; }
-
-    .activity-entry {
-      padding: 3px 4px; font-size: 11px; color: #8b949e; line-height: 1.4;
-      border-left: 2px solid #30363d; margin-left: 4px; padding-left: 8px; margin-bottom: 2px;
-    }
-    .activity-entry .activity-time { font-size: 10px; color: #484f58; margin-left: 4px; }
-
-    .state-add-row { display: flex; gap: 4px; padding: 4px 4px 0; }
-    .state-add-row-full { display: flex; flex-direction: column; gap: 4px; padding: 4px 4px 0; }
-    .state-add-row-inputs { display: flex; gap: 4px; }
-    .state-add-input {
-      flex: 1; background: #0d1117; border: 1px solid #30363d; color: #e6edf3;
-      padding: 5px 8px; border-radius: 4px; font-size: 12px; outline: none; font-family: inherit;
-    }
-    .state-add-input:focus { border-color: #ff9a56; }
-    .state-add-input::placeholder { color: #484f58; }
-    .state-add-assignee {
-      width: 80px; background: #0d1117; border: 1px solid #30363d; color: #e6edf3;
-      padding: 5px 6px; border-radius: 4px; font-size: 11px; outline: none; font-family: inherit;
-    }
-    .state-add-assignee:focus { border-color: #ff9a56; }
-    .state-add-assignee::placeholder { color: #484f58; }
-    .state-add-btn {
-      background: #ff9a56; color: #0d1117; border: none; padding: 5px 10px;
-      border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; white-space: nowrap;
-    }
-    .state-add-btn:hover { background: #ffb37a; }
-
-    /* Pin button on chat messages */
     .chat-msg { position: relative; }
-    .chat-msg .pin-btn {
-      display: none; position: absolute; right: 0; top: 0;
-      background: none; border: none; color: #8b949e; cursor: pointer;
-      font-size: 12px; padding: 2px 4px; border-radius: 3px;
-    }
-    .chat-msg:hover .pin-btn { display: inline-block; }
-    .chat-msg .pin-btn:hover { color: #ff9a56; background: #21262d; }
 
     /* @mention highlighting */
     .mention-highlight {
@@ -408,6 +339,7 @@
       <button class="key-btn" data-label="Left">Left</button>
       <button class="key-btn" data-label="Right">Right</button>
       <button class="key-btn" data-label="Ctrl+C">Ctrl+C</button>
+      <button class="key-btn" data-label="Ctrl+B">Ctrl+B</button>
       <button class="key-btn" data-label="y">y</button>
       <button class="key-btn" data-label="n">n</button>
     </div>
@@ -429,74 +361,12 @@
       <h2>&#9881; State of Things</h2>
       <button id="state-close-btn">&times;</button>
     </div>
-    <div id="state-sections">
-      <div class="state-section" data-section="decisions">
-        <div class="state-section-header">
-          <span>Decisions</span>
-          <span class="section-arrow">&#9660;</span>
-        </div>
-        <div class="state-section-body">
-          <div class="state-items"></div>
-          <div class="state-add-row">
-            <input class="state-add-input" placeholder="Add a decision..." />
-            <button class="state-add-btn">Add</button>
-          </div>
-        </div>
-      </div>
-      <div class="state-section" data-section="inProgress">
-        <div class="state-section-header">
-          <span>Who's Working on What</span>
-          <span class="section-arrow">&#9660;</span>
-        </div>
-        <div class="state-section-body">
-          <div class="state-items"></div>
-          <div class="state-add-row-full">
-            <div class="state-add-row-inputs">
-              <input class="state-add-assignee" placeholder="who" />
-              <input class="state-add-input" placeholder="working on..." />
-              <button class="state-add-btn">Add</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="state-section" data-section="actionItems">
-        <div class="state-section-header">
-          <span>To-Do List</span>
-          <span class="section-arrow">&#9660;</span>
-        </div>
-        <div class="state-section-body">
-          <div class="state-items"></div>
-          <div class="state-add-row-full">
-            <div class="state-add-row-inputs">
-              <input class="state-add-assignee" placeholder="assign to" />
-              <input class="state-add-input" placeholder="Add to-do..." />
-              <button class="state-add-btn">Add</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="state-section" data-section="activity">
-        <div class="state-section-header">
-          <span>Activity Feed</span>
-          <span class="section-arrow">&#9660;</span>
-        </div>
-        <div class="state-section-body">
-          <div class="state-items"></div>
-          <div class="state-add-row">
-            <input class="state-add-input" placeholder="Log an update..." />
-            <button class="state-add-btn">Log</button>
-          </div>
-        </div>
-      </div>
-      <div class="state-section" data-section="pinnedMessages">
-        <div class="state-section-header">
-          <span>Pinned Messages</span>
-          <span class="section-arrow">&#9660;</span>
-        </div>
-        <div class="state-section-body">
-          <div class="state-items"></div>
-        </div>
-      </div>
+    <div id="state-summary-content">
+      <div id="state-summary-empty">No activity yet. Start chatting and an AI summary will appear here.</div>
+    </div>
+    <div id="state-summary-footer">
+      <span id="state-last-updated"></span>
+      <span id="state-updating-indicator"><span class="dot"></span> Updating...</span>
     </div>
   </div>
 
@@ -518,7 +388,6 @@
     new ResizeObserver(() => fitAddon.fit()).observe(document.getElementById('terminal-container'));
 
     let ws, myName = '', currentSessionId = null, sessionList = [], pendingJoin = null;
-    let currentState = { decisions: [], inProgress: [], actionItems: [], pinnedMessages: [], activity: [] };
     let connectedUsers = []; // Track users in current session for @mention autocomplete
     let notificationPermission = 'default'; // Track notification permission state
 
@@ -560,12 +429,7 @@
     function addChat(name, text) {
       const log = document.getElementById('chat-log'), div = document.createElement('div');
       div.className = 'chat-msg';
-      div.innerHTML = `<span class="name" style="color:${nameColor(name)}">${esc(name)}</span>: <span class="text">${renderMentions(text)}</span><button class="pin-btn" title="Pin message">&#128204;</button>`;
-      div.querySelector('.pin-btn').addEventListener('click', () => {
-        if (ws && ws.readyState === WebSocket.OPEN && currentSessionId) {
-          ws.send(JSON.stringify({ type: 'pin-message', text: name + ': ' + text, author: myName }));
-        }
-      });
+      div.innerHTML = `<span class="name" style="color:${nameColor(name)}">${esc(name)}</span>: <span class="text">${renderMentions(text)}</span>`;
       log.appendChild(div); log.scrollTop = log.scrollHeight;
       if (typeof bumpChatBadge === 'function') bumpChatBadge();
     }
@@ -624,6 +488,9 @@
       currentSessionId = sessionId;
       term.clear(); term.reset();
       document.getElementById('chat-log').innerHTML = '';
+      document.getElementById('state-summary-content').innerHTML = '<div id="state-summary-empty">No activity yet. Start chatting and an AI summary will appear here.</div>';
+      document.getElementById('state-last-updated').textContent = '';
+      document.getElementById('state-updating-indicator').classList.remove('visible');
       document.body.classList.remove('in-lobby');
       ws.send(JSON.stringify({ type: 'join-session', sessionId, name: myName }));
       const url = new URL(location.href); url.searchParams.set('s', sessionId);
@@ -667,9 +534,13 @@
               renderSessionTabs();
             }
             break;
-          case 'state-sync':
-            currentState = msg.state;
-            renderState();
+          case 'state-summary':
+            renderStateSummary(msg.markdown);
+            break;
+          case 'state-summary-status':
+            if (msg.status === 'updating') {
+              document.getElementById('state-updating-indicator').classList.add('visible');
+            }
             break;
           case 'mention':
             // Someone was @mentioned — show browser notification if it's us and tab is hidden
@@ -711,7 +582,14 @@
       // Don't send if mention dropdown is open and Enter is used to select
       const md = document.getElementById('mention-dropdown');
       if (md && md.style.display === 'block' && (e.key === 'Enter' || e.key === 'Tab' || e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Escape')) return;
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        const wantEsc = e.metaKey || e.ctrlKey;
+        send();
+        if (wantEsc && ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'key', seq: '\x1b', label: 'Esc' }));
+        }
+      }
     });
     document.getElementById('msg-input').addEventListener('paste', async (e) => {
       const items = e.clipboardData?.items;
@@ -749,7 +627,7 @@
     const KEY_MAP = {
       'Enter':'\r','Esc':'\x1b','Tab':'\t','Space':' ',
       'Up':'\x1b[A','Down':'\x1b[B','Left':'\x1b[D','Right':'\x1b[C',
-      'Ctrl+C':'\x03','y':'y','n':'n',
+      'Ctrl+C':'\x03','Ctrl+B':'\x02','y':'y','n':'n',
     };
     document.getElementById('key-bar').addEventListener('click', (e) => {
       const btn = e.target.closest('.key-btn');
@@ -1072,189 +950,59 @@
       stateToggleBtn.classList.remove('shifted');
     });
 
-    // Section collapse toggles
-    document.querySelectorAll('.state-section-header').forEach(header => {
-      header.addEventListener('click', () => {
-        header.closest('.state-section').classList.toggle('collapsed');
-      });
-    });
-
-    // Status cycle: todo -> in-progress -> done -> todo
-    const STATUS_CYCLE = ['todo', 'in-progress', 'done'];
-    function nextStatus(current) {
-      const idx = STATUS_CYCLE.indexOf(current || 'todo');
-      return STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
-    }
-    function statusLabel(s) {
-      if (s === 'in-progress') return 'doing';
-      return s || 'todo';
-    }
-
-    function sendStateUpdate(payload) {
-      if (ws && ws.readyState === WebSocket.OPEN && currentSessionId) {
-        ws.send(JSON.stringify(payload));
-      }
-    }
-
-    // Add item handlers
-    document.querySelectorAll('.state-section').forEach(section => {
-      const sectionKey = section.dataset.section;
-      const addBtn = section.querySelector('.state-add-btn');
-      const addInput = section.querySelector('.state-add-input');
-      const addAssignee = section.querySelector('.state-add-assignee');
-      if (!addBtn || !addInput) return;
-
-      function addItem() {
-        const text = addInput.value.trim();
-        if (!text || !ws || ws.readyState !== WebSocket.OPEN || !currentSessionId) return;
-        const assignee = addAssignee ? addAssignee.value.trim() : '';
-        const item = {
-          id: Math.random().toString(36).slice(2, 10),
-          text,
-          author: myName || 'anon',
-          assignee: assignee || (sectionKey === 'inProgress' || sectionKey === 'actionItems' ? (myName || '') : ''),
-          status: sectionKey === 'actionItems' ? 'todo' : undefined,
-          checked: false,
-          timestamp: Date.now(),
-        };
-        // Activity feed uses add-activity action
-        if (sectionKey === 'activity') {
-          sendStateUpdate({ type: 'state-update', action: 'add-activity', section: 'activity', item: {
-            id: item.id, text, author: myName || 'anon', timestamp: Date.now()
-          }});
-        } else {
-          sendStateUpdate({ type: 'state-update', action: 'add', section: sectionKey, item });
+    // Simple markdown to HTML converter
+    function markdownToHtml(md) {
+      const lines = md.split('\n');
+      let html = '';
+      let inList = false;
+      for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        // Heading ##
+        if (/^##\s+(.+)/.test(line)) {
+          if (inList) { html += '</ul>'; inList = false; }
+          html += '<h2>' + esc(line.replace(/^##\s+/, '')) + '</h2>';
+          continue;
         }
-        addInput.value = '';
-        if (addAssignee) addAssignee.value = '';
-        addInput.focus();
+        // Bullet list item
+        if (/^\s*[-*]\s+(.+)/.test(line)) {
+          if (!inList) { html += '<ul>'; inList = true; }
+          const content = line.replace(/^\s*[-*]\s+/, '');
+          html += '<li>' + inlineMd(content) + '</li>';
+          continue;
+        }
+        // Empty line
+        if (line.trim() === '') {
+          if (inList) { html += '</ul>'; inList = false; }
+          continue;
+        }
+        // Regular paragraph
+        if (inList) { html += '</ul>'; inList = false; }
+        html += '<p>' + inlineMd(line) + '</p>';
       }
+      if (inList) html += '</ul>';
+      return html;
+    }
 
-      addBtn.addEventListener('click', addItem);
-      addInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') { e.preventDefault(); addItem(); }
-      });
-      if (addAssignee) {
-        addAssignee.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') { e.preventDefault(); addItem(); }
-        });
+    function inlineMd(text) {
+      // Escape HTML first, then apply bold
+      let s = esc(text);
+      s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      return s;
+    }
+
+    function renderStateSummary(markdown) {
+      const container = document.getElementById('state-summary-content');
+      const indicator = document.getElementById('state-updating-indicator');
+      indicator.classList.remove('visible');
+      if (!markdown || !markdown.trim()) {
+        container.innerHTML = '<div id="state-summary-empty">No activity yet. Start chatting and an AI summary will appear here.</div>';
+        return;
       }
-    });
-
-    function formatTimeAgo(ts) {
-      const diff = Date.now() - ts;
-      const mins = Math.floor(diff / 60000);
-      if (mins < 1) return 'just now';
-      if (mins < 60) return mins + 'm ago';
-      const hrs = Math.floor(mins / 60);
-      if (hrs < 24) return hrs + 'h ago';
-      return Math.floor(hrs / 24) + 'd ago';
-    }
-
-    function renderState() {
-      // Render Decisions
-      renderSimpleSection('decisions');
-      // Render In Progress (delegation style)
-      renderDelegationSection();
-      // Render To-Do List (with status + assignee)
-      renderTodoSection();
-      // Render Activity Feed
-      renderActivitySection();
-      // Render Pinned Messages
-      renderSimpleSection('pinnedMessages');
-    }
-
-    function renderSimpleSection(sectionKey) {
-      const section = document.querySelector(`.state-section[data-section="${sectionKey}"]`);
-      if (!section) return;
-      const container = section.querySelector('.state-items');
-      container.innerHTML = '';
-      const items = currentState[sectionKey] || [];
-      items.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'state-item';
-        div.innerHTML = `<span class="item-text">${esc(item.text)}</span><span class="item-author">${esc(item.author || '')}</span><button class="item-delete" title="Delete">&times;</button>`;
-        div.querySelector('.item-delete').addEventListener('click', () => {
-          sendStateUpdate({ type: 'state-update', action: 'delete', section: sectionKey, itemId: item.id });
-        });
-        container.appendChild(div);
-      });
-    }
-
-    function renderDelegationSection() {
-      const section = document.querySelector('.state-section[data-section="inProgress"]');
-      if (!section) return;
-      const container = section.querySelector('.state-items');
-      container.innerHTML = '';
-      const items = currentState.inProgress || [];
-      items.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'delegation-item';
-        const who = item.assignee || item.author || '?';
-        div.innerHTML = `<span class="deleg-who">${esc(who)}</span><span class="deleg-what">${esc(item.text)}</span><button class="item-delete" title="Delete">&times;</button>`;
-        // Click on who to reassign
-        div.querySelector('.deleg-who').addEventListener('click', () => {
-          const newAssignee = prompt('Reassign to:', who);
-          if (newAssignee !== null) {
-            sendStateUpdate({ type: 'state-update', action: 'set-assignee', section: 'inProgress', itemId: item.id, assignee: newAssignee.trim() });
-          }
-        });
-        div.querySelector('.item-delete').addEventListener('click', () => {
-          sendStateUpdate({ type: 'state-update', action: 'delete', section: 'inProgress', itemId: item.id });
-        });
-        container.appendChild(div);
-      });
-    }
-
-    function renderTodoSection() {
-      const section = document.querySelector('.state-section[data-section="actionItems"]');
-      if (!section) return;
-      const container = section.querySelector('.state-items');
-      container.innerHTML = '';
-      const items = currentState.actionItems || [];
-      // Sort: in-progress first, then todo, then done
-      const order = {'in-progress': 0, 'todo': 1, 'done': 2};
-      const sorted = [...items].sort((a, b) => (order[a.status || 'todo'] || 1) - (order[b.status || 'todo'] || 1));
-      sorted.forEach(item => {
-        const status = item.status || 'todo';
-        const div = document.createElement('div');
-        div.className = 'state-item' + (status === 'done' ? ' done-item' : '');
-        const assignee = item.assignee || '';
-        div.innerHTML = `<div class="item-content"><div class="item-text">${esc(item.text)}</div><div class="item-meta"><span class="item-status-badge s-${status}">${statusLabel(status)}</span>${assignee ? `<span class="item-assignee">${esc(assignee)}</span>` : `<span class="item-assignee unassigned">unassigned</span>`}<span class="item-author">${esc(item.author || '')}</span></div></div><button class="item-delete" title="Delete">&times;</button>`;
-
-        // Click status badge to cycle
-        div.querySelector('.item-status-badge').addEventListener('click', () => {
-          sendStateUpdate({ type: 'state-update', action: 'set-status', section: 'actionItems', itemId: item.id, status: nextStatus(status) });
-        });
-        // Click assignee to reassign
-        div.querySelector('.item-assignee').addEventListener('click', () => {
-          const newAssignee = prompt('Assign to:', assignee);
-          if (newAssignee !== null) {
-            sendStateUpdate({ type: 'state-update', action: 'set-assignee', section: 'actionItems', itemId: item.id, assignee: newAssignee.trim() });
-          }
-        });
-        // Delete
-        div.querySelector('.item-delete').addEventListener('click', () => {
-          sendStateUpdate({ type: 'state-update', action: 'delete', section: 'actionItems', itemId: item.id });
-        });
-        container.appendChild(div);
-      });
-    }
-
-    function renderActivitySection() {
-      const section = document.querySelector('.state-section[data-section="activity"]');
-      if (!section) return;
-      const container = section.querySelector('.state-items');
-      container.innerHTML = '';
-      const items = currentState.activity || [];
-      // Show most recent first, limit to 50
-      const recent = items.slice(-50).reverse();
-      recent.forEach(entry => {
-        const div = document.createElement('div');
-        div.className = 'activity-entry';
-        div.innerHTML = `${esc(entry.text)}<span class="activity-time">${formatTimeAgo(entry.timestamp)}</span>`;
-        container.appendChild(div);
-      });
+      container.innerHTML = markdownToHtml(markdown);
+      // Update timestamp
+      const ts = document.getElementById('state-last-updated');
+      const now = new Date();
+      ts.textContent = 'Updated ' + now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     }
   </script>
 </body>

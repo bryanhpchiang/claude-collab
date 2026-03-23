@@ -2,7 +2,6 @@ import { spawn, type IPty } from "bun-pty";
 import { readdir, readFile, mkdir, stat } from "fs/promises";
 import { join } from "path";
 import { execSync } from "child_process";
-
 const UPLOAD_DIR = "/tmp/claude-uploads";
 
 const claudePath = "/home/exedev/.local/bin/claude";
@@ -21,31 +20,6 @@ const systemPrompt = [
   "Help the group stay coordinated: track who's working on what and prevent people from stepping on each other's toes.",
 ].join(" ");
 
-interface StateItem {
-  id: string;
-  text: string;
-  author: string;
-  checked?: boolean;
-  assignee?: string;
-  status?: 'todo' | 'in-progress' | 'done';
-  timestamp: number;
-}
-
-interface ActivityEntry {
-  id: string;
-  text: string;
-  author: string;
-  timestamp: number;
-}
-
-interface SessionState {
-  decisions: StateItem[];
-  inProgress: StateItem[];
-  actionItems: StateItem[];
-  pinnedMessages: StateItem[];
-  activity: ActivityEntry[];
-}
-
 interface Session {
   id: string;
   name: string;
@@ -54,7 +28,7 @@ interface Session {
   scrollback: string;
   chatHistory: object[];
   createdAt: number;
-  state: SessionState;
+  lastSummaryTime: number;
 }
 
 interface DiskSession {
@@ -84,6 +58,79 @@ const pendingMentions = new Map<string, PendingMention[]>();
 // Track which sessions are "jam" sessions (created via /api/jams)
 const jamSessions = new Map<string, { id: string; sessionId: string; repo?: string; createdAt: number }>();
 const JAMS_DIR = "/tmp/claude-jams";
+
+const anthropic = new Anthropic();
+
+const SUMMARY_DEBOUNCE_MS = 10000;   // 10s after first chat message
+const SUMMARY_INTERVAL_MS = 60000;   // regenerate every 60s
+const SUMMARY_IDLE_MS = 120000;      // stop after 2min idle
+
+async function generateSummary(session: Session): Promise<string> {
+  const chatMsgs = session.chatHistory
+    .filter((m: any) => m.type === "chat" || m.type === "system")
+    .slice(-50)
+    .map((m: any) => {
+      if (m.type === "chat") return `[${m.name}]: ${m.text}`;
+      return `(system: ${m.text})`;
+    });
+  if (chatMsgs.length === 0) return "";
+  try {
+    const resp = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 512,
+      system: "You are summarizing a multiplayer Claude Code session. Generate a concise structured markdown summary of what's happening. Use these sections: ## What's Happening, ## Key Decisions, ## Open Questions, ## Who's Doing What. Be brief and direct. Skip sections that have nothing to report. Use bullet points. Max ~300 words.",
+      messages: [{ role: "user", content: "Here are the recent messages from the session:\n\n" + chatMsgs.join("\n") }],
+    });
+    const text = resp.content[0];
+    return text.type === "text" ? text.text : "";
+  } catch (e) {
+    console.log("Summary generation failed:", e);
+    return session.stateSummary || "";
+  }
+}
+
+function scheduleSummary(session: Session) {
+  session.lastChatTime = Date.now();
+
+  // If already generating, just note the new activity
+  if (session.summaryGenerating) return;
+
+  // If there's already an interval running, the lastChatTime update is enough
+  if (session.summaryInterval) return;
+
+  // Clear any pending debounce timer and set a new one
+  if (session.summaryTimer) clearTimeout(session.summaryTimer);
+
+  session.summaryTimer = setTimeout(async () => {
+    // Generate first summary
+    await runSummary(session);
+
+    // Start interval for repeated generation
+    session.summaryInterval = setInterval(async () => {
+      // Check if chat has gone idle
+      if (Date.now() - (session.lastChatTime || 0) > SUMMARY_IDLE_MS) {
+        if (session.summaryInterval) clearInterval(session.summaryInterval);
+        session.summaryInterval = undefined;
+        return;
+      }
+      await runSummary(session);
+    }, SUMMARY_INTERVAL_MS);
+  }, SUMMARY_DEBOUNCE_MS);
+}
+
+async function runSummary(session: Session) {
+  if (session.summaryGenerating) return;
+  session.summaryGenerating = true;
+  broadcastToSession(session.id, { type: "state-summary-status", status: "updating" });
+  try {
+    const md = await generateSummary(session);
+    if (md) {
+      session.stateSummary = md;
+      broadcastToSession(session.id, { type: "state-summary", markdown: md });
+    }
+  } catch {}
+  session.summaryGenerating = false;
+}
 
 function genId(): string {
   return Math.random().toString(36).slice(2, 8);
@@ -169,13 +216,7 @@ function createSession(name: string, resumeId?: string, cwd?: string): Session {
     scrollback: "",
     chatHistory: [],
     createdAt: Date.now(),
-    state: {
-      decisions: [],
-      inProgress: [],
-      actionItems: [],
-      pinnedMessages: [],
-      activity: [],
-    },
+    stateSummary: "",
   };
 
   // Auto-accept trust prompt
@@ -460,8 +501,10 @@ const server = Bun.serve({
           for (const msg of session.chatHistory) {
             ws.send(JSON.stringify(msg));
           }
-          // Send current sidebar state
-          ws.send(JSON.stringify({ type: "state-sync", state: session.state }));
+          // Send current state summary if available
+          if (session.stateSummary) {
+            ws.send(JSON.stringify({ type: "state-summary", markdown: session.stateSummary }));
+          }
 
           broadcastToSession(sessionId, { type: "system", text: `${data.name} joined` });
           broadcastToSession(sessionId, { type: "users", users: getSessionUsers(sessionId) });
@@ -488,6 +531,7 @@ const server = Bun.serve({
           const name = info?.name || "anon";
           broadcastToSession(sessionId, { type: "chat", name, text: data.text });
           session.shell.write(`[${name}]: ${data.text}` + "\r");
+          scheduleSummary(session);
 
           // Detect @mentions in the message
           const mentionRegex = /@(\w+)/g;
@@ -533,75 +577,6 @@ const server = Bun.serve({
           session.shell.write(data.seq);
         }
 
-        if (data.type === "state-update") {
-          const sessionId = clientSession.get(ws);
-          if (!sessionId) return;
-          const session = sessions.get(sessionId);
-          if (!session) return;
-          const info = clientInfo.get(ws);
-          const userName = info?.name || "anon";
-          const { action, section, item, itemId } = data;
-          const arr = session.state[section as keyof SessionState] as any[];
-          if (!arr) return;
-
-          if (action === "add" && item) {
-            arr.push(item);
-            // Auto-log activity for actionItems and inProgress
-            if (section === "actionItems" || section === "inProgress") {
-              const label = section === "actionItems" ? "to-do" : "in-progress item";
-              session.state.activity.push({
-                id: Math.random().toString(36).slice(2, 10),
-                text: `${userName} added ${label}: "${item.text}"${item.assignee ? ` (assigned to ${item.assignee})` : ''}`,
-                author: userName,
-                timestamp: Date.now(),
-              });
-              if (session.state.activity.length > 100) session.state.activity.splice(0, session.state.activity.length - 100);
-            }
-          } else if (action === "delete" && itemId) {
-            const idx = arr.findIndex((i: any) => i.id === itemId);
-            if (idx !== -1) arr.splice(idx, 1);
-          } else if (action === "toggle" && itemId) {
-            const found = arr.find((i: any) => i.id === itemId);
-            if (found) found.checked = !found.checked;
-          } else if (action === "set-status" && itemId && data.status) {
-            const found = arr.find((i: any) => i.id === itemId);
-            if (found) {
-              const oldStatus = found.status || 'todo';
-              found.status = data.status;
-              if (data.status === 'done') found.checked = true;
-              else if (data.status === 'todo') found.checked = false;
-              session.state.activity.push({
-                id: Math.random().toString(36).slice(2, 10),
-                text: `${userName} moved "${found.text}" from ${oldStatus} to ${data.status}`,
-                author: userName,
-                timestamp: Date.now(),
-              });
-              if (session.state.activity.length > 100) session.state.activity.splice(0, session.state.activity.length - 100);
-            }
-          } else if (action === "set-assignee" && itemId && data.assignee !== undefined) {
-            const found = arr.find((i: any) => i.id === itemId);
-            if (found) {
-              found.assignee = data.assignee;
-              session.state.activity.push({
-                id: Math.random().toString(36).slice(2, 10),
-                text: `${userName} assigned "${found.text}" to ${data.assignee || 'unassigned'}`,
-                author: userName,
-                timestamp: Date.now(),
-              });
-              if (session.state.activity.length > 100) session.state.activity.splice(0, session.state.activity.length - 100);
-            }
-          } else if (action === "edit" && itemId && item) {
-            const found = arr.find((i: any) => i.id === itemId);
-            if (found) found.text = item.text;
-          } else if (action === "add-activity" && item) {
-            session.state.activity.push(item);
-            if (session.state.activity.length > 100) session.state.activity.splice(0, session.state.activity.length - 100);
-          }
-
-          // Broadcast updated state to all clients in this session
-          server.publish(`session:${sessionId}`, JSON.stringify({ type: "state-sync", state: session.state }));
-        }
-
         if (data.type === "mark-mentions-read") {
           const info = clientInfo.get(ws);
           if (info) {
@@ -609,22 +584,6 @@ const server = Bun.serve({
           }
         }
 
-        if (data.type === "pin-message") {
-          const sessionId = clientSession.get(ws);
-          if (!sessionId) return;
-          const session = sessions.get(sessionId);
-          if (!session) return;
-          const info = clientInfo.get(ws);
-          const name = info?.name || "anon";
-          const pinItem: StateItem = {
-            id: Math.random().toString(36).slice(2, 10),
-            text: data.text,
-            author: data.author || name,
-            timestamp: Date.now(),
-          };
-          session.state.pinnedMessages.push(pinItem);
-          server.publish(`session:${sessionId}`, JSON.stringify({ type: "state-sync", state: session.state }));
-        }
       } catch {}
     },
     close(ws) {
