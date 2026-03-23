@@ -4,7 +4,7 @@ import { join } from "path";
 import { execSync } from "child_process";
 const UPLOAD_DIR = "/tmp/claude-uploads";
 
-const claudePath = "/home/exedev/.local/bin/claude";
+const claudePath = process.env.CLAUDE_PATH || execSync("which claude").toString().trim();
 const CLAUDE_PROJECTS_DIR = join(process.env.HOME || "/home/exedev", ".claude/projects");
 
 const systemPrompt = [
@@ -126,11 +126,11 @@ function spawnClaude(args: string[], cwd?: string): IPty {
     name: "xterm-256color",
     cols: 120,
     rows: 60,
-    cwd: cwd || "/home/exedev/claude-collab",
+    cwd: cwd || process.env.JAM_CWD || process.cwd(),
     env: {
       ...process.env as Record<string, string>,
       TERM: "xterm-256color",
-      HOME: "/home/exedev",
+      HOME: process.env.HOME || "/root",
       CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1",
     },
   });
