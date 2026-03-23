@@ -233,12 +233,19 @@
     fitAddon.fit();
     // Smart scroll: only auto-scroll if user is near the bottom
     let userScrolledUp = false;
-    term.element.addEventListener('wheel', () => {
-      const viewport = term.element.querySelector('.xterm-viewport');
-      if (!viewport) return;
-      const atBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight < 50;
+    let scrollResumeTimer = null;
+    // Track scroll position via xterm's scroll event (works for all scroll methods)
+    term.onScroll(() => {
+      const base = term.buffer.active.baseY;
+      const viewport = term.buffer.active.viewportY;
+      const atBottom = viewport >= base;
       userScrolledUp = !atBottom;
-    }, { passive: true });
+      // Auto-resume scrolling after 10s of inactivity if still scrolled up
+      clearTimeout(scrollResumeTimer);
+      if (userScrolledUp) {
+        scrollResumeTimer = setTimeout(() => { userScrolledUp = false; }, 10000);
+      }
+    });
     window.addEventListener('resize', () => fitAddon.fit());
     new ResizeObserver(() => fitAddon.fit()).observe(document.getElementById('terminal-container'));
 
