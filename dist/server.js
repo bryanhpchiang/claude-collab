@@ -211,7 +211,7 @@ function spawn(file, args, options) {
 }
 
 // server.ts
-var claudePath = "/home/exedev/.local/bin/claude";
+var claudePath = require("child_process").execSync("which claude").toString().trim();
 var systemPrompt = [
   "You are in a MULTIPLAYER session. Multiple users are typing messages to you through a shared web terminal.",
   "ALWAYS use the Agent tool with run_in_background:true for any task that takes more than a few seconds.",
@@ -236,11 +236,11 @@ function createSession(name) {
     name: "xterm-256color",
     cols: 100,
     rows: 30,
-    cwd: "/home/exedev/claude-collab",
+    cwd: process.cwd(),
     env: {
       ...process.env,
       TERM: "xterm-256color",
-      HOME: "/home/exedev",
+      HOME: process.env.HOME || "/root",
       CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"
     }
   });

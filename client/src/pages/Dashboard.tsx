@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import './Dashboard.css';
 
 interface Jam {
@@ -93,10 +93,6 @@ export default function Dashboard() {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `Failed to create instance (${res.status})`);
       }
-      const data = await res.json();
-      if (data.url) {
-        window.open(data.url, '_blank');
-      }
       await fetchJams();
     } catch (err: any) {
       setError(err.message || 'Failed to create instance');
@@ -129,6 +125,16 @@ export default function Dashboard() {
       setDeleting(null);
     }
   }, [fetchJams]);
+
+  // Auto-poll while any instance is pending
+  const hasPending = jams.some(j => j.state === 'pending');
+  const pollRef = useRef<ReturnType<typeof setInterval>>();
+  useEffect(() => {
+    if (hasPending) {
+      pollRef.current = setInterval(fetchJams, 3000);
+    }
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [hasPending, fetchJams]);
 
   if (loading) {
     return (

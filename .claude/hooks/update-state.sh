@@ -2,7 +2,8 @@
 # Hook: after Claude stops, check if STATE.md needs updating
 # If >60s since last update, spawn haiku to regenerate it
 
-STATE_FILE="/home/exedev/claude-collab/STATE.md"
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+STATE_FILE="$REPO_ROOT/STATE.md"
 LOCK_FILE="/tmp/state-update.lock"
 
 # Don't run if another update is already in progress
@@ -29,6 +30,6 @@ fi
 # Create lock and run haiku in background
 touch "$LOCK_FILE"
 
-(/home/exedev/.local/bin/claude --model haiku -p "Read /home/exedev/claude-collab/STATE.md and the recent messages in the current conversation. Update STATE.md with a concise structured summary of this multiplayer Jam session. Use these sections (skip empty ones): ## What's Happening, ## Key Decisions, ## Open Questions, ## Who's Doing What. Keep it brief and useful as a quick reference. Write the updated file." --dangerously-skip-permissions 2>/dev/null; rm -f "$LOCK_FILE") &
+(claude --model haiku -p "Read $STATE_FILE and the recent messages in the current conversation. Update $STATE_FILE with a concise structured summary of this multiplayer Jam session. Use these sections (skip empty ones): ## What's Happening, ## Key Decisions, ## Open Questions, ## Who's Doing What. Keep it brief and useful as a quick reference. Write the updated file." --dangerously-skip-permissions 2>/dev/null; rm -f "$LOCK_FILE") &
 
 exit 0

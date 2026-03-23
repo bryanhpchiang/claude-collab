@@ -1,6 +1,12 @@
 # Jam — State of Things
 *Last updated: 2026-03-23*
 
+## What's Happening Now
+- Core infrastructure is stable: baked AMI, resilient EC2 UserData, DynamoDB for instance management
+- GitHub OAuth is working; moving toward full end-to-end flow
+- Focus: getting the lobby/reverse-proxy layer working to route sessions to their EC2 instances
+- Ready to test real multi-session scenarios once proxy is functional
+
 ## What is Jam?
 Multiplayer Claude Code. Go to letsjam.now, start a session, share a link, friends join and code together with Claude in real-time.
 
@@ -30,12 +36,17 @@ Multiplayer Claude Code. Go to letsjam.now, start a session, share a link, frien
 - [x] EC2 AMI baked and ready
 
 ## What's In Progress
+- [x] GitHub OAuth (implemented, integrated into auth flow)
+- [x] Colorized usernames and mentions in terminal
+- [x] DynamoDB-backed instance management + per-user limits
+- [x] Resilient UserData script for EC2 boot
+- [x] Dynamic path handling (removed hardcoded exe.dev references)
 - [ ] Lobby server (serves landing page, provisions EC2s, reverse proxy)
 - [ ] DNS setup (letsjam.now → lobby EC2)
 
 ## What's Next
-- [ ] GitHub OAuth + repo cloning
 - [ ] Reverse proxy (route /j/:id → correct EC2)
+- [ ] Test full end-to-end flow: create session → launch EC2 → join from web
 - [ ] Auto-hibernate idle VMs
 - [ ] Usage limits / free tier caps
 - [ ] @mentions with push notifications (Issue #1)

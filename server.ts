@@ -5,7 +5,7 @@ import { execSync } from "child_process";
 const UPLOAD_DIR = "/tmp/claude-uploads";
 
 const claudePath = process.env.CLAUDE_PATH || execSync("which claude").toString().trim();
-const CLAUDE_PROJECTS_DIR = join(process.env.HOME || "/home/exedev", ".claude/projects");
+const CLAUDE_PROJECTS_DIR = join(process.env.HOME || "/root", ".claude/projects");
 
 const systemPrompt = [
   "You are in a MULTIPLAYER session. Multiple users are typing messages to you through a shared web terminal.",
@@ -418,7 +418,7 @@ const server = Bun.serve({
     if (url.pathname === "/api/state-summary" && req.method === "GET") {
       return (async () => {
         try {
-          const file = Bun.file("/home/exedev/claude-collab/STATE.md");
+          const file = Bun.file(join(process.cwd(), "STATE.md"));
           const exists = await file.exists();
           if (!exists) return Response.json({ markdown: "", lastModified: 0 });
           const markdown = await file.text();
