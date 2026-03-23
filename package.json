@@ -2,7 +2,11 @@
   "name": "claude-collab",
   "version": "1.0.0",
   "scripts": {
-    "start": "bun run server.ts"
+    "start": "bun run server.ts",
+    "dev:server": "bun run server.ts",
+    "dev:client": "cd client && bun run dev",
+    "dev": "echo 'Run dev:server and dev:client in separate terminals'",
+    "build:client": "cd client && bun run build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",

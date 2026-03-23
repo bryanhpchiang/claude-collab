@@ -207,7 +207,7 @@ createSession("General");
 
 const server = Bun.serve({
   port: 7681,
-  fetch(req, server) {
+  async fetch(req, server) {
     const url = new URL(req.url);
 
     if (url.pathname === "/ws") {
@@ -373,9 +373,14 @@ const server = Bun.serve({
       if (!jam) {
         return new Response("Jam not found", { status: 404 });
       }
-      // Serve index.html with the jam session ID embedded
+      // Serve React app with the jam session ID embedded
       return (async () => {
-        const html = await Bun.file("public/index.html").text();
+        // Try React build first, fall back to public/index.html
+        const buildPath = "client/dist/index.html";
+        const fallbackPath = "public/index.html";
+        const buildFile = Bun.file(buildPath);
+        const file = await buildFile.exists() ? buildFile : Bun.file(fallbackPath);
+        const html = await file.text();
         const injected = html.replace(
           "</head>",
           `<script>window.JAM_SESSION_ID='${jam.sessionId}';</script>\n</head>`
@@ -413,6 +418,27 @@ const server = Bun.serve({
           return Response.json({ markdown: "", lastModified: 0 });
         }
       })();
+    }
+
+    // --- Serve React build static assets ---
+    if (url.pathname.startsWith("/assets/") || url.pathname === "/favicon.svg") {
+      const filePath = `client/dist${url.pathname}`;
+      const file = Bun.file(filePath);
+      if (await file.exists()) {
+        const ext = url.pathname.split('.').pop() || '';
+        const mimeTypes: Record<string, string> = {
+          js: 'application/javascript',
+          css: 'text/css',
+          svg: 'image/svg+xml',
+          png: 'image/png',
+          jpg: 'image/jpeg',
+          woff: 'font/woff',
+          woff2: 'font/woff2',
+        };
+        return new Response(file, {
+          headers: { "Content-Type": mimeTypes[ext] || "application/octet-stream" },
+        });
+      }
     }
 
     return new Response("Not found", { status: 404 });
