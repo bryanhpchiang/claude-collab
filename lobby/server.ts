@@ -68,19 +68,44 @@ const USER_CACHE_TTL = 5 * 60 * 1000;
 
 /** Extract and verify a Clerk JWT from the Authorization header */
 async function getUser(req: Request): Promise<ClerkUser | undefined> {
+  const requestUrl = new URL(req.url);
   const authHeader = req.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) return undefined;
+  if (!authHeader?.startsWith("Bearer ")) {
+    console.warn("Clerk auth missing bearer token", {
+      path: requestUrl.pathname,
+      hasAuthorizationHeader: Boolean(authHeader),
+      authorizationScheme: authHeader?.split(" ")[0] || null,
+    });
+    return undefined;
+  }
+
   const token = authHeader.slice(7);
+  let payload;
+
   try {
-    const payload = await clerk.verifyToken(token, {
+    payload = await clerk.verifyToken(token, {
       authorizedParties: [],
     });
-    const userId = payload.sub;
+  } catch (error) {
+    console.warn("Clerk token verification failed", {
+      path: requestUrl.pathname,
+      tokenLength: token.length,
+      hasClerkSecretKey: Boolean(CLERK_SECRET_KEY),
+      error:
+        error instanceof Error
+          ? { name: error.name, message: error.message }
+          : String(error),
+    });
+    return undefined;
+  }
 
-    // Check cache
-    const cached = userCache.get(userId);
-    if (cached && cached.expiresAt > Date.now()) return cached.user;
+  const userId = payload.sub;
 
+  // Check cache
+  const cached = userCache.get(userId);
+  if (cached && cached.expiresAt > Date.now()) return cached.user;
+
+  try {
     // Fetch full user info from Clerk
     const clerkUser = await clerk.users.getUser(userId);
     const user: ClerkUser = {
@@ -93,7 +118,15 @@ async function getUser(req: Request): Promise<ClerkUser | undefined> {
     };
     userCache.set(userId, { user, expiresAt: Date.now() + USER_CACHE_TTL });
     return user;
-  } catch {
+  } catch (error) {
+    console.warn("Clerk user lookup failed", {
+      path: requestUrl.pathname,
+      userId,
+      error:
+        error instanceof Error
+          ? { name: error.name, message: error.message }
+          : String(error),
+    });
     return undefined;
   }
 }
