@@ -1,5 +1,14 @@
-FROM oven/bun:1 AS base
+FROM public.ecr.aws/docker/library/debian:bookworm-slim AS base
 WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends ca-certificates curl unzip \
+  && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://bun.sh/install | bash
+
+ENV BUN_INSTALL="/root/.bun"
+ENV PATH="${BUN_INSTALL}/bin:${PATH}"
 
 # Install dependencies
 COPY lobby/package.json lobby/bun.lock ./lobby/

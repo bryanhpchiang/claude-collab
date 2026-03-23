@@ -130,6 +130,8 @@ The `lobby/server.ts` changes do the following:
   - CodeBuild-hosted GitHub Actions runner projects use a normal `GITHUB` source plus a `WORKFLOW_JOB_QUEUED` webhook
   - the CodeBuild service role also needs CodeConnections permissions
   - the active CodeConnections GitHub connection must have access to the target repo owner
+- The first GitHub Actions run for `Deploy Coordination Server` reached CodeBuild and ECR login successfully, but failed at `docker build` because `FROM oven/bun:1` hit Docker Hub's unauthenticated pull-rate limit (`429 Too Many Requests`).
+- The Dockerfile was then changed to use `public.ecr.aws/docker/library/debian:bookworm-slim` and install Bun explicitly, so future runs do not rely on Docker Hub for the base image.
 
 ## Next Commands From Here
 
