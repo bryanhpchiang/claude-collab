@@ -35,7 +35,7 @@
 }
 
 .dash-header-inner {
-  max-width: 1080px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 16px 24px;
   display: flex;
@@ -68,9 +68,10 @@
 
 /* Main content */
 .dash-main {
-  max-width: 1080px;
+  max-width: 960px;
   margin: 0 auto;
   padding: 40px 24px;
+  overflow: hidden;
 }
 
 .dash-top {
@@ -90,7 +91,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 24px;
+  padding: 10px 20px;
   border: none;
   border-radius: 10px;
   background: linear-gradient(135deg, #ff9a56, #ff6b6b);
@@ -113,7 +114,7 @@
 }
 
 .dash-create-btn:disabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: not-allowed;
   transform: none;
 }
@@ -163,27 +164,20 @@
   font-size: 15px;
 }
 
-/* Inline loading */
-.dash-loading-inline {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 24px;
-}
-
 /* Instance grid */
 .dash-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr));
   gap: 16px;
 }
 
 .dash-card {
-  padding: 24px;
-  border-radius: 14px;
+  padding: 20px;
+  border-radius: 12px;
   border: 1px solid #21262d;
   background: #161b22;
-  transition: all 0.2s;
+  transition: border-color 0.2s, background 0.2s;
+  overflow: hidden;
 }
 
 .dash-card:hover {
@@ -191,17 +185,30 @@
   background: #1c2128;
 }
 
+.dash-card-own {
+  border-color: rgba(255, 154, 86, 0.25);
+}
+
+.dash-card-own:hover {
+  border-color: rgba(255, 154, 86, 0.4);
+}
+
 .dash-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
 .dash-card-name {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: #e6edf3;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dash-status {
@@ -211,8 +218,9 @@
   font-size: 12px;
   font-weight: 500;
   text-transform: capitalize;
-  padding: 4px 10px;
+  padding: 3px 10px;
   border-radius: 100px;
+  flex-shrink: 0;
 }
 
 .dash-status-running {
@@ -253,10 +261,10 @@
 }
 
 .dash-card-url {
-  font-size: 13px;
+  font-size: 12px;
   color: #484f58;
   font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -266,35 +274,71 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-.dash-card-own {
-  border-color: rgba(255, 154, 86, 0.3);
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid #21262d;
 }
 
 .dash-card-creator {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-size: 13px;
   color: #8b949e;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dash-card-avatar {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .dash-card-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-shrink: 0;
+}
+
+.dash-card-open {
+  padding: 6px 14px;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  background: #21262d;
+  color: #e6edf3;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-decoration: none;
+}
+
+.dash-card-open:hover {
+  border-color: #ff9a56;
+  background: rgba(255, 154, 86, 0.1);
+  color: #ff9a56;
+}
+
+.dash-card-open:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.dash-card-open:disabled:hover {
+  border-color: #30363d;
+  background: #21262d;
+  color: #e6edf3;
 }
 
 .dash-card-delete {
-  padding: 8px 18px;
-  border: 1px solid rgba(248, 81, 73, 0.3);
+  padding: 6px 14px;
+  border: 1px solid rgba(248, 81, 73, 0.25);
   border-radius: 8px;
   background: transparent;
   color: #f85149;
@@ -302,7 +346,7 @@
   font-weight: 500;
   font-family: inherit;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.15s;
 }
 
 .dash-card-delete:hover {
@@ -311,36 +355,8 @@
 }
 
 .dash-card-delete:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
-}
-
-.dash-card-open {
-  padding: 8px 18px;
-  border: 1px solid #30363d;
-  border-radius: 8px;
-  background: transparent;
-  color: #e6edf3;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.dash-card-open:hover {
-  border-color: #ff9a56;
-  color: #ff9a56;
-}
-
-.dash-card-open:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.dash-card-open:disabled:hover {
-  border-color: #30363d;
-  color: #e6edf3;
 }
 
 /* Responsive */
@@ -357,5 +373,15 @@
 
   .dash-grid {
     grid-template-columns: 1fr;
+  }
+
+  .dash-card-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .dash-card-actions {
+    justify-content: flex-end;
   }
 }
