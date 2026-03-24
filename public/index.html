@@ -95,6 +95,39 @@
       border: 1px dashed #30363d; background: transparent; color: #ff9a56; white-space: nowrap;
     }
     #new-session-btn:hover { border-color: #ff9a56; background: #161b22; }
+    #status-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 14px; height: 30px; flex-shrink: 0;
+      background: #0d1117; border-bottom: 1px solid #30363d;
+      font-size: 11px; color: #8b949e; gap: 8px; overflow: hidden;
+    }
+    body.in-lobby #status-bar { display: none; }
+    #status-bar .sb-summary {
+      flex: 1; min-width: 0; white-space: nowrap; overflow: hidden;
+      text-overflow: ellipsis; color: #8b949e;
+    }
+    #status-bar .sb-claude {
+      flex-shrink: 0; display: flex; align-items: center; gap: 5px;
+      white-space: nowrap;
+    }
+    #status-bar .sb-claude .claude-dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    }
+    #status-bar .sb-claude.idle .claude-dot { background: #484f58; }
+    #status-bar .sb-claude.streaming .claude-dot {
+      background: #3fb950; animation: pulse-dot 0.8s ease-in-out infinite;
+    }
+    #status-bar .sb-claude.running .claude-dot {
+      background: #ffa657; animation: pulse-dot 1s ease-in-out infinite;
+    }
+    #status-bar .sb-users {
+      flex-shrink: 0; display: flex; align-items: center; gap: 4px;
+    }
+    .sb-user-chip {
+      width: 18px; height: 18px; border-radius: 50%; display: inline-flex;
+      align-items: center; justify-content: center; font-size: 9px; font-weight: 700;
+      color: #0d1117; flex-shrink: 0; cursor: default;
+    }
     #terminal-container { flex: 1; min-height: 0; padding: 4px; }
     #terminal-container.interactive {
       outline: 1px solid rgba(88,166,255,0.5);
@@ -497,46 +530,6 @@
       .key-btn { padding: 5px 6px; font-size: 10px; }
     }
 
-    /* Treats/reactions */
-    #treats-wrap { position: relative; }
-    #treats-btn {
-      display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px;
-      border-radius: 6px; font-size: 12px; font-weight: 500; color: #ff9a56;
-      border: 1px solid #30363d; background: #161b22; cursor: pointer;
-      transition: border-color .2s, background .2s;
-    }
-    #treats-btn:hover { border-color: #ff9a56; background: #1c2129; }
-    #treats-popup {
-      display: none; position: absolute; top: 100%; right: 0; margin-top: 6px;
-      background: #161b22; border: 1px solid #30363d; border-radius: 8px;
-      padding: 6px; z-index: 200; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-      flex-direction: row; gap: 2px;
-    }
-    #treats-popup.open { display: flex; }
-    .treat-opt {
-      background: none; border: none; font-size: 20px; cursor: pointer;
-      padding: 6px 8px; border-radius: 6px; transition: background .15s;
-    }
-    .treat-opt:hover { background: #21262d; }
-    #reaction-overlay {
-      position: fixed; inset: 0; pointer-events: none; z-index: 9999; overflow: hidden;
-    }
-    .r-particle {
-      position: absolute; pointer-events: none; will-change: transform, opacity;
-      font-size: 24px;
-    }
-    @keyframes fall-down {
-      0% { transform: translateY(-40px) rotate(0deg); opacity: 1; }
-      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
-    }
-    @keyframes float-up {
-      0% { transform: translateY(20px) scale(0.5); opacity: 1; }
-      100% { transform: translateY(-110vh) scale(1.2); opacity: 0; }
-    }
-    @keyframes burst-out {
-      0% { transform: translate(0,0) scale(0.3); opacity: 1; }
-      100% { opacity: 0; }
-    }
   </style>
 </head>
 <body class="in-lobby">
@@ -552,6 +545,7 @@
       </svg>
       <h2 style="font-family:'Fredoka',sans-serif;font-weight:700;letter-spacing:0.5px;background:linear-gradient(135deg,#ff9a56,#ff6b6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Jam</h2>
       <p>Multiplayer Claude — enter your name to join</p>
+      <div id="session-context" style="display:none;margin-bottom:14px;padding:8px 12px;background:#0d1117;border:1px solid #30363d;border-radius:6px;font-size:12px;color:#8b949e;line-height:1.5;max-width:280px;text-align:left;"></div>
       <div>
         <input id="name-input" type="text" placeholder="your name" maxlength="20" autofocus>
         <button id="join-btn">Join</button>
@@ -592,16 +586,7 @@
       <span class="brand-jam">Jam</span>
     </a>
     <div style="display:flex;align-items:center;gap:12px;">
-      <div id="treats-wrap">
-        <button id="treats-btn" onclick="document.getElementById('treats-popup').classList.toggle('open')">🎉 Treats</button>
-        <div id="treats-popup">
-          <button class="treat-opt" onclick="fireTreat('confetti')" title="Confetti">🎉</button>
-          <button class="treat-opt" onclick="fireTreat('hearts')" title="Hearts">❤️</button>
-          <button class="treat-opt" onclick="fireTreat('stars')" title="Stars">⭐</button>
-          <button class="treat-opt" onclick="fireTreat('fire')" title="Fire">🔥</button>
-        </div>
-      </div>
-      <div id="users-bar"></div>
+<div id="users-bar"></div>
     </div>
   </div>
   <div id="project-bar">
@@ -609,6 +594,11 @@
   </div>
   <div id="session-bar">
     <button id="new-session-btn">+ New Session</button>
+  </div>
+  <div id="status-bar">
+    <span class="sb-summary" id="sb-summary-text"></span>
+    <span class="sb-claude idle" id="sb-claude-status"><span class="claude-dot"></span><span id="sb-claude-label">Claude is idle</span></span>
+    <span class="sb-users" id="sb-users"></span>
   </div>
   <div id="lobby-view">Pick a session above or start a new one</div>
   <div id="terminal-container" style="position:relative">
@@ -719,6 +709,7 @@
     new ResizeObserver(() => fitAddon.fit()).observe(document.getElementById('terminal-container'));
 
     const DEFAULT_SESSION_SENTINEL = '__default__';
+    let sessionSummary = null;
     let ws, myName = '', currentSessionId = null, sessionList = [], pendingJoin = null;
     let projectList = [], currentProjectId = null;
     let connectedUsers = []; // Track users in current session for @mention autocomplete
@@ -971,6 +962,7 @@
       document.getElementById('users-bar').innerHTML = users.map(u =>
         `<span class="user-dot"></span><span style="color:${nameColor(u)}">${esc(u)}</span>`
       ).join('&nbsp;&nbsp;');
+      renderStatusBarUsers(users);
     }
     function renderProjectTabs() {
       const bar = document.getElementById('project-bar');
@@ -1103,6 +1095,11 @@
       lastStateMarkdown = '';
       fetchStateSummary();
       startStatePolling();
+      // Reset status bar for new session
+      setClaudeState('idle');
+      sessionSummary = null;
+      renderStatusBarSummary();
+      fetchSessionSummary(sessionId);
     }
     function connect() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -1158,6 +1155,7 @@
             break;
           case 'output':
             {
+              onPtyOutput(msg.data);
               const vp = userScrolledUp ? term.buffer.active.viewportY : -1;
               term.write(colorizeOutput(msg.data), () => {
                 if (vp >= 0) term.scrollLines(vp - term.buffer.active.viewportY);
@@ -1462,6 +1460,45 @@
       };
       setTimeout(() => document.addEventListener('click', closeMenu), 0);
     });
+
+    // ===== Session Context Summary =====
+    async function fetchSessionSummary(sessionId) {
+      if (!sessionId) return;
+      try {
+        const res = await fetch('/session/' + sessionId + '/summary');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.summary) {
+          sessionSummary = data.summary;
+          renderStatusBarSummary();
+        }
+      } catch {}
+    }
+
+    (async function loadSessionContext() {
+      const sessionCtx = document.getElementById('session-context');
+      // Determine session ID: JAM_SESSION_ID (for /j/ routes) or ?s= param
+      const sessionId = window.JAM_SESSION_ID || new URL(location.href).searchParams.get('s');
+      if (!sessionId) return;
+      // Always fetch summary for the status bar
+      fetchSessionSummary(sessionId);
+      // Only show join-modal context box if modal is visible (i.e. no saved name)
+      if (localStorage.getItem('jam-username')) return;
+      sessionCtx.style.display = 'block';
+      sessionCtx.innerHTML = '&#x1F4AC; <em style="color:#484f58">loading context...</em>';
+      try {
+        const res = await fetch('/session/' + sessionId + '/summary');
+        if (!res.ok) { sessionCtx.style.display = 'none'; return; }
+        const data = await res.json();
+        if (data.summary) {
+          sessionCtx.innerHTML = '&#x1F4AC; ' + esc(data.summary);
+        } else {
+          sessionCtx.style.display = 'none';
+        }
+      } catch {
+        sessionCtx.style.display = 'none';
+      }
+    })();
 
     function joinFlow() {
       const name = document.getElementById('name-input').value.trim();
@@ -1820,66 +1857,48 @@
       if (statePollTimer) { clearInterval(statePollTimer); statePollTimer = null; }
     }
 
-    // Treats/reactions
-    document.addEventListener('click', e => {
-      const wrap = document.getElementById('treats-wrap');
-      if (wrap && !wrap.contains(e.target)) document.getElementById('treats-popup').classList.remove('open');
-    });
+    // ===== Status Bar =====
+    let claudeIdleTimer = null;
+    const sbClaudeEl = document.getElementById('sb-claude-status');
+    const sbClaudeLabelEl = document.getElementById('sb-claude-label');
 
-    function fireTreat(kind) {
-      document.getElementById('treats-popup').classList.remove('open');
-      const overlay = document.createElement('div');
-      overlay.id = 'reaction-overlay';
-      document.body.appendChild(overlay);
-      const count = 40;
-      const colors = ['#ff9a56','#ff6b6b','#58a6ff','#3fb950','#d29922'];
-      for (let i = 0; i < count; i++) {
-        const p = document.createElement('div');
-        p.className = 'r-particle';
-        const delay = Math.random() * 0.8;
-        const dur = 2 + Math.random() * 1.2;
-        const x = Math.random() * 100;
-        const sz = 16 + Math.random() * 20;
-        p.style.fontSize = sz + 'px';
-        p.style.left = x + 'vw';
-        p.style.animationDelay = delay + 's';
-        p.style.animationDuration = dur + 's';
-        p.style.animationFillMode = 'forwards';
-        if (kind === 'confetti') {
-          const shapes = ['\u25A0','\u25CF','\u25B2','\u2605'];
-          p.textContent = shapes[i % shapes.length];
-          p.style.color = colors[i % colors.length];
-          p.style.top = '-30px';
-          p.style.animation = `fall-down ${dur}s ${delay}s ease-in forwards`;
-        } else if (kind === 'hearts') {
-          p.textContent = ['❤️','💕','💖','💗'][i % 4];
-          p.style.bottom = '-30px'; p.style.top = 'auto';
-          p.style.animation = `float-up ${dur}s ${delay}s ease-out forwards`;
-        } else if (kind === 'stars') {
-          p.textContent = ['⭐','✨','🌟','💫'][i % 4];
-          p.style.left = '50vw'; p.style.top = '50vh';
-          const angle = (i / count) * Math.PI * 2;
-          const dist = 40 + Math.random() * 50;
-          const tx = Math.cos(angle) * dist + 'vw';
-          const ty = Math.sin(angle) * dist + 'vh';
-          p.style.animation = `burst-out ${dur}s ${delay}s ease-out forwards`;
-          p.style.setProperty('--tx', tx); p.style.setProperty('--ty', ty);
-          p.animate([
-            { transform: 'translate(0,0) scale(0.3)', opacity: 1 },
-            { transform: `translate(${tx},${ty}) scale(1.2)`, opacity: 0 }
-          ], { duration: dur * 1000, delay: delay * 1000, fill: 'forwards' });
-          p.style.animation = 'none';
-        } else if (kind === 'fire') {
-          p.textContent = ['🔥','🔥','💥','✨'][i % 4];
-          p.style.bottom = '-30px'; p.style.top = 'auto';
-          p.style.animation = `float-up ${dur}s ${delay}s ease-out forwards`;
-        }
-        overlay.appendChild(p);
-      }
-      const label = { confetti: 'confetti', hearts: 'hearts', stars: 'stars', fire: 'fire' }[kind];
-      addChat({ type: 'system', text: `${myName || 'Someone'} sent ${label}!` });
-      setTimeout(() => overlay.remove(), 3500);
+    function setClaudeState(state) {
+      // state: 'idle' | 'streaming' | 'running'
+      sbClaudeEl.className = 'sb-claude ' + state;
+      if (state === 'streaming') sbClaudeLabelEl.textContent = 'Claude is thinking\u2026';
+      else if (state === 'running') sbClaudeLabelEl.textContent = 'Running command\u2026';
+      else sbClaudeLabelEl.textContent = 'Claude is idle';
     }
+
+    function isCommandOutput(text) {
+      const plain = stripAnsi(text);
+      return /(\n|^)\s*[$>]\s/.test(plain) ||
+        /Running\.\.\.|npm |bun |npx |yarn |node |python |pip |git |bash |sh /.test(plain);
+    }
+
+    function onPtyOutput(data) {
+      // Determine state from data content
+      const state = isCommandOutput(data) ? 'running' : 'streaming';
+      setClaudeState(state);
+      // Debounce back to idle after 2s of silence
+      if (claudeIdleTimer) clearTimeout(claudeIdleTimer);
+      claudeIdleTimer = setTimeout(() => setClaudeState('idle'), 2000);
+    }
+
+    function renderStatusBarUsers(users) {
+      const el = document.getElementById('sb-users');
+      el.innerHTML = users.map(u => {
+        const color = nameColor(u);
+        const initial = u.charAt(0).toUpperCase();
+        return `<span class="sb-user-chip" style="background:${color}" title="${esc(u)}">${initial}</span>`;
+      }).join('');
+    }
+
+    function renderStatusBarSummary() {
+      const el = document.getElementById('sb-summary-text');
+      el.textContent = sessionSummary || '';
+    }
+
   </script>
 </body>
 </html>

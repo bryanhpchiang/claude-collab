@@ -4,6 +4,7 @@ import { join } from "path";
 import { execSync } from "child_process";
 import { resolveProjectCwd } from "./project-paths";
 import { buildClaudeInput } from "./session-input";
+import Anthropic from "@anthropic-ai/sdk";
 const UPLOAD_DIR = "/tmp/claude-uploads";
 
 const HOME_DIR = process.env.HOME || "/root";
@@ -698,6 +699,39 @@ const server = Bun.serve({
       }
 
       return Response.json({ markdown: lines.join("\n"), lastModified: Date.now() });
+    }
+
+    // --- Session summary endpoint ---
+    const sessionSummaryMatch = url.pathname.match(/^\/session\/([a-z0-9]+)\/summary$/);
+    if (sessionSummaryMatch && req.method === "GET") {
+      return (async () => {
+        const sessionId = sessionSummaryMatch[1];
+        const session = sessions.get(sessionId);
+        if (!session) return Response.json({ error: "not found" }, { status: 404 });
+        const chatMessages = session.chatHistory
+          .filter((m: any) => m.type === "chat" || m.type === "system")
+          .slice(-20);
+        if (chatMessages.length === 0) return Response.json({ summary: null });
+        try {
+          const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+          const transcript = chatMessages
+            .map((m: any) => m.type === "chat" ? `${m.name}: ${m.text}` : `[system: ${m.text}]`)
+            .join("\n");
+          const response = await anthropic.messages.create({
+            model: "claude-haiku-4-5",
+            max_tokens: 100,
+            messages: [{
+              role: "user",
+              content: `Here are the recent messages from a multiplayer Claude session:\n\n${transcript}\n\nWrite a single 1-2 sentence plain English summary of what the group is working on, written for someone about to join. Start with "Your friends are" or similar friendly phrasing. Be specific and concise.`,
+            }],
+          });
+          const summary = (response.content[0] as any).text?.trim() || null;
+          return Response.json({ summary });
+        } catch (err) {
+          console.error("Summary error:", err);
+          return Response.json({ summary: null });
+        }
+      })();
     }
 
     // --- Serve React build static assets ---
