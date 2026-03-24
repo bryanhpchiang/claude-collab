@@ -2,18 +2,23 @@ import { loadConfig } from "./config";
 import { handleAuthRoutes } from "./routes/auth";
 import { handleJamRoutes } from "./routes/jams";
 import { handlePageRoutes } from "./routes/pages";
+import { createAuth, runAuthMigrations } from "./services/auth";
+import { createDatabase, ensureCoordinationTables } from "./services/db";
 import { createEc2Service } from "./services/ec2";
 import { createJamRecordsService } from "./services/jam-records";
-import type { SessionStore } from "./services/github-oauth";
 
 const config = loadConfig();
-const sessions: SessionStore = new Map();
+const db = createDatabase(config);
+const auth = createAuth(config, db);
+
+await runAuthMigrations(auth);
+await ensureCoordinationTables(db);
 
 const context = {
   config,
-  sessions,
+  auth,
   ec2: createEc2Service(config),
-  jamRecords: createJamRecordsService(config),
+  jamRecords: createJamRecordsService(db),
 };
 
 const server = Bun.serve({

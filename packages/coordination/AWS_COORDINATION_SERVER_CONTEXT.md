@@ -164,8 +164,10 @@ Workflow: `Deploy Coordination Server`
 ## What Is Still Not Done
 
 - Add `BASE_URL` to App Runner if the canonical URL should be pinned instead of derived from request origin
+- Add `DATABASE_URL` to App Runner
+- Add `BETTER_AUTH_SECRET` to App Runner
 - Add `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` to App Runner
-- Configure the GitHub OAuth app callback URL to match the chosen public base URL
+- Configure the GitHub OAuth app callback URL to `https://<public-base-url>/api/auth/callback/github`
 - Verify the live coordination server can assume `JamCoordinationServerInstanceRole` and launch Jam EC2 instances end-to-end
 - Decide whether the default public App Runner URL will remain the canonical URL or whether a custom domain will be attached later
 
@@ -184,9 +186,11 @@ Workflow: `Deploy Coordination Server`
 
 Once OAuth details are known, the remaining App Runner update is expected to look like:
 
-1. Create or update secrets for `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`.
+1. Create or update secrets for `DATABASE_URL`, `BETTER_AUTH_SECRET`, `GITHUB_CLIENT_ID`, and `GITHUB_CLIENT_SECRET`.
 2. Update App Runner runtime configuration to include:
    - `BASE_URL=https://vjqmk2uvpa.us-east-1.awsapprunner.com` or a future custom domain
+   - `DATABASE_URL`
+   - `BETTER_AUTH_SECRET`
    - `GITHUB_CLIENT_ID`
    - `GITHUB_CLIENT_SECRET`
 3. Re-verify:

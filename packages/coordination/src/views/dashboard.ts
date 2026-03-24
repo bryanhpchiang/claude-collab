@@ -1,4 +1,4 @@
-import type { SessionUser } from "../services/github-oauth";
+import type { SessionUser } from "../services/auth";
 import { renderJamCard, type DashboardJam } from "./components/jam-card";
 import { renderLayout, escapeHtml, serializeForScript } from "./layout";
 

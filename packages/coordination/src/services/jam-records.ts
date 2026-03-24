@@ -1,17 +1,10 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import {
-  DynamoDBDocumentClient,
-  GetCommand,
-  PutCommand,
-  QueryCommand,
-  ScanCommand,
-  UpdateCommand,
-} from "@aws-sdk/lib-dynamodb";
-import type { CoordinationConfig } from "../config";
+import type { Kysely } from "kysely";
+import type { CoordinationDatabase, JamRecordRow } from "./db";
 
 export type JamRecord = {
   id: string;
   instance_id: string;
+  creator_user_id: string;
   creator_login: string;
   creator_name: string;
   creator_avatar: string;
@@ -21,96 +14,77 @@ export type JamRecord = {
   name?: string;
 };
 
-export function createJamRecordsService(config: CoordinationConfig) {
-  const ddb = DynamoDBDocumentClient.from(
-    new DynamoDBClient({ region: config.awsRegion }),
-  );
+function toJamRecord(row: JamRecordRow): JamRecord {
+  return {
+    id: row.id,
+    instance_id: row.instance_id,
+    creator_user_id: row.creator_user_id,
+    creator_login: row.creator_login,
+    creator_name: row.creator_name,
+    creator_avatar: row.creator_avatar,
+    ...(row.ip ? { ip: row.ip } : {}),
+    state: row.state,
+    created_at: row.created_at,
+    ...(row.name ? { name: row.name } : {}),
+  };
+}
+
+export function createJamRecordsService(db: Kysely<CoordinationDatabase>) {
+  async function getActiveRecords() {
+    return db
+      .selectFrom("jam_records")
+      .selectAll()
+      .where("state", "in", ["pending", "running"])
+      .execute();
+  }
 
   return {
     async putJamRecord(item: JamRecord) {
-      await ddb.send(
-        new PutCommand({
-          TableName: config.jamTableName,
-          Item: item,
-          ConditionExpression: "attribute_not_exists(id)",
-        }),
-      );
+      await db
+        .insertInto("jam_records")
+        .values({
+          ...item,
+          creator_avatar: item.creator_avatar || "",
+          ip: item.ip || null,
+          name: item.name || null,
+        })
+        .executeTakeFirst();
     },
 
     async getJamRecord(id: string): Promise<JamRecord | undefined> {
-      const result = await ddb.send(
-        new GetCommand({
-          TableName: config.jamTableName,
-          Key: { id },
-        }),
-      );
-      return result.Item as JamRecord | undefined;
+      const result = await db
+        .selectFrom("jam_records")
+        .selectAll()
+        .where("id", "=", id)
+        .executeTakeFirst();
+      return result ? toJamRecord(result) : undefined;
     },
 
-    async getActiveJamsByCreator(login: string): Promise<JamRecord[]> {
-      const [pending, running] = await Promise.all([
-        ddb.send(
-          new QueryCommand({
-            TableName: config.jamTableName,
-            IndexName: "creator-index",
-            KeyConditionExpression: "creator_login = :login AND #state = :state",
-            ExpressionAttributeNames: { "#state": "state" },
-            ExpressionAttributeValues: {
-              ":login": login,
-              ":state": "pending",
-            },
-          }),
-        ),
-        ddb.send(
-          new QueryCommand({
-            TableName: config.jamTableName,
-            IndexName: "creator-index",
-            KeyConditionExpression: "creator_login = :login AND #state = :state",
-            ExpressionAttributeNames: { "#state": "state" },
-            ExpressionAttributeValues: {
-              ":login": login,
-              ":state": "running",
-            },
-          }),
-        ),
-      ]);
+    async getActiveJamsByCreator(userId: string): Promise<JamRecord[]> {
+      const records = await db
+        .selectFrom("jam_records")
+        .selectAll()
+        .where("creator_user_id", "=", userId)
+        .where("state", "in", ["pending", "running"])
+        .execute();
 
-      return [...(pending.Items || []), ...(running.Items || [])] as JamRecord[];
+      return records.map(toJamRecord);
     },
 
     async updateJamState(id: string, state: string, ip?: string) {
-      const values: Record<string, string> = { ":state": state };
-      const expression = ip
-        ? "SET #state = :state, ip = :ip"
-        : "SET #state = :state";
-
-      if (ip) values[":ip"] = ip;
-
-      await ddb.send(
-        new UpdateCommand({
-          TableName: config.jamTableName,
-          Key: { id },
-          UpdateExpression: expression,
-          ExpressionAttributeNames: { "#state": "state" },
-          ExpressionAttributeValues: values,
-        }),
-      );
+      await db
+        .updateTable("jam_records")
+        .set({
+          state,
+          ...(ip === undefined ? {} : { ip }),
+        })
+        .where("id", "=", id)
+        .executeTakeFirst();
     },
 
     async scanActiveJamRecords(): Promise<JamRecord[]> {
-      const result = await ddb.send(
-        new ScanCommand({
-          TableName: config.jamTableName,
-          FilterExpression: "#state = :pending OR #state = :running",
-          ExpressionAttributeNames: { "#state": "state" },
-          ExpressionAttributeValues: {
-            ":pending": "pending",
-            ":running": "running",
-          },
-        }),
-      );
-
-      return (result.Items || []) as JamRecord[];
+      const result = await getActiveRecords();
+      return result.map(toJamRecord);
     },
   };
 }

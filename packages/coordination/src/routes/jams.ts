@@ -1,7 +1,8 @@
 import type { CoordinationConfig } from "../config";
 import type { Ec2Service } from "../services/ec2";
 import { buildJamInstanceUserData } from "../services/user-data";
-import { getSessionUser, type SessionStore } from "../services/github-oauth";
+import { getSessionLookup, type CoordinationAuth } from "../services/auth";
+import { mergeHeaders } from "../services/http";
 import type { JamRecord, JamRecordsService } from "../services/jam-records";
 
 type JamSummary = {
@@ -20,16 +21,15 @@ type JamSummary = {
 
 export type JamRouteContext = {
   config: CoordinationConfig;
-  sessions: SessionStore;
+  auth: CoordinationAuth;
   jamRecords: JamRecordsService;
   ec2: Ec2Service;
 };
 
 function apiHeaders(extra: HeadersInit = {}) {
-  return {
+  return mergeHeaders({
     "Access-Control-Allow-Origin": "*",
-    ...extra,
-  };
+  }, extra);
 }
 
 function createJamId() {
@@ -116,11 +116,12 @@ export async function handleJamRoutes(
   const url = new URL(request.url);
 
   if (url.pathname === "/api/jams" && request.method === "POST") {
-    const user = getSessionUser(request, context.sessions);
+    const session = await getSessionLookup(request, context.auth);
+    const user = session.user;
     if (!user) {
       return Response.json(
         { error: "Unauthorized" },
-        { status: 401, headers: apiHeaders() },
+        { status: 401, headers: apiHeaders(session.headers) },
       );
     }
 
@@ -129,11 +130,11 @@ export async function handleJamRoutes(
       const jamName =
         typeof body.name === "string" ? body.name.trim().slice(0, 64) : undefined;
 
-      const active = await context.jamRecords.getActiveJamsByCreator(user.login);
+      const active = await context.jamRecords.getActiveJamsByCreator(user.id);
       if (active.length > 0) {
         return Response.json(
           { error: "You already have a running instance" },
-          { status: 409, headers: apiHeaders() },
+          { status: 409, headers: apiHeaders(session.headers) },
         );
       }
 
@@ -147,6 +148,7 @@ export async function handleJamRoutes(
       await context.jamRecords.putJamRecord({
         id: jamId,
         instance_id: instanceId,
+        creator_user_id: user.id,
         creator_login: user.login,
         creator_name: user.name,
         creator_avatar: user.avatar_url,
@@ -165,13 +167,13 @@ export async function handleJamRoutes(
           created_at: createdAt,
           name: jamName || null,
         },
-        { headers: apiHeaders() },
+        { headers: apiHeaders(session.headers) },
       );
     } catch (error: any) {
       console.error("POST /api/jams error:", error);
       return Response.json(
         { error: error.message || "Internal error" },
-        { status: 500, headers: apiHeaders() },
+        { status: 500, headers: apiHeaders(session.headers) },
       );
     }
   }
@@ -245,11 +247,12 @@ export async function handleJamRoutes(
 
   const deleteMatch = url.pathname.match(/^\/api\/jams\/([a-z0-9]+)$/);
   if (deleteMatch && request.method === "DELETE") {
-    const user = getSessionUser(request, context.sessions);
+    const session = await getSessionLookup(request, context.auth);
+    const user = session.user;
     if (!user) {
       return Response.json(
         { error: "Unauthorized" },
-        { status: 401, headers: apiHeaders() },
+        { status: 401, headers: apiHeaders(session.headers) },
       );
     }
 
@@ -262,10 +265,10 @@ export async function handleJamRoutes(
         );
       }
 
-      if (jam.creator_login !== user.login) {
+      if (jam.creator_user_id !== user.id) {
         return Response.json(
           { error: "Forbidden" },
-          { status: 403, headers: apiHeaders() },
+          { status: 403, headers: apiHeaders(session.headers) },
         );
       }
 
@@ -274,13 +277,13 @@ export async function handleJamRoutes(
 
       return Response.json(
         { ok: true, terminated: jam.instance_id },
-        { headers: apiHeaders() },
+        { headers: apiHeaders(session.headers) },
       );
     } catch (error: any) {
       console.error("DELETE /api/jams error:", error);
       return Response.json(
         { error: error.message || "Internal error" },
-        { status: 500, headers: apiHeaders() },
+        { status: 500, headers: apiHeaders(session.headers) },
       );
     }
   }
