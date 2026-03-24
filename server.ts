@@ -438,14 +438,19 @@ const server = Bun.serve({
             if (body.name === "GitHub Token") {
               extraEnv.GH_TOKEN = body.value;
               extraEnv.GITHUB_TOKEN = body.value;
-              execSync(`git config --global credential.helper store`, {});
-              execSync(`printf 'protocol=https\\nhost=github.com\\nusername=oauth2\\npassword=${body.value}\\n' | git credential-store store`, { shell: true });
+              // Write credentials file directly and configure url.insteadOf for reliability
+              try {
+                const credsPath = `${process.env.HOME}/.git-credentials`;
+                Bun.write(credsPath, `https://oauth2:${body.value}@github.com\n`);
+                execSync(`git config --global credential.helper store`);
+                execSync(`git config --global url."https://oauth2:${body.value}@github.com/".insteadOf "https://github.com/"`);
+              } catch {}
               // Also rewrite any existing git remote in all active sessions
               for (const session of sessions.values()) {
                 try {
                   const remote = execSync("git remote get-url origin", { cwd: session.cwd }).toString().trim();
                   const m = remote.match(/github\.com[:/](.+?)(?:\.git)?$/);
-                  if (m) execSync(`git remote set-url origin https://${body.value}@github.com/${m[1]}.git`, { cwd: session.cwd });
+                  if (m) execSync(`git remote set-url origin https://oauth2:${body.value}@github.com/${m[1]}.git`, { cwd: session.cwd });
                 } catch {}
               }
             } else if (body.name === "Anthropic API Key") {
