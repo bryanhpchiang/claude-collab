@@ -812,9 +812,9 @@
 
     function getCurrentTerminalText() {
       const buffer = term.buffer.active;
-      const start = Math.max(0, buffer.length - term.rows - 20);
+      const vp = buffer.viewportY;
       const lines = [];
-      for (let i = start; i < buffer.length; i++) {
+      for (let i = vp; i < vp + term.rows; i++) {
         const line = buffer.getLine(i);
         if (line) lines.push(line.translateToString(true));
       }
