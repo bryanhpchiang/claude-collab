@@ -823,15 +823,18 @@
 
     function extractOauthUrlFromCurrentScreen() {
       const squashed = getCurrentTerminalText().replace(/\s+/g, '');
-      // Require the "Paste code here" prompt to be present — avoids false positives
+      // Must have the actual OAuth prompt marker — no marker, no modal
       if (!squashed.includes('Pastecodehereifprompted>')) return '';
-      const prefix = 'https://claude.ai/oauth/authorize?';
+      // Build prefix dynamically so this source code can't match itself
+      const prefix = ['https://claude.ai', '/oauth/authorize?'].join('');
       const start = squashed.lastIndexOf(prefix);
       if (start === -1) return '';
       const afterStart = squashed.slice(start);
       const endMarker = afterStart.indexOf('Pastecodehereifprompted>');
       const candidate = endMarker === -1 ? afterStart : afterStart.slice(0, endMarker);
-      const match = candidate.match(/^https:\/\/claude\.ai\/oauth\/authorize\?[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]*/);
+      // Must contain real OAuth params (client_id or response_type)
+      if (!candidate.includes('client_id=') && !candidate.includes('response_type=')) return '';
+      const match = candidate.match(/^https:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+/);
       return match ? match[0] : '';
     }
 
