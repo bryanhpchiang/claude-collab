@@ -700,23 +700,6 @@ const server = Bun.serve({
       return Response.json({ markdown: lines.join("\n"), lastModified: Date.now() });
     }
 
-    // --- Session summary endpoint ---
-    const sessionSummaryMatch = url.pathname.match(/^\/session\/([a-z0-9]+)\/summary$/);
-    if (sessionSummaryMatch && req.method === "GET") {
-      const sessionId = sessionSummaryMatch[1];
-      const session = sessions.get(sessionId);
-      if (!session) return Response.json({ error: "not found" }, { status: 404 });
-      const chatMessages = session.chatHistory
-        .filter((m: any) => m.type === "chat")
-        .slice(-5);
-      if (chatMessages.length === 0) return Response.json({ summary: null });
-      const preview = chatMessages
-        .map((m: any) => `${m.name}: ${m.text}`)
-        .join(" | ")
-        .slice(0, 100);
-      return Response.json({ summary: preview });
-    }
-
     // --- Serve React build static assets ---
     if (url.pathname.startsWith("/assets/") || url.pathname === "/favicon.svg") {
       const filePath = `client/dist${url.pathname}`;

@@ -102,10 +102,6 @@
       font-size: 11px; color: #8b949e; gap: 8px; overflow: hidden;
     }
     body.in-lobby #status-bar { display: none; }
-    #status-bar .sb-summary {
-      flex: 1; min-width: 0; white-space: nowrap; overflow: hidden;
-      text-overflow: ellipsis; color: #8b949e;
-    }
     #status-bar .sb-claude {
       flex-shrink: 0; display: flex; align-items: center; gap: 5px;
       white-space: nowrap;
@@ -545,7 +541,6 @@
       </svg>
       <h2 style="font-family:'Fredoka',sans-serif;font-weight:700;letter-spacing:0.5px;background:linear-gradient(135deg,#ff9a56,#ff6b6b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Jam</h2>
       <p>Multiplayer Claude — enter your name to join</p>
-      <div id="session-context" style="display:none;margin-bottom:14px;padding:8px 12px;background:#0d1117;border:1px solid #30363d;border-radius:6px;font-size:12px;color:#8b949e;line-height:1.5;max-width:280px;text-align:left;"></div>
       <div>
         <input id="name-input" type="text" placeholder="your name" maxlength="20" autofocus>
         <button id="join-btn">Join</button>
@@ -596,7 +591,6 @@
     <button id="new-session-btn">+ New Session</button>
   </div>
   <div id="status-bar">
-    <span class="sb-summary" id="sb-summary-text"></span>
     <span class="sb-claude idle" id="sb-claude-status"><span class="claude-dot"></span><span id="sb-claude-label">Claude is idle</span></span>
     <span class="sb-users" id="sb-users"></span>
   </div>
@@ -709,7 +703,6 @@
     new ResizeObserver(() => fitAddon.fit()).observe(document.getElementById('terminal-container'));
 
     const DEFAULT_SESSION_SENTINEL = '__default__';
-    let sessionSummary = null;
     let ws, myName = '', currentSessionId = null, sessionList = [], pendingJoin = null;
     let projectList = [], currentProjectId = null;
     let connectedUsers = []; // Track users in current session for @mention autocomplete
@@ -1097,9 +1090,6 @@
       startStatePolling();
       // Reset status bar for new session
       setClaudeState('idle');
-      sessionSummary = null;
-      renderStatusBarSummary();
-      fetchSessionSummary(sessionId);
     }
     function connect() {
       const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -1461,44 +1451,6 @@
       setTimeout(() => document.addEventListener('click', closeMenu), 0);
     });
 
-    // ===== Session Context Summary =====
-    async function fetchSessionSummary(sessionId) {
-      if (!sessionId) return;
-      try {
-        const res = await fetch('/session/' + sessionId + '/summary');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.summary) {
-          sessionSummary = data.summary;
-          renderStatusBarSummary();
-        }
-      } catch {}
-    }
-
-    (async function loadSessionContext() {
-      const sessionCtx = document.getElementById('session-context');
-      // Determine session ID: JAM_SESSION_ID (for /j/ routes) or ?s= param
-      const sessionId = window.JAM_SESSION_ID || new URL(location.href).searchParams.get('s');
-      if (!sessionId) return;
-      // Always fetch summary for the status bar
-      fetchSessionSummary(sessionId);
-      // Only show join-modal context box if modal is visible (i.e. no saved name)
-      if (localStorage.getItem('jam-username')) return;
-      sessionCtx.style.display = 'block';
-      sessionCtx.innerHTML = '&#x1F4AC; <em style="color:#484f58">loading context...</em>';
-      try {
-        const res = await fetch('/session/' + sessionId + '/summary');
-        if (!res.ok) { sessionCtx.style.display = 'none'; return; }
-        const data = await res.json();
-        if (data.summary) {
-          sessionCtx.innerHTML = '&#x1F4AC; ' + esc(data.summary);
-        } else {
-          sessionCtx.style.display = 'none';
-        }
-      } catch {
-        sessionCtx.style.display = 'none';
-      }
-    })();
 
     function joinFlow() {
       const name = document.getElementById('name-input').value.trim();
@@ -1902,10 +1854,6 @@
       }).join('');
     }
 
-    function renderStatusBarSummary() {
-      const el = document.getElementById('sb-summary-text');
-      el.textContent = sessionSummary || '';
-    }
 
   </script>
 </body>
