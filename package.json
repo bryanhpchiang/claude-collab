@@ -1,16 +1,18 @@
 {
   "name": "claude-collab",
   "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
-    "start": "bun run server.ts",
-    "dev:server": "bun run server.ts",
-    "dev:client": "cd client && bun run dev",
-    "dev": "echo 'Run dev:server and dev:client in separate terminals'",
-    "build:client": "cd client && bun run build"
-  },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.80.0",
-    "bun-pty": "^0.4.8",
-    "node-pty": "^1.0.0"
+    "start": "bun run runtime:start",
+    "dev": "bun run runtime:dev",
+    "runtime:start": "cd packages/runtime && bun run start",
+    "runtime:dev": "cd packages/runtime && bun run dev",
+    "runtime:test": "cd packages/runtime && bun test",
+    "coordination:start": "cd packages/coordination && bun run start",
+    "coordination:dev": "cd packages/coordination && bun run dev",
+    "coordination:test": "cd packages/coordination && bun test"
   }
 }
