@@ -138,7 +138,6 @@ export function createStateSidebarController({ state }) {
           name,
           value,
           user: state.myName,
-          projectId: state.currentProjectId,
         }),
       });
       secretValue.value = "";
