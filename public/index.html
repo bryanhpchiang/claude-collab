@@ -823,6 +823,8 @@
 
     function extractOauthUrlFromCurrentScreen() {
       const squashed = getCurrentTerminalText().replace(/\s+/g, '');
+      // Require the "Paste code here" prompt to be present — avoids false positives
+      if (!squashed.includes('Pastecodehereifprompted>')) return '';
       const prefix = 'https://claude.ai/oauth/authorize?';
       const start = squashed.lastIndexOf(prefix);
       if (start === -1) return '';
