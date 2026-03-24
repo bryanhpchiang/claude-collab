@@ -9,7 +9,7 @@ export const WEB_DIR = join(SRC_ROOT, "web");
 export const UPLOAD_DIR = "/tmp/claude-uploads";
 export const HOME_DIR = process.env.HOME || "/root";
 export const CLAUDE_PROJECTS_DIR = join(HOME_DIR, ".claude/projects");
-export const DEFAULT_PROJECT_CWD = process.env.JAM_CWD || WORKSPACE_ROOT;
+export const DEFAULT_PROJECT_CWD = HOME_DIR;
 export const DEFAULT_NEW_PROJECTS_DIR = join(HOME_DIR, "projects");
 export const PORT = process.env.PORT === undefined ? 7681 : Number(process.env.PORT);
 export const CLAUDE_PATH = process.env.CLAUDE_PATH || execSync("which claude").toString().trim();

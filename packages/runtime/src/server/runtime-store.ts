@@ -6,7 +6,6 @@ import {
   DEFAULT_PROJECT_CWD,
   HOME_DIR,
   UPLOAD_DIR,
-  WORKSPACE_ROOT,
 } from "../config";
 import { resolveProjectCwd } from "../project-paths";
 import { buildClaudeInput } from "../session-input";
@@ -120,7 +119,7 @@ export class RuntimeStore {
     const project: Project = {
       id,
       name,
-      cwd: cwd || process.env.JAM_CWD || WORKSPACE_ROOT,
+      cwd: cwd || HOME_DIR,
       sessions: new Map(),
       createdAt: Date.now(),
     };

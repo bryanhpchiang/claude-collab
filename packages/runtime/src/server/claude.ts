@@ -1,5 +1,5 @@
 import { spawn, type IPty } from "bun-pty";
-import { CLAUDE_PATH, HOME_DIR, WORKSPACE_ROOT } from "../config";
+import { CLAUDE_PATH, HOME_DIR } from "../config";
 
 export const SYSTEM_PROMPT = [
   "You are in a MULTIPLAYER session. Multiple users are typing messages to you through a shared web terminal.",
@@ -29,7 +29,7 @@ export function spawnClaude({
     name: "xterm-256color",
     cols: 120,
     rows: 60,
-    cwd: cwd || process.env.JAM_CWD || WORKSPACE_ROOT,
+    cwd: cwd || HOME_DIR,
     env: {
       ...(process.env as Record<string, string>),
       ...extraEnv,
