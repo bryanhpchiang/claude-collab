@@ -86,7 +86,7 @@ Browser (xterm.js) <--WebSocket--> Bun Server <--PTY--> Claude Code CLI
 - Uses `--append-system-prompt` to inject the multiplayer system prompt
 - Resumes existing sessions with `--resume <sessionId>`
 - Sets `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` to enable parallel agent execution
-- Working directory: `process.cwd()` (defaults to repo root)
+- Working directory: session/project cwd; the default project uses `JAM_CWD`, otherwise `$HOME`
 - Auto-sends Enter after 3s and 5s to dismiss the trust prompt
 
 ### Session management
@@ -115,7 +115,7 @@ Single-file architecture -- all HTML, CSS, and JS in one file. No build tools, n
 ## Environment
 
 - **VM**: exe.dev persistent instance (`dog-tare`)
-- **Working directory**: repo root (wherever server.ts is run from)
+- **Default project working directory**: `JAM_CWD` if set, otherwise `$HOME`
 - **Runtime**: Bun (at `~/.bun/bin/bun`)
 - **Permissions**: Running with `--dangerously-skip-permissions`
 - **GitHub**: Authenticated as `bryanhpchiang`

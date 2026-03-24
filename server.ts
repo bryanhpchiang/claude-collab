@@ -2,11 +2,15 @@ import { spawn, type IPty } from "bun-pty";
 import { readdir, readFile, mkdir, stat } from "fs/promises";
 import { join } from "path";
 import { execSync } from "child_process";
+import { resolveProjectCwd } from "./project-paths";
 import { buildClaudeInput } from "./session-input";
 const UPLOAD_DIR = "/tmp/claude-uploads";
 
+const HOME_DIR = process.env.HOME || "/root";
 const claudePath = process.env.CLAUDE_PATH || execSync("which claude").toString().trim();
-const CLAUDE_PROJECTS_DIR = join(process.env.HOME || "/root", ".claude/projects");
+const CLAUDE_PROJECTS_DIR = join(HOME_DIR, ".claude/projects");
+const DEFAULT_PROJECT_CWD = process.env.JAM_CWD || HOME_DIR;
+const DEFAULT_NEW_PROJECTS_DIR = join(HOME_DIR, "projects");
 
 const systemPrompt = [
   "You are in a MULTIPLAYER session. Multiple users are typing messages to you through a shared web terminal.",
@@ -282,7 +286,7 @@ function initBroadcastLobby(srv: any) {
 }
 
 // Create default project and session
-const defaultProject = createProject("Default", process.env.JAM_CWD || process.cwd());
+const defaultProject = createProject("Default", DEFAULT_PROJECT_CWD);
 createSession("General", defaultProject.id);
 
 const server = Bun.serve({
@@ -304,9 +308,13 @@ const server = Bun.serve({
         return (async () => {
           const body = await req.json() as { name?: string; cwd?: string };
           const name = body.name || "Untitled";
-          // Default: create /opt/jam/projects/<slug> if no cwd given
+          // Default: create ~/projects/<slug> if no cwd given
           const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || genId();
-          const cwd = body.cwd || `/opt/jam/projects/${slug}`;
+          const cwd = resolveProjectCwd(body.cwd, {
+            defaultCwd: join(DEFAULT_NEW_PROJECTS_DIR, slug),
+            baseDir: HOME_DIR,
+            homeDir: HOME_DIR,
+          });
           await mkdir(cwd, { recursive: true });
           const project = createProject(name, cwd);
           // Create a default General session in the new project
