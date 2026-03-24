@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { spawnSync } from "child_process";
 import { mkdir, readdir, readFile, stat } from "fs/promises";
 import { join } from "path";
 import {
@@ -27,6 +27,7 @@ import type {
 type PublishFn = (channel: string, payload: string) => void;
 
 const MAX_CHAT_HISTORY = 200;
+const GITHUB_INSTEAD_OF = ["git@github.com:", "ssh://git@github.com/"];
 
 export class RuntimeStore {
   private readonly projects = new Map<string, Project>();
@@ -360,7 +361,21 @@ export class RuntimeStore {
     }));
   }
 
-  saveSecret(name: string, value: string, user: string, projectId?: string) {
+  private setGlobalGitConfig(key: string, value: string) {
+    spawnSync("git", ["config", "--global", key, value]);
+  }
+
+  private replaceGlobalGitConfigValue(key: string, value: string) {
+    spawnSync("git", ["config", "--global", "--fixed-value", "--unset-all", key, value]);
+    spawnSync("git", ["config", "--global", "--add", key, value]);
+  }
+
+  private removeGlobalGitConfigValue(key: string, value: string) {
+    spawnSync("git", ["config", "--global", "--fixed-value", "--unset-all", key, value]);
+  }
+
+  saveSecret(name: string, value: string, user: string) {
+    const previousSecret = this.secrets.get(name);
     this.secrets.set(name, {
       name,
       value,
@@ -370,14 +385,20 @@ export class RuntimeStore {
 
     try {
       if (name === "GitHub Token") {
-        const cwd = this.projects.get(projectId || "")?.cwd || process.env.JAM_CWD || WORKSPACE_ROOT;
-        try {
-          const remote = execSync("git remote get-url origin", { cwd }).toString().trim();
-          const match = remote.match(/github\.com[:/](.+?)(?:\.git)?$/);
-          if (match) {
-            execSync(`git remote set-url origin https://${value}@github.com/${match[1]}.git`, { cwd });
-          }
-        } catch {}
+        this.extraEnv.GITHUB_TOKEN = value;
+        this.extraEnv.GH_TOKEN = value;
+        this.setGlobalGitConfig("credential.https://github.com.helper", "store");
+        if (previousSecret?.value && previousSecret.value !== value) {
+          spawnSync("git", ["credential", "reject"], {
+            input: `protocol=https\nhost=github.com\nusername=x-access-token\npassword=${previousSecret.value}\n\n`,
+          });
+        }
+        for (const insteadOf of GITHUB_INSTEAD_OF) {
+          this.replaceGlobalGitConfigValue("url.https://github.com/.insteadOf", insteadOf);
+        }
+        spawnSync("git", ["credential", "approve"], {
+          input: `protocol=https\nhost=github.com\nusername=x-access-token\npassword=${value}\n\n`,
+        });
       } else if (name === "Anthropic API Key") {
         this.extraEnv.ANTHROPIC_API_KEY = value;
       } else if (name === "Twilio SID") {
@@ -399,7 +420,17 @@ export class RuntimeStore {
     if (secret.createdBy !== user) return { ok: false as const, status: 403 };
 
     this.secrets.delete(name);
-    if (name === "Anthropic API Key") delete this.extraEnv.ANTHROPIC_API_KEY;
+    if (name === "GitHub Token") {
+      delete this.extraEnv.GITHUB_TOKEN;
+      delete this.extraEnv.GH_TOKEN;
+      spawnSync("git", ["credential", "reject"], {
+        input: `protocol=https\nhost=github.com\nusername=x-access-token\npassword=${secret.value}\n\n`,
+      });
+      for (const insteadOf of GITHUB_INSTEAD_OF) {
+        this.removeGlobalGitConfigValue("url.https://github.com/.insteadOf", insteadOf);
+      }
+      this.removeGlobalGitConfigValue("credential.https://github.com.helper", "store");
+    } else if (name === "Anthropic API Key") delete this.extraEnv.ANTHROPIC_API_KEY;
     else if (name === "Twilio SID") delete this.extraEnv.TWILIO_ACCOUNT_SID;
     else if (name === "Twilio Auth Token") delete this.extraEnv.TWILIO_AUTH_TOKEN;
     else if (name === "Twilio Phone Number") delete this.extraEnv.TWILIO_PHONE_NUMBER;

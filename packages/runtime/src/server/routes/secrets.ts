@@ -11,12 +11,11 @@ export async function handleSecretsRoute(req: Request, url: URL, store: RuntimeS
         name?: string;
         value?: string;
         user?: string;
-        projectId?: string;
       };
       if (!body.name || !body.value || !body.user) {
         return Response.json({ error: "missing fields" }, { status: 400 });
       }
-      store.saveSecret(body.name, body.value, body.user, body.projectId);
+      store.saveSecret(body.name, body.value, body.user);
       return Response.json({ ok: true, name: body.name });
     }
   }
