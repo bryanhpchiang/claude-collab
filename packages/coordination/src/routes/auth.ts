@@ -1,25 +1,22 @@
 import type { CoordinationConfig } from "../config";
 import {
-  buildGitHubAuthorizeUrl,
-  createSessionToken,
-  exchangeCodeForSessionUser,
-  getSecureCookieAttribute,
-  getSessionUser,
   isGitHubOAuthEnabled,
-  parseCookies,
-  type SessionStore,
-} from "../services/github-oauth";
+  getSessionLookup,
+  startGitHubSignIn,
+  signOutAndRedirect,
+  type CoordinationAuth,
+} from "../services/auth";
+import { mergeHeaders } from "../services/http";
 
 type AuthRouteContext = {
   config: CoordinationConfig;
-  sessions: SessionStore;
+  auth: CoordinationAuth;
 };
 
 function apiHeaders(extra: HeadersInit = {}) {
-  return {
+  return mergeHeaders({
     "Access-Control-Allow-Origin": "*",
-    ...extra,
-  };
+  }, extra);
 }
 
 export async function handleAuthRoutes(
@@ -33,59 +30,27 @@ export async function handleAuthRoutes(
       return new Response("GitHub OAuth is not configured", { status: 503 });
     }
 
-    return Response.redirect(buildGitHubAuthorizeUrl(context.config, request), 302);
+    return startGitHubSignIn(request, context.auth);
   }
 
-  if (url.pathname === "/auth/github/callback") {
-    if (!isGitHubOAuthEnabled(context.config)) {
-      return new Response("GitHub OAuth is not configured", { status: 503 });
-    }
-
-    const code = url.searchParams.get("code");
-    if (!code) {
-      return new Response("Missing code", { status: 400 });
-    }
-
-    try {
-      const user = await exchangeCodeForSessionUser(context.config, code);
-      const token = createSessionToken();
-      context.sessions.set(token, user);
-
-      return new Response(null, {
-        status: 302,
-        headers: {
-          Location: "/dashboard",
-          "Set-Cookie": `jam_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800${getSecureCookieAttribute(context.config, request)}`,
-        },
-      });
-    } catch (error: any) {
-      console.error("OAuth callback error:", error);
-      return new Response(`OAuth error: ${error.message}`, { status: 500 });
-    }
+  if (url.pathname.startsWith("/api/auth/")) {
+    return context.auth.handler(request);
   }
 
   if (url.pathname === "/auth/logout") {
-    const token = parseCookies(request.headers.get("cookie")).jam_session;
-    if (token) context.sessions.delete(token);
-
-    return new Response(null, {
-      status: 302,
-      headers: {
-        Location: "/",
-        "Set-Cookie": `jam_session=; Path=/; HttpOnly; Max-Age=0${getSecureCookieAttribute(context.config, request)}`,
-      },
-    });
+    return signOutAndRedirect(request, context.auth);
   }
 
   if (url.pathname === "/api/me") {
-    const user = getSessionUser(request, context.sessions);
+    const session = await getSessionLookup(request, context.auth);
+    const user = session.user;
     if (!user) {
       return Response.json(
         { error: "Unauthorized" },
-        { status: 401, headers: apiHeaders() },
+        { status: 401, headers: apiHeaders(session.headers) },
       );
     }
 
-    return Response.json(user, { headers: apiHeaders() });
+    return Response.json(user, { headers: apiHeaders(session.headers) });
   }
 }

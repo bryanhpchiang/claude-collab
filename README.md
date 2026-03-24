@@ -19,6 +19,16 @@ bun run coordination:start
 
 The jam runtime server starts on **port 7681**. The coordination server runs from [`packages/coordination`](/Users/sofiane/Documents/claude-collab/packages/coordination) on **port 8080** by default.
 
+The coordination server now expects a Postgres-backed setup:
+
+- `DATABASE_URL`
+- `BETTER_AUTH_SECRET`
+- `GITHUB_CLIENT_ID`
+- `GITHUB_CLIENT_SECRET`
+
+On boot, the coordination server runs Better Auth migrations and ensures the `jam_records` table exists.
+For Amazon RDS, the coordination image now includes the AWS global RDS CA bundle at `/etc/ssl/certs/rds-global-bundle.pem`. Local non-container runs can override that path with `DATABASE_SSL_CA_PATH`.
+
 ## How It Works
 
 ```
@@ -48,7 +58,7 @@ Browser (xterm.js) ←— WebSocket —→ Bun Server ←— PTY —→ Claude C
 | `packages/runtime/src/web` | Runtime browser client source: HTML shell, browser modules, and CSS. |
 | `packages/coordination/src/index.ts` | Coordination server entrypoint. Handles auth, jam lifecycle APIs, HTML pages, and static assets. |
 | `packages/coordination/src/routes` | Coordination route handlers split by auth, jams, and pages. |
-| `packages/coordination/src/services` | AWS, DynamoDB, GitHub OAuth, and EC2 user-data logic. |
+| `packages/coordination/src/services` | Better Auth, Postgres persistence, AWS orchestration, and EC2 user-data logic. |
 | `packages/coordination/src/views` | Server-rendered landing/dashboard HTML plus reusable view components. |
 | `CLAUDE.md` | Detailed project guide and architecture docs. |
 
@@ -57,3 +67,5 @@ Browser (xterm.js) ←— WebSocket —→ Bun Server ←— PTY —→ Claude C
 - [Bun](https://bun.sh) — JavaScript runtime and server
 - [bun-pty](https://github.com/nicolo-ribaudo/bun-pty) — PTY bindings for spawning Claude processes
 - [xterm.js](https://xtermjs.org) (CDN) — Terminal emulator in the browser
+- [Better Auth](https://better-auth.com) — GitHub sign-in and session management for the coordination app
+- [PostgreSQL](https://www.postgresql.org) — persistence for auth tables and jam records

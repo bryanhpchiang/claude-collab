@@ -4,13 +4,15 @@ export type CoordinationConfig = {
   port: number;
   serviceName: string;
   staticDir: string;
+  databaseUrl: string;
+  databaseSslCaPath: string;
+  betterAuthSecret: string;
   jamRuntimePort: number;
   awsRegion: string;
   jamAmiId: string;
   jamSecurityGroupId: string;
   jamInstanceType: string;
   jamTagPrefix: string;
-  jamTableName: string;
   githubClientId: string;
   githubClientSecret: string;
   githubWebhookSecret: string;
@@ -28,11 +30,29 @@ export function loadConfig(): CoordinationConfig {
     process.env.JAM_RUNTIME_PORT === undefined
       ? 7681
       : Number(process.env.JAM_RUNTIME_PORT);
+  const databaseUrl = process.env.DATABASE_URL || "";
+  const databaseSslCaPath =
+    process.env.DATABASE_SSL_CA_PATH ||
+    process.env.PGSSLROOTCERT ||
+    "/etc/ssl/certs/rds-global-bundle.pem";
+  const betterAuthSecret =
+    process.env.BETTER_AUTH_SECRET || process.env.AUTH_SECRET || "";
+
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is required for the coordination server");
+  }
+
+  if (!betterAuthSecret) {
+    throw new Error("BETTER_AUTH_SECRET is required for the coordination server");
+  }
 
   return {
     port: Number.isFinite(port) ? port : 8080,
     serviceName: "jam-coordination",
     staticDir: join(import.meta.dir, "static"),
+    databaseUrl,
+    databaseSslCaPath,
+    betterAuthSecret,
     jamRuntimePort: Number.isFinite(jamRuntimePort) ? jamRuntimePort : 7681,
     awsRegion: process.env.AWS_REGION || process.env.AWS_DEFAULT_REGION || "us-east-1",
     jamAmiId: process.env.JAM_AMI_ID || "ami-0e8752c8e684e0997",
@@ -40,7 +60,6 @@ export function loadConfig(): CoordinationConfig {
       process.env.JAM_SECURITY_GROUP_ID || "sg-092ad16c7428104a3",
     jamInstanceType: process.env.JAM_INSTANCE_TYPE || "t3.medium",
     jamTagPrefix: process.env.JAM_TAG_PREFIX || "jam-",
-    jamTableName: process.env.JAM_TABLE_NAME || "jam-instances",
     githubClientId: process.env.GITHUB_CLIENT_ID || "",
     githubClientSecret: process.env.GITHUB_CLIENT_SECRET || "",
     githubWebhookSecret: process.env.GITHUB_WEBHOOK_SECRET || "",

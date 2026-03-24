@@ -1,7 +1,12 @@
 import { basename, join } from "path";
 import type { CoordinationConfig } from "../config";
-import { getSessionUser, isGitHubOAuthEnabled, type SessionStore } from "../services/github-oauth";
+import {
+  getSessionLookup,
+  isGitHubOAuthEnabled,
+  type CoordinationAuth,
+} from "../services/auth";
 import type { Ec2Service } from "../services/ec2";
+import { mergeHeaders } from "../services/http";
 import type { JamRecordsService } from "../services/jam-records";
 import { renderDashboardPage } from "../views/dashboard";
 import { renderLandingPage } from "../views/landing";
@@ -14,7 +19,7 @@ const MIME_TYPES: Record<string, string> = {
 
 type PageRouteContext = {
   config: CoordinationConfig;
-  sessions: SessionStore;
+  auth: CoordinationAuth;
   jamRecords: JamRecordsService;
   ec2: Ec2Service;
 };
@@ -31,11 +36,12 @@ export async function handlePageRoutes(
   const url = new URL(request.url);
 
   if (url.pathname === "/" && request.method === "GET") {
-    const user = getSessionUser(request, context.sessions);
+    const session = await getSessionLookup(request, context.auth);
+    const user = session.user;
     if (user) {
       return new Response(null, {
         status: 302,
-        headers: { Location: "/dashboard" },
+        headers: mergeHeaders(session.headers, { Location: "/dashboard" }),
       });
     }
 
@@ -45,25 +51,30 @@ export async function handlePageRoutes(
         authEnabled: isGitHubOAuthEnabled(context.config),
       }),
       {
-        headers: { "Content-Type": "text/html; charset=utf-8" },
+        headers: mergeHeaders(session.headers, {
+          "Content-Type": "text/html; charset=utf-8",
+        }),
       },
     );
   }
 
   if (url.pathname === "/dashboard" && request.method === "GET") {
-    const user = getSessionUser(request, context.sessions);
+    const session = await getSessionLookup(request, context.auth);
+    const user = session.user;
     if (!user) {
       return new Response(null, {
         status: 302,
-        headers: {
+        headers: mergeHeaders(session.headers, {
           Location: isGitHubOAuthEnabled(context.config) ? "/auth/github" : "/",
-        },
+        }),
       });
     }
 
     const jams = await listJams(context);
     return new Response(renderDashboardPage({ user, jams }), {
-      headers: { "Content-Type": "text/html; charset=utf-8" },
+      headers: mergeHeaders(session.headers, {
+        "Content-Type": "text/html; charset=utf-8",
+      }),
     });
   }
 

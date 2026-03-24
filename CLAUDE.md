@@ -65,6 +65,8 @@ Browser (xterm.js) <--WebSocket--> Bun Server <--PTY--> Claude Code CLI
 | `packages/runtime/src/web/main.js` | Browser app entrypoint that wires terminal, workspace, chat, mentions, treats, and state sidebar modules together. |
 | `packages/runtime/package.json` | Runtime package manifest. Start script: `bun run src/index.ts`. |
 | `packages/coordination/src/index.ts` | Coordination server entrypoint for auth, dashboard, and EC2 orchestration. |
+| `packages/coordination/src/services/auth.ts` | Better Auth wiring for GitHub sign-in, session lookup, and auth migrations. |
+| `packages/coordination/src/services/db.ts` | Postgres/Kysely connection setup plus `jam_records` schema bootstrap. |
 | `CLAUDE.md` | This file. Project guide and Claude session instructions. |
 
 ## Key Dependencies
@@ -123,6 +125,7 @@ The runtime browser app is still framework-free, but it is no longer a single gi
 - **Runtime**: Bun (at `~/.bun/bin/bun`)
 - **Permissions**: Running with `--dangerously-skip-permissions`
 - **GitHub**: Authenticated as `bryanhpchiang`
+- **Coordination auth/persistence**: Better Auth + PostgreSQL
 
 ## Coding Conventions
 
