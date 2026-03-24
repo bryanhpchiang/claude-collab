@@ -5,8 +5,10 @@ on:
     branches:
       - main
     paths:
-      - client/**
-      - lobby/**
+      - package.json
+      - bun.lock
+      - packages/coordination/**
+      - packages/runtime/package.json
       - .github/workflows/deploy-coordination-server.yml
   workflow_dispatch:
 
@@ -52,7 +54,7 @@ jobs:
         run: |
           ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME"
           docker build \
-            --file lobby/Dockerfile \
+            --file packages/coordination/Dockerfile \
             --tag "$ECR_URI:$GITHUB_SHA" \
             --tag "$ECR_URI:$DEPLOY_TAG" \
             .
