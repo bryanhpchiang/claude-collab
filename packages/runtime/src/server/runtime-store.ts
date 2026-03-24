@@ -291,7 +291,6 @@ export class RuntimeStore {
     try {
       const projects = await readdir(CLAUDE_PROJECTS_DIR);
       for (const project of projects) {
-        if (!project.includes("claude-collab")) continue;
         const projectDir = join(CLAUDE_PROJECTS_DIR, project);
         const files = await readdir(projectDir).catch(() => []);
         for (const file of files) {
@@ -361,7 +360,7 @@ export class RuntimeStore {
     }));
   }
 
-  saveSecret(name: string, value: string, user: string) {
+  saveSecret(name: string, value: string, user: string, projectId?: string) {
     this.secrets.set(name, {
       name,
       value,
@@ -371,7 +370,7 @@ export class RuntimeStore {
 
     try {
       if (name === "GitHub Token") {
-        const cwd = process.env.JAM_CWD || WORKSPACE_ROOT;
+        const cwd = this.projects.get(projectId || "")?.cwd || process.env.JAM_CWD || WORKSPACE_ROOT;
         try {
           const remote = execSync("git remote get-url origin", { cwd }).toString().trim();
           const match = remote.match(/github\.com[:/](.+?)(?:\.git)?$/);

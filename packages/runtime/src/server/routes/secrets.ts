@@ -7,11 +7,16 @@ export async function handleSecretsRoute(req: Request, url: URL, store: RuntimeS
     }
 
     if (req.method === "POST") {
-      const body = (await req.json()) as { name?: string; value?: string; user?: string };
+      const body = (await req.json()) as {
+        name?: string;
+        value?: string;
+        user?: string;
+        projectId?: string;
+      };
       if (!body.name || !body.value || !body.user) {
         return Response.json({ error: "missing fields" }, { status: 400 });
       }
-      store.saveSecret(body.name, body.value, body.user);
+      store.saveSecret(body.name, body.value, body.user, body.projectId);
       return Response.json({ ok: true, name: body.name });
     }
   }

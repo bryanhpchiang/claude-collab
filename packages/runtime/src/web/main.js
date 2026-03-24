@@ -84,6 +84,9 @@ const workspace = createWorkspaceController({
   onLayoutChange() {
     terminal.fit();
   },
+  onError(message) {
+    chat.addSystem(message);
+  },
 });
 
 createMentionController({ state });
@@ -141,8 +144,46 @@ function selectPendingSession() {
   state.pendingJoin = null;
 }
 
+function reconcileSelections() {
+  if (
+    state.currentProjectId &&
+    !state.projectList.some((project) => project.id === state.currentProjectId)
+  ) {
+    state.currentProjectId = state.projectList[0]?.id || null;
+  } else if (!state.currentProjectId && state.projectList.length > 0) {
+    state.currentProjectId = state.projectList[0].id;
+  }
+
+  if (
+    state.currentSessionId &&
+    !state.sessionList.some((session) => session.id === state.currentSessionId)
+  ) {
+    state.currentSessionId = null;
+  }
+
+  if (
+    !state.pendingJoin &&
+    !state.currentSessionId &&
+    state.currentProjectId &&
+    state.sessionList.some((session) => session.projectId === state.currentProjectId)
+  ) {
+    state.pendingJoin = DEFAULT_SESSION_SENTINEL;
+  }
+}
+
 function joinSession(sessionId) {
-  if (!sessionId || state.currentSessionId === sessionId) return;
+  if (!sessionId) return;
+
+  const nextUrl = new URL(location.href);
+  nextUrl.searchParams.set("s", sessionId);
+  history.replaceState(null, "", nextUrl);
+
+  if (!canSend()) {
+    state.pendingJoin = sessionId;
+    return;
+  }
+
+  if (state.currentSessionId === sessionId) return;
 
   state.currentSessionId = sessionId;
   const targetSession = state.sessionList.find((session) => session.id === sessionId);
@@ -156,10 +197,6 @@ function joinSession(sessionId) {
   sidebar.resetSummary();
   sendWs({ type: "join-session", sessionId, name: state.myName });
 
-  const nextUrl = new URL(location.href);
-  nextUrl.searchParams.set("s", sessionId);
-  history.replaceState(null, "", nextUrl);
-
   workspace.renderSessionTabs();
   setTimeout(() => terminal.fit(), 50);
   sidebar.fetchStateSummary();
@@ -169,9 +206,7 @@ function joinSession(sessionId) {
 function handleProjectsMessage(message) {
   state.projectList = message.projects || [];
   state.sessionList = message.sessions || [];
-  if (!state.currentProjectId && state.projectList.length > 0) {
-    state.currentProjectId = state.projectList[0].id;
-  }
+  reconcileSelections();
   workspace.renderProjectTabs();
   workspace.renderSessionTabs();
   selectPendingSession();
@@ -179,6 +214,7 @@ function handleProjectsMessage(message) {
 
 function handleSessionsMessage(message) {
   state.sessionList = message.sessions || [];
+  reconcileSelections();
   workspace.renderSessionTabs();
   selectPendingSession();
 }
@@ -242,7 +278,9 @@ function connect() {
   };
 
   state.ws.onclose = () => {
+    state.currentSessionId = null;
     chat.setInputEnabled(false);
+    chat.updateUsers([]);
     terminal.handleDisconnect();
     sidebar.stopPolling();
     chat.addSystem("Disconnected. Reconnecting...");
