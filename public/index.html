@@ -1541,7 +1541,15 @@
     });
     const savedName = localStorage.getItem('jam-username');
     if (savedName) { document.getElementById('name-input').value = savedName; joinFlow(); }
-    document.getElementById('name-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') joinFlow(); });
+    document.getElementById('name-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { joinFlow(); return; }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'key', seq: e.key === 'ArrowUp' ? '\x1b[A' : '\x1b[B' }));
+        }
+      }
+    });
     document.getElementById('join-btn').addEventListener('click', joinFlow);
 
     // ===== @Mention Unread Banner =====
