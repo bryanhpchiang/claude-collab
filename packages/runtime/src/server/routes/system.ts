@@ -63,15 +63,14 @@ async function deployLatestRuntime() {
   }
 
   const startCommand = getRuntimeStartCommand();
-  setTimeout(() => {
-    const child = Bun.spawn(startCommand.args, {
-      cwd: startCommand.cwd,
-      stdio: ["ignore", "ignore", "ignore"],
-      env: process.env,
-    });
-    child.unref();
-    setTimeout(() => process.exit(0), 200);
-  }, 500);
+  const shellCmd = `sleep 1 && ${startCommand.args.map(a => `'${a}'`).join(" ")}`;
+  const child = Bun.spawn(["bash", "-c", shellCmd], {
+    cwd: startCommand.cwd,
+    stdio: ["ignore", "ignore", "ignore"],
+    env: process.env,
+  });
+  child.unref();
+  setTimeout(() => process.exit(0), 200);
 
   return { ok: true as const };
 }
