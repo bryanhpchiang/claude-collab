@@ -22,11 +22,20 @@ export function createWebSocketHandler(store: RuntimeStore) {
           if (!session) return;
 
           const oldSessionId = store.getClientSession(ws);
+          const oldInfo = store.getClientInfo(ws);
+          if (oldSessionId === data.sessionId) {
+            store.setClientConnection(ws, data.sessionId, data.name);
+            if (oldInfo?.name && oldInfo.name !== data.name) {
+              store.broadcastSystem(data.sessionId, `${oldInfo.name} is now ${data.name}`);
+            }
+            store.broadcastUsers(data.sessionId);
+            return;
+          }
+
           if (oldSessionId) {
             ws.unsubscribe(`session:${oldSessionId}`);
-            const info = store.getClientInfo(ws);
-            if (info) {
-              store.broadcastSystem(oldSessionId, `${info.name} left`);
+            if (oldInfo) {
+              store.broadcastSystem(oldSessionId, `${oldInfo.name} left`);
               store.broadcastUsers(oldSessionId);
             }
           }

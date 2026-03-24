@@ -1,7 +1,13 @@
 import { $, escapeHtml } from "../lib/dom.js";
 import { formatSessionTime } from "../lib/format.js";
 
-export function createWorkspaceController({ state, onJoinSession, onShowLobby, onLayoutChange }) {
+export function createWorkspaceController({
+  state,
+  onJoinSession,
+  onShowLobby,
+  onLayoutChange,
+  onError,
+}) {
   const projectBar = $("project-bar");
   const sessionBar = $("session-bar");
   const newProjectButton = $("new-project-btn");
@@ -78,7 +84,10 @@ export function createWorkspaceController({ state, onJoinSession, onShowLobby, o
       return;
     }
 
-    await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
+    const response = await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
+    if (response.ok) return;
+    const data = await response.json().catch(() => null);
+    onError(data?.error || "Failed to delete project.");
   }
 
   async function deleteSession(sessionId, userCount) {
@@ -91,11 +100,16 @@ export function createWorkspaceController({ state, onJoinSession, onShowLobby, o
       return;
     }
 
-    await fetch("/api/sessions", {
+    const response = await fetch("/api/sessions", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: sessionId }),
     });
+    if (!response.ok) {
+      const data = await response.json().catch(() => null);
+      onError(data?.error || "Failed to delete session.");
+      return;
+    }
 
     if (state.currentSessionId === sessionId) {
       const nextSession = projectSessions.find((session) => session.id !== sessionId);

@@ -134,7 +134,12 @@ export function createStateSidebarController({ state }) {
       await fetch("/api/secrets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, value, user: state.myName }),
+        body: JSON.stringify({
+          name,
+          value,
+          user: state.myName,
+          projectId: state.currentProjectId,
+        }),
       });
       secretValue.value = "";
       secretCustomName.value = "";
