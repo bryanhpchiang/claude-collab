@@ -1,0 +1,54 @@
+import { loadConfig } from "./config";
+import { handleAuthRoutes } from "./routes/auth";
+import { handleJamRoutes } from "./routes/jams";
+import { handlePageRoutes } from "./routes/pages";
+import { createEc2Service } from "./services/ec2";
+import { createJamRecordsService } from "./services/jam-records";
+import type { SessionStore } from "./services/github-oauth";
+
+const config = loadConfig();
+const sessions: SessionStore = new Map();
+
+const context = {
+  config,
+  sessions,
+  ec2: createEc2Service(config),
+  jamRecords: createJamRecordsService(config),
+};
+
+const server = Bun.serve({
+  port: config.port,
+  async fetch(request) {
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        },
+      });
+    }
+
+    const url = new URL(request.url);
+    if (url.pathname === "/health") {
+      return Response.json({
+        ok: true,
+        service: config.serviceName,
+      });
+    }
+
+    const authResponse = await handleAuthRoutes(request, context);
+    if (authResponse) return authResponse;
+
+    const jamResponse = await handleJamRoutes(request, context);
+    if (jamResponse) return jamResponse;
+
+    const pageResponse = await handlePageRoutes(request, context);
+    if (pageResponse) return pageResponse;
+
+    return new Response("Not found", { status: 404 });
+  },
+});
+
+console.log(`Jam coordination server running on http://localhost:${server.port}`);

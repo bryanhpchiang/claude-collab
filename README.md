@@ -7,14 +7,17 @@ Live at **letsjam.now**.
 ## Quick Start
 
 ```bash
-# Install dependencies
+# Install workspace dependencies
 bun install
 
-# Run the server
-bun run server.ts
+# Run the jam runtime server
+bun run runtime:start
+
+# Run the coordination server
+bun run coordination:start
 ```
 
-The server starts on **port 7681**. No build step required — `server.ts` runs directly with Bun and `public/index.html` is served as a static file.
+The jam runtime server starts on **port 7681**. The coordination server runs from [`packages/coordination`](/Users/sofiane/Documents/claude-collab/packages/coordination) on **port 8080** by default.
 
 ## How It Works
 
@@ -36,13 +39,17 @@ Browser (xterm.js) ←— WebSocket —→ Bun Server ←— PTY —→ Claude C
 - **Image paste** — Paste images directly into the input to upload and share with Claude.
 - **Key buttons** — Send raw keypresses (Enter, Esc, Ctrl+C, etc.) to interact with Claude prompts.
 
-## Key Files
+## Workspace Layout
 
-| File | Purpose |
+| Path | Purpose |
 |---|---|
-| `server.ts` | Bun HTTP + WebSocket server. Spawns Claude PTY processes, manages sessions, handles uploads, serves the frontend. |
-| `public/index.html` | Single-file frontend (HTML + CSS + JS). Full UI: session tabs, xterm.js terminal, chat panel, input area. |
-| `package.json` | Dependencies and start script. |
+| `packages/runtime/src/index.ts` | Jam runtime entrypoint. Boots the Bun server and WebSocket handlers. |
+| `packages/runtime/src/server` | Runtime server modules for sessions, projects, secrets, system routes, and static asset serving. |
+| `packages/runtime/src/web` | Runtime browser client source: HTML shell, browser modules, and CSS. |
+| `packages/coordination/src/index.ts` | Coordination server entrypoint. Handles auth, jam lifecycle APIs, HTML pages, and static assets. |
+| `packages/coordination/src/routes` | Coordination route handlers split by auth, jams, and pages. |
+| `packages/coordination/src/services` | AWS, DynamoDB, GitHub OAuth, and EC2 user-data logic. |
+| `packages/coordination/src/views` | Server-rendered landing/dashboard HTML plus reusable view components. |
 | `CLAUDE.md` | Detailed project guide and architecture docs. |
 
 ## Dependencies

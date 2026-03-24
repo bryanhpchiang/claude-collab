@@ -9,19 +9,19 @@ A web-based multiplayer interface for Claude Code. Multiple users connect throug
 ~/.bun/bin/bun install
 
 # Run the server
-~/.bun/bin/bun run server.ts
+~/.bun/bin/bun run runtime:start
 ```
 
 The server starts on **port 7681**. Access the UI at `http://localhost:7681` (or via the exe.dev HTTPS proxy).
 
-There is no build step required for development -- `server.ts` runs directly with Bun and `public/index.html` is served as a static file. The `dist/` directory contains a pre-built `server.js` but is not used during development.
+There is no build step required for development -- `packages/runtime/src/index.ts` runs directly with Bun, server modules live under `packages/runtime/src/server`, and the browser app is served from `packages/runtime/src/web`.
 
 ## Architecture
 
 ### How it works
 
-1. The **Bun server** (`server.ts`) spawns Claude Code CLI processes using `bun-pty` (a pseudo-terminal library), one per session.
-2. The **browser client** (`public/index.html`) connects over WebSocket and renders the Claude terminal output using xterm.js.
+1. The **Bun server** (`packages/runtime/src/index.ts` + `packages/runtime/src/server/*`) spawns Claude Code CLI processes using `bun-pty`, one per session.
+2. The **browser client** (`packages/runtime/src/web/*`) connects over WebSocket and renders the Claude terminal output using xterm.js.
 3. When a user types a message, it is sent via WebSocket to the server. Standard sends write `[username]: message` into the Claude PTY's stdin, while `Shift+Enter` sends the raw message text directly.
 4. Claude's terminal output is broadcast to all clients subscribed to that session.
 
@@ -33,6 +33,7 @@ Browser (xterm.js) <--WebSocket--> Bun Server <--PTY--> Claude Code CLI
 
 ### Multi-session model
 
+- Each runtime instance is one jam. Jam identity and `/j/:jamId` routing live in the coordination app, not in the runtime.
 - The server maintains a `Map<string, Session>` of active sessions in memory.
 - Each session has its own Claude Code PTY process, scrollback buffer, and chat history.
 - Clients subscribe to a session via WebSocket pub/sub (`server.publish` / `ws.subscribe`).
@@ -57,10 +58,13 @@ Browser (xterm.js) <--WebSocket--> Bun Server <--PTY--> Claude Code CLI
 
 | File | Purpose |
 |---|---|
-| `server.ts` | Bun HTTP + WebSocket server. Spawns Claude Code PTY processes, manages sessions, handles file uploads, serves the frontend. ~340 lines. |
-| `public/index.html` | Single-file frontend (HTML + CSS + JS). Contains the full UI: name modal, session tabs, xterm.js terminal, chat panel, key buttons. ~600 lines. |
-| `package.json` | Dependencies: `bun-pty`, `node-pty`, `@anthropic-ai/sdk`. Start script: `bun run server.ts`. |
-| `dist/server.js` | Pre-built server bundle. Not used in dev. |
+| `packages/runtime/src/index.ts` | Runtime entrypoint. Boots Bun, the route handler, and the WebSocket handler. |
+| `packages/runtime/src/server/runtime-store.ts` | Core runtime state and session/project lifecycle logic for a single jam instance. |
+| `packages/runtime/src/server/routes` | HTTP route handlers split by projects, sessions, secrets, system, and static assets. |
+| `packages/runtime/src/web/index.html` | Browser app HTML shell. |
+| `packages/runtime/src/web/main.js` | Browser app entrypoint that wires terminal, workspace, chat, mentions, treats, and state sidebar modules together. |
+| `packages/runtime/package.json` | Runtime package manifest. Start script: `bun run src/index.ts`. |
+| `packages/coordination/src/index.ts` | Coordination server entrypoint for auth, dashboard, and EC2 orchestration. |
 | `CLAUDE.md` | This file. Project guide and Claude session instructions. |
 
 ## Key Dependencies
@@ -70,10 +74,10 @@ Browser (xterm.js) <--WebSocket--> Bun Server <--PTY--> Claude Code CLI
 - **xterm.js** (CDN) -- Terminal emulator in the browser, renders Claude's output
 - **xterm addon-fit** (CDN) -- Auto-sizes the terminal to fit its container
 
-## Server Details (`server.ts`)
+## Server Details (`packages/runtime/src/server`)
 
 ### HTTP routes
-- `GET /` -- serves `public/index.html`
+- `GET /` -- serves `packages/runtime/src/web/index.html`
 - `GET /api/sessions` -- returns active session list
 - `POST /api/sessions` -- creates a new session (body: `{ name, resumeId? }`)
 - `PATCH /api/sessions` -- renames a session (body: `{ id, name }`)
@@ -95,9 +99,9 @@ Browser (xterm.js) <--WebSocket--> Bun Server <--PTY--> Claude Code CLI
 - Chat history is capped at 200 messages per session
 - A default "General" session is created on startup
 
-## Frontend Details (`public/index.html`)
+## Frontend Details (`packages/runtime/src/web`)
 
-Single-file architecture -- all HTML, CSS, and JS in one file. No build tools, no framework.
+The runtime browser app is still framework-free, but it is no longer a single giant file. `index.html` is the shell, `main.js` is the app entrypoint, and feature logic is split into focused browser modules under `features/` and shared helpers under `lib/`.
 
 ### UI components
 - **Name modal** -- shown on first visit; name persists in `localStorage`
@@ -122,11 +126,11 @@ Single-file architecture -- all HTML, CSS, and JS in one file. No build tools, n
 
 ## Coding Conventions
 
-- **TypeScript** for the server, plain **JavaScript** in the HTML file
-- No framework or bundler for the frontend -- everything is in a single HTML file with inline `<style>` and `<script>` tags
+- **TypeScript** for the server, plain **JavaScript** browser modules for the frontend
+- No framework or bundler for the frontend -- browser code is split into ES modules under `packages/runtime/src/web`
 - CDN-loaded dependencies for the frontend (xterm.js)
 - Compact, terse code style -- short variable names, chained expressions, minimal whitespace
-- Interfaces defined inline in `server.ts` (e.g., `Session`, `DiskSession`)
+- Runtime types live in `packages/runtime/src/server/types.ts`
 - Bun-native APIs preferred (`Bun.serve`, `Bun.file`, `Bun.write`)
 - Error handling via empty `catch {}` blocks (fail silently, keep going)
 - No logging framework -- plain `console.log`
@@ -140,11 +144,10 @@ Single-file architecture -- all HTML, CSS, and JS in one file. No build tools, n
 
 ## Gotchas and Important Notes
 
-- The server must be restarted if `server.ts` changes. There is no hot-reload.
+- The server must be restarted if runtime server files change. There is no hot-reload.
 - `bun-pty` is a native module -- if Bun is updated, you may need to reinstall deps.
 - The trust prompt auto-dismiss (sending Enter at 3s and 5s) is timing-dependent and may occasionally fail on slow starts.
 - Session state is in-memory. A server restart kills all active sessions. Users can resume Claude sessions from disk via the "New Session" menu.
-- The `dist/server.js` build is not automatically regenerated. It can get stale.
 - Image uploads go to `/tmp/claude-uploads/` which is ephemeral.
 - The frontend uses `disableStdin: true` on xterm -- users cannot type directly into the terminal. All input goes through the chat input or key buttons.
 - WebSocket reconnects automatically after 2 seconds on disconnect.

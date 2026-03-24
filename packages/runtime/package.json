@@ -1,0 +1,16 @@
+{
+  "name": "@jam/runtime",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun run src/index.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "bun-pty": "^0.4.8",
+    "node-pty": "^1.0.0"
+  }
+}
