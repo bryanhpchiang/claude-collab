@@ -438,6 +438,8 @@ const server = Bun.serve({
             if (body.name === "GitHub Token") {
               extraEnv.GH_TOKEN = body.value;
               extraEnv.GITHUB_TOKEN = body.value;
+              execSync(`git config --global credential.helper store`, {});
+              execSync(`printf 'protocol=https\\nhost=github.com\\nusername=oauth2\\npassword=${body.value}\\n' | git credential-store store`, { shell: true });
               // Also rewrite any existing git remote in all active sessions
               for (const session of sessions.values()) {
                 try {

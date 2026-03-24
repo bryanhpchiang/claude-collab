@@ -22,6 +22,5 @@ export function buildClaudeInput({
   direct = false,
 }: BuildClaudeInputOptions): string {
   if (direct) return `${text}\r`;
-  const color = getUserColor(name);
-  return `${color}[${name}]: ${text}${ANSI_RESET}\r`;
+  return `[${name}]: ${text}\r`;
 }
