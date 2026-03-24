@@ -31,6 +31,7 @@ export function loadConfig(): CoordinationConfig {
       ? 7681
       : Number(process.env.JAM_RUNTIME_PORT);
   const databaseUrl = process.env.DATABASE_URL || "";
+  const baseUrl = process.env.BASE_URL || "";
   const databaseSslCaPath =
     process.env.DATABASE_SSL_CA_PATH ||
     process.env.PGSSLROOTCERT ||
@@ -44,6 +45,10 @@ export function loadConfig(): CoordinationConfig {
 
   if (!betterAuthSecret) {
     throw new Error("BETTER_AUTH_SECRET is required for the coordination server");
+  }
+
+  if (!baseUrl) {
+    throw new Error("BASE_URL is required for the coordination server");
   }
 
   return {
@@ -63,7 +68,7 @@ export function loadConfig(): CoordinationConfig {
     githubClientId: process.env.GITHUB_CLIENT_ID || "",
     githubClientSecret: process.env.GITHUB_CLIENT_SECRET || "",
     githubWebhookSecret: process.env.GITHUB_WEBHOOK_SECRET || "",
-    baseUrl: process.env.BASE_URL || "",
+    baseUrl,
     jamRepoUrl:
       process.env.JAM_REPO_URL ||
       "https://github.com/bryanhpchiang/claude-collab.git",

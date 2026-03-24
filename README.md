@@ -21,6 +21,7 @@ The jam runtime server starts on **port 7681**. The coordination server runs fro
 
 The coordination server now expects a Postgres-backed setup:
 
+- `BASE_URL`
 - `DATABASE_URL`
 - `BETTER_AUTH_SECRET`
 - `GITHUB_CLIENT_ID`
