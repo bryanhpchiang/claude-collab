@@ -36,13 +36,6 @@ export function isGitHubOAuthEnabled(config: CoordinationConfig) {
   return Boolean(config.githubClientId && config.githubClientSecret);
 }
 
-function getAuthBaseUrl(config: CoordinationConfig) {
-  return new URL(
-    "/api/auth",
-    config.baseUrl || `http://localhost:${config.port}`,
-  ).toString();
-}
-
 function toSessionUser(session: BetterAuthSession): SessionUser | undefined {
   const user = session?.user;
   if (!user) return undefined;
@@ -70,7 +63,8 @@ export function createAuth(
   db: Kysely<CoordinationDatabase>,
 ) {
   return betterAuth({
-    baseURL: getAuthBaseUrl(config),
+    baseURL: config.baseUrl,
+    basePath: "/api/auth",
     secret: config.betterAuthSecret,
     database: {
       db,
@@ -96,9 +90,6 @@ export function createAuth(
           },
         }
       : {},
-    advanced: {
-      trustedProxyHeaders: !config.baseUrl,
-    },
   });
 }
 

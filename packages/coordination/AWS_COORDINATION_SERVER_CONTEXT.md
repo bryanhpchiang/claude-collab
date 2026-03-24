@@ -204,7 +204,7 @@ Those changes do the following:
 
 - add `/health` for App Runner health checks
 - move AWS/Jam runtime settings to env vars
-- allow `BASE_URL` to be derived from the request origin when unset
+- require `BASE_URL` so Better Auth always uses the canonical public origin
 - disable GitHub sign-in UI when OAuth secrets are not configured
 - keep cookies secure-aware when served over HTTPS
 
