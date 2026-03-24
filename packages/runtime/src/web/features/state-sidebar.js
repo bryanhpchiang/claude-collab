@@ -10,7 +10,7 @@ export function createStateSidebarController({ state }) {
   const summaryContent = $("state-summary-content");
   const lastUpdated = $("state-last-updated");
   const updatingIndicator = $("state-updating-indicator");
-  const restartButton = $("restart-server-btn");
+  const deployButton = $("restart-server-btn");
   const secretsHeader = $("secrets-header");
   const secretsBody = $("secrets-body");
   const secretType = $("secret-type");
@@ -106,12 +106,12 @@ export function createStateSidebarController({ state }) {
     toggleButton.classList.remove("shifted");
   });
 
-  restartButton.addEventListener("click", async () => {
-    if (!confirm("Restart server? All sessions will briefly disconnect.")) return;
-    restartButton.disabled = true;
-    restartButton.textContent = "Restarting...";
+  deployButton.addEventListener("click", async () => {
+    if (!confirm("Deploy latest code and restart the server? All sessions will briefly disconnect.")) return;
+    deployButton.disabled = true;
+    deployButton.textContent = "Deploying...";
     try {
-      await fetch("/api/restart", { method: "POST" });
+      await fetch("/api/deploy", { method: "POST" });
     } catch {}
   });
 
