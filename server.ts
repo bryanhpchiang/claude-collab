@@ -436,12 +436,16 @@ const server = Bun.serve({
           // Auto-apply
           try {
             if (body.name === "GitHub Token") {
-              const cwd = process.env.JAM_CWD || process.cwd();
-              try {
-                const remote = execSync("git remote get-url origin", { cwd }).toString().trim();
-                const m = remote.match(/github\.com[:/](.+?)(?:\.git)?$/);
-                if (m) execSync(`git remote set-url origin https://${body.value}@github.com/${m[1]}.git`, { cwd });
-              } catch {}
+              extraEnv.GH_TOKEN = body.value;
+              extraEnv.GITHUB_TOKEN = body.value;
+              // Also rewrite any existing git remote in all active sessions
+              for (const session of sessions.values()) {
+                try {
+                  const remote = execSync("git remote get-url origin", { cwd: session.cwd }).toString().trim();
+                  const m = remote.match(/github\.com[:/](.+?)(?:\.git)?$/);
+                  if (m) execSync(`git remote set-url origin https://${body.value}@github.com/${m[1]}.git`, { cwd: session.cwd });
+                } catch {}
+              }
             } else if (body.name === "Anthropic API Key") {
               extraEnv.ANTHROPIC_API_KEY = body.value;
             } else if (body.name === "Twilio SID") {
