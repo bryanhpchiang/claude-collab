@@ -793,7 +793,6 @@ input {
 }
 
 .pending-word,
-.pending-title,
 .pending-stuck-title {
   font-weight: 600;
 }
@@ -806,10 +805,6 @@ input {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-
-.pending-title {
-  color: var(--text);
 }
 
 .pending-stuck {

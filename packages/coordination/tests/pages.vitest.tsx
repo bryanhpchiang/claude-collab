@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { DashboardPage } from "../src/web/pages/DashboardPage";
@@ -25,6 +25,7 @@ describe("Coordination App", () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -184,5 +185,47 @@ describe("Coordination App", () => {
     expect(JSON.parse(String((postCall?.[1] as RequestInit).body))).toMatchObject({
       name: "Alpha Jam",
     });
+  });
+
+  test("rotates the playful loading label for pending jams", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-24T21:00:00.000Z"));
+
+    render(
+      <DashboardPage
+        user={{
+          id: "user-1",
+          email: "jam@example.com",
+          login: "jam-owner",
+          name: "Jam Owner",
+          avatar_url: "",
+        }}
+        initialJams={[
+          {
+            id: "jam-1",
+            instanceId: "i-123",
+            url: null,
+            state: "pending",
+            creator: {
+              user_id: "user-1",
+              login: "jam-owner",
+              name: "Jam Owner",
+              avatar_url: "",
+            },
+            created_at: "2026-03-24T21:00:00.000Z",
+            name: "Alpha Jam",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Smearing...")).toBeInTheDocument();
+    expect(screen.getByText(/waiting for the ec2 instance/i)).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(2_000);
+    });
+
+    expect(screen.getByText("Toasting...")).toBeInTheDocument();
   });
 });

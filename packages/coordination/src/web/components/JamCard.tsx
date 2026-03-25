@@ -1,7 +1,19 @@
+import { useEffect, useState } from "react";
 import type { DashboardJam } from "../types";
 import { StatusBadge } from "./StatusBadge";
 
 const PENDING_TIMEOUT_MS = 5 * 60 * 1000;
+const PENDING_WORD_INTERVAL_MS = 2 * 1000;
+const LOADING_WORDS = [
+  "Smearing...",
+  "Toasting...",
+  "Flipping...",
+  "Spreading...",
+  "Buttering...",
+  "Simmering...",
+  "Jarring...",
+  "Preserving...",
+];
 
 type JamCardProps = {
   currentUserId: string;
@@ -11,6 +23,72 @@ type JamCardProps = {
   onDelete(jamId: string): void;
   onRestart(jamId: string): void;
 };
+
+function getPendingWordIndex(createdAtRaw: string) {
+  const createdAt = Date.parse(createdAtRaw);
+  if (!Number.isFinite(createdAt)) return 0;
+  const elapsed = Math.max(0, Date.now() - createdAt);
+  return Math.floor(elapsed / PENDING_WORD_INTERVAL_MS) % LOADING_WORDS.length;
+}
+
+function PendingProgress({
+  createdAtRaw,
+  isOwner,
+  jamId,
+  onRestart,
+}: {
+  createdAtRaw: string;
+  isOwner: boolean;
+  jamId: string;
+  onRestart(jamId: string): void;
+}) {
+  const createdAt = Date.parse(createdAtRaw);
+  const isStuck = Number.isFinite(createdAt)
+    ? Date.now() - createdAt >= PENDING_TIMEOUT_MS
+    : false;
+  const [pendingWordIndex, setPendingWordIndex] = useState(0);
+
+  useEffect(() => {
+    if (isStuck) return;
+
+    const updatePendingWord = () => {
+      setPendingWordIndex(getPendingWordIndex(createdAtRaw));
+    };
+
+    updatePendingWord();
+    const timer = window.setInterval(updatePendingWord, PENDING_WORD_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [createdAtRaw, isStuck]);
+
+  if (isStuck && isOwner) {
+    return (
+      <div className="pending-stuck">
+        <div className="pending-stuck-title">Taking longer than expected</div>
+        <div className="pending-stuck-desc">
+          This instance may have failed to start. Terminate it and launch a fresh one.
+        </div>
+        <button
+          className="pending-restart-btn"
+          type="button"
+          onClick={() => onRestart(jamId)}
+        >
+          Terminate &amp; Start Over
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="pending-word">{LOADING_WORDS[pendingWordIndex]}</div>
+      <div className="pending-copy">
+        <div className="pending-desc">
+          Waiting for the EC2 instance and runtime health check to pass.
+        </div>
+      </div>
+    </>
+  );
+}
 
 export function JamCard({
   currentUserId,
@@ -22,10 +100,6 @@ export function JamCard({
 }: JamCardProps) {
   const isOwner = jam.creator.user_id === currentUserId;
   const jamName = jam.name || `jam-${jam.id}`;
-  const createdAt = Date.parse(jam.created_at);
-  const isStuck = Number.isFinite(createdAt)
-    ? Date.now() - createdAt >= PENDING_TIMEOUT_MS
-    : false;
 
   return (
     <article className={`dash-card${isOwner ? " dash-card-own" : ""}`} data-jam-id={jam.id}>
@@ -36,31 +110,12 @@ export function JamCard({
 
       {jam.state === "pending" ? (
         <div className="pending-progress">
-          {isStuck && isOwner ? (
-            <div className="pending-stuck">
-              <div className="pending-stuck-title">Taking longer than expected</div>
-              <div className="pending-stuck-desc">
-                This instance may have failed to start. Terminate it and launch a fresh one.
-              </div>
-              <button
-                className="pending-restart-btn"
-                type="button"
-                onClick={() => onRestart(jam.id)}
-              >
-                Terminate &amp; Start Over
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="pending-word">Starting instance</div>
-              <div className="pending-copy">
-                <div className="pending-title">Bringing the runtime online</div>
-                <div className="pending-desc">
-                  Waiting for the EC2 instance and runtime health check to pass.
-                </div>
-              </div>
-            </>
-          )}
+          <PendingProgress
+            createdAtRaw={jam.created_at}
+            isOwner={isOwner}
+            jamId={jam.id}
+            onRestart={onRestart}
+          />
         </div>
       ) : (
         <div className="dash-card-url">{jam.url || "Waiting..."}</div>
