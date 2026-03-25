@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { signJamToken } from "../../../coordination/src/services/jam-tokens";
-import { handleAuthRoute } from "./routes/auth";
-import { SESSION_COOKIE_NAME, buildCoordinationGateUrl, verifyJamToken } from "./runtime-auth";
+import { handleAuthRoute } from "../../src/server/routes/auth";
+import {
+  SESSION_COOKIE_NAME,
+  buildCoordinationGateUrl,
+  verifyJamToken,
+} from "../../src/server/runtime-auth";
 
 const originalEnv = {
   JAM_ID: process.env.JAM_ID,

@@ -2,8 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
-import type { CoordinationConfig } from "../config";
-import { buildDatabasePoolConfig, stripDatabaseSslParams } from "./db";
+import type { CoordinationConfig } from "../../src/config";
+import { buildDatabasePoolConfig, stripDatabaseSslParams } from "../../src/services/db";
 
 const baseConfig: CoordinationConfig = {
   port: 8080,

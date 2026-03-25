@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import type { CoordinationConfig } from "../config";
-import { buildJamInstanceUserData, buildJamInstanceUserDataScript } from "./user-data";
+import type { CoordinationConfig } from "../../src/config";
+import {
+  buildJamInstanceUserData,
+  buildJamInstanceUserDataScript,
+} from "../../src/services/user-data";
 
 const config: CoordinationConfig = {
   port: 8080,
