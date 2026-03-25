@@ -1,4 +1,5 @@
-import { HOME_DIR, WORKSPACE_ROOT } from "../../config";
+import { HOME_DIR, JAM_DEPLOY_SECRET, WORKSPACE_ROOT } from "../../config";
+import { DEPLOY_HEADER_NAME } from "../runtime-auth";
 import type { RuntimeStore } from "../runtime-store";
 
 type RuntimeCommand = {
@@ -9,6 +10,10 @@ type RuntimeCommand = {
 
 function getBunExecutable() {
   return process.execPath || `${HOME_DIR}/.bun/bin/bun`;
+}
+
+function getDeploySecret() {
+  return process.env.JAM_DEPLOY_SECRET || JAM_DEPLOY_SECRET;
 }
 
 export function getRuntimeDeploySteps(bunPath = getBunExecutable()): RuntimeCommand[] {
@@ -63,7 +68,7 @@ async function deployLatestRuntime() {
   }
 
   const startCommand = getRuntimeStartCommand();
-  const shellCmd = `sleep 1 && ${startCommand.args.map(a => `'${a}'`).join(" ")}`;
+  const shellCmd = `sleep 1 && ${startCommand.args.map((a) => `'${a}'`).join(" ")}`;
   const child = Bun.spawn(["bash", "-c", shellCmd], {
     cwd: startCommand.cwd,
     stdio: ["ignore", "ignore", "ignore"],
@@ -76,11 +81,20 @@ async function deployLatestRuntime() {
 }
 
 export async function handleSystemRoute(req: Request, url: URL, store: RuntimeStore) {
+  if (url.pathname === "/health" && req.method === "GET") {
+    return Response.json({ ok: true });
+  }
+
   if (url.pathname === "/api/state-summary" && req.method === "GET") {
     return Response.json(store.buildStateSummary());
   }
 
   if (url.pathname === "/api/deploy" && req.method === "POST") {
+    const sharedSecret = req.headers.get(DEPLOY_HEADER_NAME) || "";
+    if (!getDeploySecret() || sharedSecret !== getDeploySecret()) {
+      return Response.json({ error: "unauthorized" }, { status: 401 });
+    }
+
     const result = await deployLatestRuntime();
     if (!result.ok) {
       console.error("[deploy] runtime rollout failed", {

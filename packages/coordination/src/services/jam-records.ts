@@ -9,6 +9,11 @@ export type JamRecord = {
   creator_name: string;
   creator_avatar: string;
   ip?: string;
+  public_host?: string;
+  shared_secret?: string;
+  deploy_secret?: string;
+  target_group_arn?: string;
+  listener_rule_arn?: string;
   state: string;
   created_at: string;
   name?: string;
@@ -23,6 +28,11 @@ function toJamRecord(row: JamRecordRow): JamRecord {
     creator_name: row.creator_name,
     creator_avatar: row.creator_avatar,
     ...(row.ip ? { ip: row.ip } : {}),
+    ...(row.public_host ? { public_host: row.public_host } : {}),
+    ...(row.shared_secret ? { shared_secret: row.shared_secret } : {}),
+    ...(row.deploy_secret ? { deploy_secret: row.deploy_secret } : {}),
+    ...(row.target_group_arn ? { target_group_arn: row.target_group_arn } : {}),
+    ...(row.listener_rule_arn ? { listener_rule_arn: row.listener_rule_arn } : {}),
     state: row.state,
     created_at: row.created_at,
     ...(row.name ? { name: row.name } : {}),
@@ -46,6 +56,11 @@ export function createJamRecordsService(db: Kysely<CoordinationDatabase>) {
           ...item,
           creator_avatar: item.creator_avatar || "",
           ip: item.ip || null,
+          public_host: item.public_host || null,
+          shared_secret: item.shared_secret || null,
+          deploy_secret: item.deploy_secret || null,
+          target_group_arn: item.target_group_arn || null,
+          listener_rule_arn: item.listener_rule_arn || null,
           name: item.name || null,
         })
         .executeTakeFirst();
@@ -80,6 +95,29 @@ export function createJamRecordsService(db: Kysely<CoordinationDatabase>) {
         })
         .where("id", "=", id)
         .executeTakeFirst();
+    },
+
+    async listActiveJamsVisibleToUser(userId: string): Promise<JamRecord[]> {
+      const result = await db
+        .selectFrom("jam_records")
+        .leftJoin("jam_members", (join) =>
+          join
+            .onRef("jam_members.jam_id", "=", "jam_records.id")
+            .on("jam_members.user_id", "=", userId),
+        )
+        .select("jam_records.id")
+        .selectAll("jam_records")
+        .where("jam_records.state", "in", ["pending", "running"])
+        .where((eb) =>
+          eb.or([
+            eb("jam_records.creator_user_id", "=", userId),
+            eb("jam_members.user_id", "=", userId),
+          ]),
+        )
+        .distinct()
+        .execute();
+
+      return result.map(toJamRecord);
     },
 
     async scanActiveJamRecords(): Promise<JamRecord[]> {

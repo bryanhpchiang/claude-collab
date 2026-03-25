@@ -13,6 +13,9 @@ export type CoordinationConfig = {
   jamSecurityGroupId: string;
   jamInstanceType: string;
   jamTagPrefix: string;
+  jamHostSuffix: string;
+  jamAlbListenerArn: string;
+  jamVpcId: string;
   githubClientId: string;
   githubClientSecret: string;
   githubWebhookSecret: string;
@@ -65,6 +68,9 @@ export function loadConfig(): CoordinationConfig {
       process.env.JAM_SECURITY_GROUP_ID || "sg-092ad16c7428104a3",
     jamInstanceType: process.env.JAM_INSTANCE_TYPE || "t3.medium",
     jamTagPrefix: process.env.JAM_TAG_PREFIX || "jam-",
+    jamHostSuffix: process.env.JAM_HOST_SUFFIX || "jams.letsjam.now",
+    jamAlbListenerArn: process.env.JAM_ALB_LISTENER_ARN || "",
+    jamVpcId: process.env.JAM_VPC_ID || "",
     githubClientId: process.env.GITHUB_CLIENT_ID || "",
     githubClientSecret: process.env.GITHUB_CLIENT_SECRET || "",
     githubWebhookSecret: process.env.GITHUB_WEBHOOK_SECRET || "",

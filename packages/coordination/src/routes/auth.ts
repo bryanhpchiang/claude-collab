@@ -2,6 +2,7 @@ import type { CoordinationConfig } from "../config";
 import {
   isGitHubOAuthEnabled,
   getSessionLookup,
+  normalizeAuthCallback,
   startGitHubSignIn,
   signOutAndRedirect,
   type CoordinationAuth,
@@ -30,7 +31,11 @@ export async function handleAuthRoutes(
       return new Response("GitHub OAuth is not configured", { status: 503 });
     }
 
-    return startGitHubSignIn(request, context.auth);
+    return startGitHubSignIn(
+      request,
+      context.auth,
+      normalizeAuthCallback(url.searchParams.get("callback")),
+    );
   }
 
   if (url.pathname.startsWith("/api/auth/")) {

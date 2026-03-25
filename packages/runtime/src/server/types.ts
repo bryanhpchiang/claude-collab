@@ -1,5 +1,13 @@
 import type { IPty } from "bun-pty";
 
+export interface AuthenticatedRuntimeUser {
+  id: string;
+  email: string;
+  login: string;
+  name: string;
+  avatar_url: string;
+}
+
 export interface ChatEvent {
   type: "chat";
   name: string;
@@ -53,12 +61,13 @@ export interface PendingMention {
 export interface Secret {
   name: string;
   value: string;
-  createdBy: string;
+  createdByLogin: string;
+  createdByUserId: string;
   createdAt: number;
 }
 
 export interface ClientInfo {
-  name: string;
+  user: AuthenticatedRuntimeUser;
 }
 
 export interface SessionSummary {

@@ -11,6 +11,7 @@ import { resolveProjectCwd } from "../project-paths";
 import { buildClaudeInput } from "../session-input";
 import { spawnClaude, SYSTEM_PROMPT } from "./claude";
 import type {
+  AuthenticatedRuntimeUser,
   ChatEvent,
   ClientInfo,
   DiskSession,
@@ -67,9 +68,9 @@ export class RuntimeStore {
     return this.clientInfo.get(ws);
   }
 
-  setClientConnection(ws: any, sessionId: string, name: string) {
+  setClientConnection(ws: any, sessionId: string, user: AuthenticatedRuntimeUser) {
     this.clientSession.set(ws, sessionId);
-    this.clientInfo.set(ws, { name });
+    this.clientInfo.set(ws, { user });
   }
 
   clearClientConnection(ws: any) {
@@ -109,7 +110,7 @@ export class RuntimeStore {
     for (const [ws, joinedSessionId] of this.clientSession) {
       if (joinedSessionId !== sessionId) continue;
       const info = this.clientInfo.get(ws);
-      if (info) users.push(info.name);
+      if (info) users.push(info.user.login);
     }
     return users;
   }
@@ -355,7 +356,7 @@ export class RuntimeStore {
   listSecrets() {
     return [...this.secrets.values()].map((secret) => ({
       name: secret.name,
-      createdBy: secret.createdBy,
+      createdBy: secret.createdByLogin,
       createdAt: secret.createdAt,
     }));
   }
@@ -373,12 +374,13 @@ export class RuntimeStore {
     spawnSync("git", ["config", "--global", "--fixed-value", "--unset-all", key, value]);
   }
 
-  saveSecret(name: string, value: string, user: string) {
+  saveSecret(name: string, value: string, user: AuthenticatedRuntimeUser) {
     const previousSecret = this.secrets.get(name);
     this.secrets.set(name, {
       name,
       value,
-      createdBy: user,
+      createdByLogin: user.login,
+      createdByUserId: user.id,
       createdAt: Date.now(),
     });
 
@@ -413,10 +415,12 @@ export class RuntimeStore {
     } catch {}
   }
 
-  deleteSecret(name: string, user?: string) {
+  deleteSecret(name: string, user?: AuthenticatedRuntimeUser) {
     const secret = this.secrets.get(name);
     if (!secret) return { ok: false as const, status: 404 };
-    if (secret.createdBy !== user) return { ok: false as const, status: 403 };
+    if (!user || secret.createdByUserId !== user.id) {
+      return { ok: false as const, status: 403 };
+    }
 
     this.secrets.delete(name);
     if (name === "GitHub Token") {
@@ -470,7 +474,9 @@ export class RuntimeStore {
     for (const [ws, sessionId] of this.clientSession) {
       const info = this.clientInfo.get(ws);
       const session = this.sessions.get(sessionId);
-      if (info && session) allUsers.push({ name: info.name, session: session.name });
+      if (info && session) {
+        allUsers.push({ name: info.user.login, session: session.name });
+      }
     }
     if (allUsers.length === 0) {
       lines.push("_No users connected_\n");

@@ -10,7 +10,6 @@ export function createStateSidebarController({ state }) {
   const summaryContent = $("state-summary-content");
   const lastUpdated = $("state-last-updated");
   const updatingIndicator = $("state-updating-indicator");
-  const deployButton = $("restart-server-btn");
   const secretsHeader = $("secrets-header");
   const secretsBody = $("secrets-body");
   const secretType = $("secret-type");
@@ -69,7 +68,7 @@ export function createStateSidebarController({ state }) {
         deleteButton.dataset.name = secret.name;
         deleteButton.addEventListener("click", async (event) => {
           const secretName = event.currentTarget.dataset.name;
-          await fetch(`/api/secrets/${encodeURIComponent(secretName)}?user=${encodeURIComponent(state.myName)}`, {
+          await fetch(`/api/secrets/${encodeURIComponent(secretName)}`, {
             method: "DELETE",
           });
           fetchSecrets();
@@ -106,15 +105,6 @@ export function createStateSidebarController({ state }) {
     toggleButton.classList.remove("shifted");
   });
 
-  deployButton.addEventListener("click", async () => {
-    if (!confirm("Deploy latest code and restart the server? All sessions will briefly disconnect.")) return;
-    deployButton.disabled = true;
-    deployButton.textContent = "Deploying...";
-    try {
-      await fetch("/api/deploy", { method: "POST" });
-    } catch {}
-  });
-
   secretsHeader.addEventListener("click", () => {
     secretsBody.classList.toggle("open");
     secretsHeader.querySelector(".chevron").classList.toggle("open");
@@ -137,7 +127,6 @@ export function createStateSidebarController({ state }) {
         body: JSON.stringify({
           name,
           value,
-          user: state.myName,
         }),
       });
       secretValue.value = "";

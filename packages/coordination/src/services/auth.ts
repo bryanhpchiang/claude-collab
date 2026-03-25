@@ -36,6 +36,12 @@ export function isGitHubOAuthEnabled(config: CoordinationConfig) {
   return Boolean(config.githubClientId && config.githubClientSecret);
 }
 
+export function normalizeAuthCallback(value?: string | null) {
+  if (!value || !value.startsWith("/")) return "/dashboard";
+  if (value.startsWith("//")) return "/dashboard";
+  return value;
+}
+
 function toSessionUser(session: BetterAuthSession): SessionUser | undefined {
   const user = session?.user;
   if (!user) return undefined;
@@ -118,11 +124,12 @@ export async function getSessionLookup(
 export async function startGitHubSignIn(
   request: Request,
   auth: CoordinationAuth,
+  callbackURL = "/dashboard",
 ) {
   const response = await auth.api.signInSocial({
     body: {
       provider: "github",
-      callbackURL: "/dashboard",
+      callbackURL: normalizeAuthCallback(callbackURL),
     },
     headers: request.headers,
     asResponse: true,

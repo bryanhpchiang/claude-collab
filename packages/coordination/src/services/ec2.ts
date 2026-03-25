@@ -1,4 +1,14 @@
 import {
+  CreateRuleCommand,
+  CreateTargetGroupCommand,
+  DeleteRuleCommand,
+  DeleteTargetGroupCommand,
+  DescribeRulesCommand,
+  DescribeTargetHealthCommand,
+  ElasticLoadBalancingV2Client,
+  RegisterTargetsCommand,
+} from "@aws-sdk/client-elastic-load-balancing-v2";
+import {
   DescribeInstancesCommand,
   EC2Client,
   RunInstancesCommand,
@@ -16,6 +26,12 @@ type WaitForPublicIpOptions = {
   delayMs?: number;
 };
 
+type JamTarget = {
+  listenerRuleArn: string;
+  publicHost: string;
+  targetGroupArn: string;
+};
+
 function isRetryableInstanceLookupError(error: unknown) {
   const name =
     typeof error === "object" && error && "name" in error
@@ -31,6 +47,10 @@ function isRetryableInstanceLookupError(error: unknown) {
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function sanitizeTargetGroupName(name: string) {
+  return name.replace(/[^a-zA-Z0-9-]/g, "-").slice(0, 32) || "jam-target";
 }
 
 export async function waitForPublicIp(
@@ -65,12 +85,16 @@ export function buildJamPath(jamId: string) {
   return `/j/${jamId}`;
 }
 
+export function buildJamHost(jamId: string, jamHostSuffix: string) {
+  return `${jamId}.${jamHostSuffix}`;
+}
+
 export function buildJamRedirectUrl(
-  ip: string,
+  publicHost: string,
   requestUrl: string,
-  runtimePort = 7681,
+  pathname = "/",
 ) {
-  const target = new URL(`http://${ip}:${runtimePort}/`);
+  const target = new URL(`https://${publicHost}${pathname}`);
   const source = new URL(requestUrl);
   target.search = source.search;
   return target.toString();
@@ -78,12 +102,34 @@ export function buildJamRedirectUrl(
 
 export function createEc2Service(config: CoordinationConfig) {
   const ec2 = new EC2Client({ region: config.awsRegion });
+  const elbv2 = new ElasticLoadBalancingV2Client({ region: config.awsRegion });
 
   async function getInstance(instanceId: string): Promise<Instance | undefined> {
     const result = await ec2.send(
       new DescribeInstancesCommand({ InstanceIds: [instanceId] }),
     );
     return result.Reservations?.[0]?.Instances?.[0];
+  }
+
+  async function nextListenerPriority() {
+    if (!config.jamAlbListenerArn) {
+      throw new Error("JAM_ALB_LISTENER_ARN is required to manage jam routing");
+    }
+
+    const response = await elbv2.send(
+      new DescribeRulesCommand({ ListenerArn: config.jamAlbListenerArn }),
+    );
+    const taken = new Set(
+      (response.Rules || [])
+        .map((rule) => Number(rule.Priority))
+        .filter((priority) => Number.isInteger(priority) && priority > 0),
+    );
+
+    for (let priority = 1000; priority < 50000; priority += 1) {
+      if (!taken.has(priority)) return priority;
+    }
+
+    throw new Error("No ALB listener priorities available for jam routing");
   }
 
   return {
@@ -112,6 +158,93 @@ export function createEc2Service(config: CoordinationConfig) {
       return instanceId;
     },
 
+    async attachJamTarget(jamId: string, instanceId: string): Promise<JamTarget> {
+      if (!config.jamAlbListenerArn) {
+        throw new Error("JAM_ALB_LISTENER_ARN is required to manage jam routing");
+      }
+
+      if (!config.jamVpcId) {
+        throw new Error("JAM_VPC_ID is required to manage jam routing");
+      }
+
+      const publicHost = buildJamHost(jamId, config.jamHostSuffix);
+      const targetGroupResponse = await elbv2.send(
+        new CreateTargetGroupCommand({
+          Name: sanitizeTargetGroupName(`${config.jamTagPrefix}${jamId}`),
+          Port: config.jamRuntimePort,
+          Protocol: "HTTP",
+          VpcId: config.jamVpcId,
+          TargetType: "instance",
+          HealthCheckEnabled: true,
+          HealthCheckPath: "/health",
+          HealthCheckProtocol: "HTTP",
+          Matcher: { HttpCode: "200" },
+        }),
+      );
+      const targetGroupArn = targetGroupResponse.TargetGroups?.[0]?.TargetGroupArn;
+      if (!targetGroupArn) {
+        throw new Error("Failed to create ALB target group");
+      }
+
+      try {
+        await elbv2.send(
+          new RegisterTargetsCommand({
+            TargetGroupArn: targetGroupArn,
+            Targets: [{ Id: instanceId, Port: config.jamRuntimePort }],
+          }),
+        );
+
+        const priority = await nextListenerPriority();
+        const ruleResponse = await elbv2.send(
+          new CreateRuleCommand({
+            ListenerArn: config.jamAlbListenerArn,
+            Priority: priority,
+            Conditions: [
+              {
+                Field: "host-header",
+                HostHeaderConfig: { Values: [publicHost] },
+              },
+            ],
+            Actions: [
+              {
+                Type: "forward",
+                TargetGroupArn: targetGroupArn,
+              },
+            ],
+          }),
+        );
+        const listenerRuleArn = ruleResponse.Rules?.[0]?.RuleArn;
+        if (!listenerRuleArn) {
+          throw new Error("Failed to create ALB listener rule");
+        }
+
+        return {
+          publicHost,
+          targetGroupArn,
+          listenerRuleArn,
+        };
+      } catch (error) {
+        await elbv2
+          .send(new DeleteTargetGroupCommand({ TargetGroupArn: targetGroupArn }))
+          .catch(() => undefined);
+        throw error;
+      }
+    },
+
+    async removeJamTarget(listenerRuleArn?: string, targetGroupArn?: string) {
+      if (listenerRuleArn) {
+        await elbv2
+          .send(new DeleteRuleCommand({ RuleArn: listenerRuleArn }))
+          .catch(() => undefined);
+      }
+
+      if (targetGroupArn) {
+        await elbv2
+          .send(new DeleteTargetGroupCommand({ TargetGroupArn: targetGroupArn }))
+          .catch(() => undefined);
+      }
+    },
+
     async terminateInstance(instanceId: string) {
       await ec2.send(
         new TerminateInstancesCommand({
@@ -126,21 +259,31 @@ export function createEc2Service(config: CoordinationConfig) {
       return (await getInstance(instanceId))?.PublicIpAddress || undefined;
     },
 
-    async probeRuntime(ip: string) {
+    async probeRuntime(targetGroupArn: string) {
       try {
-        const response = await fetch(`http://${ip}:${config.jamRuntimePort}/`, {
-          signal: AbortSignal.timeout(3000),
-        });
-        return response.ok;
+        const response = await elbv2.send(
+          new DescribeTargetHealthCommand({ TargetGroupArn: targetGroupArn }),
+        );
+        return (response.TargetHealthDescriptions || []).some(
+          (entry) => entry.TargetHealth?.State === "healthy",
+        );
       } catch {
         return false;
       }
     },
 
+    buildJamHost(jamId: string) {
+      return buildJamHost(jamId, config.jamHostSuffix);
+    },
+
     buildJamPath,
 
-    buildJamRedirectUrl(ip: string, requestUrl: string) {
-      return buildJamRedirectUrl(ip, requestUrl, config.jamRuntimePort);
+    buildJamRedirectUrl(publicHost: string, requestUrl: string, pathname = "/") {
+      return buildJamRedirectUrl(publicHost, requestUrl, pathname);
+    },
+
+    buildDeployUrl(publicHost: string) {
+      return `https://${publicHost}/api/deploy`;
     },
   };
 }

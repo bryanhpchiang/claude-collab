@@ -13,6 +13,11 @@ export const DEFAULT_PROJECT_CWD = HOME_DIR;
 export const DEFAULT_NEW_PROJECTS_DIR = join(HOME_DIR, "projects");
 export const PORT = process.env.PORT === undefined ? 7681 : Number(process.env.PORT);
 export const CLAUDE_PATH = process.env.CLAUDE_PATH || execSync("which claude").toString().trim();
+export const JAM_ID = process.env.JAM_ID || "";
+export const JAM_PUBLIC_HOST = process.env.JAM_PUBLIC_HOST || "";
+export const JAM_SHARED_SECRET = process.env.JAM_SHARED_SECRET || "";
+export const JAM_DEPLOY_SECRET = process.env.JAM_DEPLOY_SECRET || "";
+export const COORDINATION_BASE_URL = process.env.COORDINATION_BASE_URL || "https://letsjam.now";
 
 const STATIC_MIME_TYPES: Record<string, string> = {
   css: "text/css; charset=utf-8",
