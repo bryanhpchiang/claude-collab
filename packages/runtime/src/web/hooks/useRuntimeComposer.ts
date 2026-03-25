@@ -60,6 +60,7 @@ export function useRuntimeComposer({
   const [mentionOptions, setMentionOptions] = useState<string[]>([]);
   const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [sendFailed, setSendFailed] = useState(false);
 
   const sendWsRef = useRef(sendWs);
   sendWsRef.current = sendWs;
@@ -103,7 +104,9 @@ export function useRuntimeComposer({
   const sendMessage = (direct = false) => {
     const text = message.trim();
     if (!text || !currentSessionId) return;
-    sendWs({ type: "input", text, direct });
+    const ok = sendWs({ type: "input", text, direct });
+    if (!ok) { setSendFailed(true); return; }
+    setSendFailed(false);
     setMessage("");
     setMentionContext(null);
     setMentionOptions([]);
@@ -200,6 +203,7 @@ export function useRuntimeComposer({
     mentionOptions,
     message,
     messageInputRef,
+    sendFailed,
     sendMessage,
     uploadingImage,
   };

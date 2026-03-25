@@ -101,6 +101,12 @@ export function createWebSocketHandler(store: RuntimeStore) {
 
         if (data.type === "mark-mentions-read") {
           store.clearPendingMentions(user.login);
+          return;
+        }
+
+        if (data.type === "ping") {
+          ws.send(JSON.stringify({ type: "pong" }));
+          return;
         }
       } catch {}
     },

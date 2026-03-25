@@ -147,6 +147,7 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
     mentionOptions,
     message,
     messageInputRef,
+    sendFailed,
     sendMessage,
     uploadingImage,
   } = useRuntimeComposer({
@@ -273,6 +274,7 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
       message,
       messageInputRef,
       myName,
+      sendFailed,
       uploadingImage,
       onCompleteMention: completeMention,
       onDismissMentions: dismissMentions,

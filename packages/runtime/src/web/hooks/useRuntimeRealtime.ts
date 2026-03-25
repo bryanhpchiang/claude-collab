@@ -50,6 +50,7 @@ export function useRuntimeRealtime({
   terminalRef,
 }: UseRuntimeRealtimeOptions) {
   const wsRef = useRef<WebSocket | null>(null);
+  const pendingQueue = useRef<string[]>([]);
   const currentSessionIdRef = useRef(currentSessionId);
   const projectsUpdateRef = useRef(onProjectsUpdate);
   const sessionsUpdateRef = useRef(onSessionsUpdate);
@@ -129,8 +130,16 @@ export function useRuntimeRealtime({
   }, [myName]);
 
   const sendWs = (payload: unknown) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return false;
-    wsRef.current.send(JSON.stringify(payload));
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      pendingQueue.current.push(JSON.stringify(payload));
+      return false;
+    }
+    ws.send(JSON.stringify(payload));
+    if ((payload as any)?.type === "join-session") {
+      const q = pendingQueue.current.splice(0);
+      for (const msg of q) try { ws.send(msg); } catch {}
+    }
     return true;
   };
 
@@ -175,9 +184,14 @@ export function useRuntimeRealtime({
       const socket = new WebSocket(`${protocol}//${window.location.host}/ws`);
       wsRef.current = socket;
 
+      let pingInterval: number | null = null;
+
       socket.onopen = () => {
         if (!isActive) return;
         setWsConnected(true);
+        pingInterval = window.setInterval(() => {
+          if (socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "ping" }));
+        }, 30000);
         const urlSession = new URL(window.location.href).searchParams.get("s");
         socketOpenRef.current(urlSession);
       };
@@ -255,10 +269,13 @@ export function useRuntimeRealtime({
               setChatCollapsed(false);
             }
             break;
+          case "pong":
+            break;
         }
       };
 
       socket.onclose = () => {
+        if (pingInterval) window.clearInterval(pingInterval);
         if (!isActive) return;
         setWsConnected(false);
         socketDisconnectRef.current();

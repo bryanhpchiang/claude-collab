@@ -41,6 +41,7 @@ type ChatPanelProps = {
   message: string;
   messageInputRef: RefObject<HTMLInputElement>;
   myName: string;
+  sendFailed: boolean;
   uploadingImage: boolean;
   onCompleteMention(user: string): void;
   onDismissMentions(): void;
@@ -66,6 +67,7 @@ export function ChatPanel({
   message,
   messageInputRef,
   myName,
+  sendFailed,
   uploadingImage,
   onCompleteMention,
   onDismissMentions,
@@ -175,6 +177,9 @@ export function ChatPanel({
         <button id="send-btn" disabled={!canSendMessages} type="button" onClick={onSendMessage}>
           Send
         </button>
+        {sendFailed && (
+          <span style={{ color: "#ffa657", fontSize: 11, marginLeft: 6 }}>Connection lost, reconnecting...</span>
+        )}
         <div id="mention-dropdown" style={{ display: mentionDropdownVisible ? "block" : "none" }}>
           {mentionOptions.map((user, index) => (
             <div
