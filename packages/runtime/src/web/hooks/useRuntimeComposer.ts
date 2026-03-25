@@ -61,6 +61,12 @@ export function useRuntimeComposer({
   const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  const sendWsRef = useRef(sendWs);
+  sendWsRef.current = sendWs;
+
+  const messageRef = useRef(message);
+  messageRef.current = message;
+
   const mentionDropdownVisible = mentionOptions.length > 0 && Boolean(mentionContext);
 
   const refreshMentionState = (nextValue: string, cursor: number) => {
@@ -166,7 +172,10 @@ export function useRuntimeComposer({
         });
         const data = await response.json();
         if (data.path) {
-          setMessage((current) => `${current ? `${current} ` : ""}${data.path} `);
+          const currentMessage = messageRef.current.trim();
+          const text = currentMessage ? `${currentMessage} ${data.path}` : data.path;
+          sendWsRef.current({ type: "input", text, direct: false });
+          setMessage("");
           requestAnimationFrame(() => messageInputRef.current?.focus());
         } else {
           appendSystem(`Image upload failed: ${data.error || "unknown error"}`);

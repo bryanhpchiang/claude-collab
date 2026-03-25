@@ -78,11 +78,9 @@ export function DashboardPage({ initialJams, user }: DashboardPageProps) {
           {dashboard.jams.map((jam) => (
             <JamCard
               currentUserId={dashboard.user.id}
-              deletingId={dashboard.deletingId}
               jam={jam}
               key={jam.id}
               onAccess={dashboard.openAccessModal}
-              onDelete={dashboard.deleteJam}
               onRestart={dashboard.restartJam}
             />
           ))}
@@ -91,6 +89,7 @@ export function DashboardPage({ initialJams, user }: DashboardPageProps) {
 
       <DashboardAccessModal
         access={dashboard.access}
+        deletingId={dashboard.deletingId}
         onClose={dashboard.closeAccessModal}
         onCopyInvite={(linkId) => {
           dashboard.copyInviteLink(linkId).catch(() => undefined);
@@ -98,6 +97,7 @@ export function DashboardPage({ initialJams, user }: DashboardPageProps) {
         onCreateInvite={() => {
           dashboard.createInviteLink().catch(() => undefined);
         }}
+        onDelete={dashboard.deleteJam}
         onRemoveMember={(userId) => {
           dashboard.removeMember(userId).catch(() => undefined);
         }}

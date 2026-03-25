@@ -8,18 +8,22 @@ function accessLinkStatus(clink: DashboardAccessState["inviteLinks"][number]) {
 
 type DashboardAccessModalProps = {
   access: DashboardAccessState;
+  deletingId: string | null;
   onClose(): void;
   onCopyInvite(linkId: string): void;
   onCreateInvite(): void;
+  onDelete(jamId: string): void;
   onRemoveMember(userId: string): void;
   onRevokeInvite(linkId: string): void;
 };
 
 export function DashboardAccessModal({
   access,
+  deletingId,
   onClose,
   onCopyInvite,
   onCreateInvite,
+  onDelete,
   onRemoveMember,
   onRevokeInvite,
 }: DashboardAccessModalProps) {
@@ -34,9 +38,14 @@ export function DashboardAccessModal({
             <p className="section-label">Access</p>
             <h2 className="access-modal-title">{access.jamName || "Manage Access"}</h2>
           </div>
-          <button className="dash-card-delete" type="button" onClick={onClose}>
-            Close
-          </button>
+          <div className="dash-card-actions">
+            <button className="dash-card-delete" type="button" onClick={() => { onDelete(access.jamId!); onClose(); }}>
+              {deletingId === access.jamId ? "Terminating..." : "Terminate"}
+            </button>
+            <button className="dash-card-delete" type="button" onClick={onClose}>
+              Close
+            </button>
+          </div>
         </div>
 
         {access.error ? (

@@ -17,10 +17,8 @@ const LOADING_WORDS = [
 
 type JamCardProps = {
   currentUserId: string;
-  deletingId: string | null;
   jam: DashboardJam;
   onAccess(jamId: string): void;
-  onDelete(jamId: string): void;
   onRestart(jamId: string): void;
 };
 
@@ -92,10 +90,8 @@ function PendingProgress({
 
 export function JamCard({
   currentUserId,
-  deletingId,
   jam,
   onAccess,
-  onDelete,
   onRestart,
 }: JamCardProps) {
   const isOwner = jam.creator.user_id === currentUserId;
@@ -139,11 +135,6 @@ export function JamCard({
           {isOwner ? (
             <button className="dash-card-open" type="button" onClick={() => onAccess(jam.id)}>
               Manage
-            </button>
-          ) : null}
-          {isOwner ? (
-            <button className="dash-card-delete" type="button" onClick={() => onDelete(jam.id)}>
-              {deletingId === jam.id ? "Terminating..." : "Terminate"}
             </button>
           ) : null}
         </div>
