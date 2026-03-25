@@ -1,19 +1,13 @@
 import {
   useEffect,
   useRef,
-  useState,
 } from "react";
 import type { TerminalHandle } from "../components/TerminalPanel";
 import { useRuntimeComposer } from "./useRuntimeComposer";
 import { useRuntimeRealtime } from "./useRuntimeRealtime";
 import { useRuntimeSidebar } from "./useRuntimeSidebar";
 import { useRuntimeWorkspace } from "./useRuntimeWorkspace";
-import type {
-  DiskSession,
-  ProjectSummary,
-  RuntimeBootstrap,
-  SessionSummary,
-} from "../types";
+import type { RuntimeBootstrap } from "../types";
 
 const EMPTY_STATE_HTML =
   '<div id="state-summary-empty">No activity yet. Start chatting and an AI summary will appear here.</div>';
@@ -22,21 +16,10 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
   const terminalRef = useRef<TerminalHandle | null>(null);
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const joinSessionRef = useRef<((sessionId: string) => void) | null>(null);
-
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  const [sessionList, setSessionList] = useState<SessionSummary[]>([]);
-  const [pendingJoin, setPendingJoin] = useState<string | null>(null);
-  const [projectList, setProjectList] = useState<ProjectSummary[]>([]);
-  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
-  const [newSessionModalOpen, setNewSessionModalOpen] = useState(false);
-  const [newSessionName, setNewSessionName] = useState("");
-  const [diskSessions, setDiskSessions] = useState<DiskSession[]>([]);
-  const [loadingDiskSessions, setLoadingDiskSessions] = useState(false);
-  const [newProjectModalOpen, setNewProjectModalOpen] = useState(false);
-  const [newProjectName, setNewProjectName] = useState("");
-  const [newProjectCwd, setNewProjectCwd] = useState("");
-  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
-  const [editingSessionName, setEditingSessionName] = useState("");
+  const appendSystemRef = useRef<(text: string) => void>(() => undefined);
+  const resetSessionRealtimeRef = useRef<() => void>(() => undefined);
+  const sendWsRef = useRef<(payload: unknown) => boolean>(() => false);
+  const wsConnectedRef = useRef(false);
 
   const {
     fetchStateSummary,
@@ -63,6 +46,55 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
   } = useRuntimeSidebar(EMPTY_STATE_HTML);
 
   const {
+    beginSessionRename,
+    createFreshSession,
+    createProject,
+    createSession,
+    currentProjectId,
+    currentSessionId,
+    deleteProject,
+    deleteSession,
+    diskSessions,
+    editingSessionId,
+    editingSessionName,
+    filteredSessions,
+    handleProjectsUpdate,
+    handleSessionsUpdate,
+    handleSocketDisconnect,
+    handleSocketOpen,
+    handleUsersUpdate,
+    joinSession,
+    loadingDiskSessions,
+    newProjectCwd,
+    newProjectModalOpen,
+    newProjectName,
+    newSessionModalOpen,
+    newSessionName,
+    projectList,
+    resumeDiskSession,
+    saveSessionRename,
+    setEditingSessionName,
+    setNewProjectCwd,
+    setNewProjectModalOpen,
+    setNewProjectName,
+    setNewSessionModalOpen,
+    setNewSessionName,
+    showProjectClose,
+    showSessionClose,
+    switchProject,
+  } = useRuntimeWorkspace({
+    appendSystemRef,
+    fetchStateSummary,
+    joinSessionRef,
+    resetSessionRealtimeRef,
+    resetSummary,
+    sendWsRef,
+    startPolling,
+    terminalRef,
+    wsConnectedRef,
+  });
+
+  const {
     appendSystem,
     chatCollapsed,
     chatEntries,
@@ -82,62 +114,20 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
     currentSessionId,
     initialUser: bootstrap.initialUser,
     joinSessionRef,
-    setCurrentSessionId,
-    setPendingJoin,
-    setProjectList,
-    setSessionList,
+    onProjectsUpdate: handleProjectsUpdate,
+    onSessionsUpdate: handleSessionsUpdate,
+    onSocketDisconnect: handleSocketDisconnect,
+    onSocketOpen: handleSocketOpen,
+    onUsersUpdate: handleUsersUpdate,
     stopPolling,
     terminalRef,
   });
 
-  const {
-    beginSessionRename,
-    createFreshSession,
-    createProject,
-    createSession,
-    deleteProject,
-    deleteSession,
-    filteredSessions,
-    joinSession,
-    resumeDiskSession,
-    saveSessionRename,
-    showProjectClose,
-    showSessionClose,
-    switchProject,
-  } = useRuntimeWorkspace({
-    appendSystem,
-    currentProjectId,
-    currentSessionId,
-    editingSessionId,
-    editingSessionName,
-    fetchStateSummary,
-    joinSessionRef,
-    newProjectCwd,
-    newProjectName,
-    newSessionModalOpen,
-    newSessionName,
-    pendingJoin,
-    projectList,
-    resetSessionRealtime,
-    resetSummary,
-    sendWs,
-    sessionList,
-    setCurrentProjectId,
-    setCurrentSessionId,
-    setDiskSessions,
-    setEditingSessionId,
-    setEditingSessionName,
-    setLoadingDiskSessions,
-    setNewProjectCwd,
-    setNewProjectModalOpen,
-    setNewProjectName,
-    setNewSessionModalOpen,
-    setNewSessionName,
-    setPendingJoin,
-    startPolling,
-    terminalRef,
-    wsConnected,
-  });
+  appendSystemRef.current = appendSystem;
+  resetSessionRealtimeRef.current = resetSessionRealtime;
+  sendWsRef.current = sendWs;
+  wsConnectedRef.current = wsConnected;
+  const canSendMessages = wsConnected && Boolean(currentSessionId);
 
   const {
     completeMention,
@@ -247,7 +237,7 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
       },
     },
     chatPanelProps: {
-      canSendMessages: wsConnected && Boolean(currentSessionId),
+      canSendMessages,
       chatCollapsed,
       chatEntries,
       chatLogRef,

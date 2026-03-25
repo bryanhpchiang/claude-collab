@@ -38,6 +38,19 @@ export type DashboardInviteLink = {
   revoked_at?: string | null;
 };
 
+export type DashboardAccessState = {
+  jamId: string;
+  jamName: string;
+  loading: boolean;
+  error: string;
+  creatingLink: boolean;
+  revokingInviteId: string;
+  removingMemberId: string;
+  members: DashboardMember[];
+  inviteLinks: DashboardInviteLink[];
+  generatedUrls: Record<string, string>;
+};
+
 export type LandingBootstrap = {
   page: "landing";
   signedIn: boolean;

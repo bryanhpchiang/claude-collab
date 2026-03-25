@@ -2,9 +2,8 @@ import {
   useEffect,
   useMemo,
   useRef,
-  type Dispatch,
+  useState,
   type MutableRefObject,
-  type SetStateAction,
 } from "react";
 import type { TerminalHandle } from "../components/TerminalPanel";
 import type {
@@ -15,77 +14,44 @@ import type {
 
 const DEFAULT_SESSION_SENTINEL = "__default__";
 
-type StateSetter<T> = Dispatch<SetStateAction<T>>;
-
 type UseRuntimeWorkspaceOptions = {
-  appendSystem(text: string): void;
-  currentProjectId: string | null;
-  currentSessionId: string | null;
-  editingSessionId: string | null;
-  editingSessionName: string;
+  appendSystemRef: MutableRefObject<(text: string) => void>;
   fetchStateSummary(): Promise<void>;
   joinSessionRef: MutableRefObject<((sessionId: string) => void) | null>;
-  newProjectCwd: string;
-  newProjectName: string;
-  newSessionModalOpen: boolean;
-  newSessionName: string;
-  pendingJoin: string | null;
-  projectList: ProjectSummary[];
-  resetSessionRealtime(): void;
+  resetSessionRealtimeRef: MutableRefObject<() => void>;
   resetSummary(): void;
-  sendWs(payload: unknown): boolean;
-  sessionList: SessionSummary[];
-  setCurrentProjectId: StateSetter<string | null>;
-  setCurrentSessionId: StateSetter<string | null>;
-  setDiskSessions: StateSetter<DiskSession[]>;
-  setEditingSessionId: StateSetter<string | null>;
-  setEditingSessionName: StateSetter<string>;
-  setLoadingDiskSessions: StateSetter<boolean>;
-  setNewProjectCwd: StateSetter<string>;
-  setNewProjectModalOpen: StateSetter<boolean>;
-  setNewProjectName: StateSetter<string>;
-  setNewSessionModalOpen: StateSetter<boolean>;
-  setNewSessionName: StateSetter<string>;
-  setPendingJoin: StateSetter<string | null>;
+  sendWsRef: MutableRefObject<(payload: unknown) => boolean>;
   startPolling(): void;
   terminalRef: MutableRefObject<TerminalHandle | null>;
-  wsConnected: boolean;
+  wsConnectedRef: MutableRefObject<boolean>;
 };
 
 export function useRuntimeWorkspace({
-  appendSystem,
-  currentProjectId,
-  currentSessionId,
-  editingSessionId,
-  editingSessionName,
+  appendSystemRef,
   fetchStateSummary,
   joinSessionRef,
-  newProjectCwd,
-  newProjectName,
-  newSessionModalOpen,
-  newSessionName,
-  pendingJoin,
-  projectList,
-  resetSessionRealtime,
+  resetSessionRealtimeRef,
   resetSummary,
-  sendWs,
-  sessionList,
-  setCurrentProjectId,
-  setCurrentSessionId,
-  setDiskSessions,
-  setEditingSessionId,
-  setEditingSessionName,
-  setLoadingDiskSessions,
-  setNewProjectCwd,
-  setNewProjectModalOpen,
-  setNewProjectName,
-  setNewSessionModalOpen,
-  setNewSessionName,
-  setPendingJoin,
+  sendWsRef,
   startPolling,
   terminalRef,
-  wsConnected,
+  wsConnectedRef,
 }: UseRuntimeWorkspaceOptions) {
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [sessionList, setSessionList] = useState<SessionSummary[]>([]);
+  const [pendingJoin, setPendingJoin] = useState<string | null>(null);
+  const [projectList, setProjectList] = useState<ProjectSummary[]>([]);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+  const [newSessionModalOpen, setNewSessionModalOpen] = useState(false);
+  const [newSessionName, setNewSessionName] = useState("");
+  const [diskSessions, setDiskSessions] = useState<DiskSession[]>([]);
+  const [loadingDiskSessions, setLoadingDiskSessions] = useState(false);
+  const [newProjectModalOpen, setNewProjectModalOpen] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectCwd, setNewProjectCwd] = useState("");
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingSessionName, setEditingSessionName] = useState("");
+
   const currentProjectIdRef = useRef(currentProjectId);
   const currentSessionIdRef = useRef(currentSessionId);
   const sessionListRef = useRef(sessionList);
@@ -110,46 +76,6 @@ export function useRuntimeWorkspace({
     sessionListRef.current = sessionList;
   }, [sessionList]);
 
-  const showLobby = () => {
-    setCurrentSessionId(null);
-    terminalRef.current?.hideOauthModal();
-    terminalRef.current?.setInteractiveMode(false);
-    resetSummary();
-  };
-
-  const joinSession = (sessionId: string) => {
-    if (!sessionId) return;
-
-    const nextUrl = new URL(window.location.href);
-    nextUrl.searchParams.set("s", sessionId);
-    history.replaceState(null, "", nextUrl);
-
-    if (!wsConnected) {
-      setPendingJoin(sessionId);
-      return;
-    }
-
-    if (currentSessionIdRef.current === sessionId) return;
-
-    setCurrentSessionId(sessionId);
-    const targetSession = sessionListRef.current.find((session) => session.id === sessionId);
-    if (targetSession?.projectId && targetSession.projectId !== currentProjectIdRef.current) {
-      setCurrentProjectId(targetSession.projectId);
-    }
-
-    if (!sendWs({ type: "join-session", sessionId })) {
-      setPendingJoin(sessionId);
-      return;
-    }
-
-    terminalRef.current?.resetForSession();
-    resetSessionRealtime();
-
-    setTimeout(() => terminalRef.current?.fit(), 50);
-    fetchStateSummary().catch(() => undefined);
-    startPolling();
-  };
-
   useEffect(() => {
     const nextProjectId =
       currentProjectId && projectList.some((project) => project.id === currentProjectId)
@@ -172,19 +98,50 @@ export function useRuntimeWorkspace({
     ) {
       setPendingJoin(DEFAULT_SESSION_SENTINEL);
     }
-  }, [
-    currentProjectId,
-    currentSessionId,
-    pendingJoin,
-    projectList,
-    sessionList,
-    setCurrentProjectId,
-    setCurrentSessionId,
-    setPendingJoin,
-  ]);
+  }, [currentProjectId, currentSessionId, pendingJoin, projectList, sessionList]);
+
+  const showLobby = () => {
+    setCurrentSessionId(null);
+    terminalRef.current?.hideOauthModal();
+    terminalRef.current?.setInteractiveMode(false);
+    resetSummary();
+  };
+
+  const joinSession = (sessionId: string) => {
+    if (!sessionId) return;
+
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("s", sessionId);
+    history.replaceState(null, "", nextUrl);
+
+    if (!wsConnectedRef.current) {
+      setPendingJoin(sessionId);
+      return;
+    }
+
+    if (currentSessionIdRef.current === sessionId) return;
+
+    setCurrentSessionId(sessionId);
+    const targetSession = sessionListRef.current.find((session) => session.id === sessionId);
+    if (targetSession?.projectId && targetSession.projectId !== currentProjectIdRef.current) {
+      setCurrentProjectId(targetSession.projectId);
+    }
+
+    if (!sendWsRef.current({ type: "join-session", sessionId })) {
+      setPendingJoin(sessionId);
+      return;
+    }
+
+    terminalRef.current?.resetForSession();
+    resetSessionRealtimeRef.current();
+
+    setTimeout(() => terminalRef.current?.fit(), 50);
+    fetchStateSummary().catch(() => undefined);
+    startPolling();
+  };
 
   useEffect(() => {
-    if (!pendingJoin || !wsConnected) return;
+    if (!pendingJoin || !wsConnectedRef.current) return;
 
     if (pendingJoin === DEFAULT_SESSION_SENTINEL) {
       const projectSessions = sessionList.filter((session) => session.projectId === currentProjectIdRef.current);
@@ -200,7 +157,7 @@ export function useRuntimeWorkspace({
     }
     if (target) joinSession(target.id);
     setPendingJoin(null);
-  }, [joinSession, pendingJoin, sessionList, setCurrentProjectId, setPendingJoin, wsConnected]);
+  }, [pendingJoin, sessionList]);
 
   useEffect(() => {
     if (!newSessionModalOpen) return;
@@ -217,11 +174,38 @@ export function useRuntimeWorkspace({
       .finally(() => {
         setLoadingDiskSessions(false);
       });
-  }, [newSessionModalOpen, setDiskSessions, setLoadingDiskSessions]);
+  }, [newSessionModalOpen]);
 
   useEffect(() => {
     joinSessionRef.current = joinSession;
   }, [joinSession, joinSessionRef]);
+
+  const handleSocketOpen = (requestedSessionId: string | null) => {
+    setPendingJoin(requestedSessionId || DEFAULT_SESSION_SENTINEL);
+  };
+
+  const handleProjectsUpdate = (projects: ProjectSummary[], sessions: SessionSummary[]) => {
+    setProjectList(projects);
+    setSessionList(sessions);
+  };
+
+  const handleSessionsUpdate = (sessions: SessionSummary[]) => {
+    setSessionList(sessions);
+  };
+
+  const handleUsersUpdate = (users: string[]) => {
+    if (!currentSessionIdRef.current) return;
+    setSessionList((current) => current.map((session) => (
+      session.id === currentSessionIdRef.current
+        ? { ...session, users }
+        : session
+    )));
+  };
+
+  const handleSocketDisconnect = () => {
+    setCurrentSessionId(null);
+    setPendingJoin(null);
+  };
 
   const createFreshSession = async () => {
     const name = `Session ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
@@ -269,7 +253,7 @@ export function useRuntimeWorkspace({
     const response = await fetch(`/api/projects/${projectId}`, { method: "DELETE" });
     if (!response.ok) {
       const data = await response.json().catch(() => null);
-      appendSystem(data?.error || "Failed to delete project.");
+      appendSystemRef.current(data?.error || "Failed to delete project.");
     }
   };
 
@@ -310,7 +294,7 @@ export function useRuntimeWorkspace({
     });
     if (!response.ok) {
       const data = await response.json().catch(() => null);
-      appendSystem(data?.error || "Failed to delete session.");
+      appendSystemRef.current(data?.error || "Failed to delete session.");
       return;
     }
 
@@ -368,12 +352,35 @@ export function useRuntimeWorkspace({
     createFreshSession,
     createProject,
     createSession,
+    currentProjectId,
+    currentSessionId,
     deleteProject,
     deleteSession,
+    diskSessions,
+    editingSessionId,
+    editingSessionName,
     filteredSessions,
+    handleProjectsUpdate,
+    handleSessionsUpdate,
+    handleSocketDisconnect,
+    handleSocketOpen,
+    handleUsersUpdate,
     joinSession,
+    loadingDiskSessions,
+    newProjectCwd,
+    newProjectModalOpen,
+    newProjectName,
+    newSessionModalOpen,
+    newSessionName,
+    projectList,
     resumeDiskSession,
     saveSessionRename,
+    setEditingSessionName,
+    setNewProjectCwd,
+    setNewProjectModalOpen,
+    setNewProjectName,
+    setNewSessionModalOpen,
+    setNewSessionName,
     showProjectClose,
     showSessionClose,
     switchProject,

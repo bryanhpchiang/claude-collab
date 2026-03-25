@@ -2,9 +2,7 @@ import {
   useEffect,
   useRef,
   useState,
-  type Dispatch,
   type MutableRefObject,
-  type SetStateAction,
 } from "react";
 import type { ErrorOverlayState } from "../components/ErrorOverlay";
 import type { TerminalHandle } from "../components/TerminalPanel";
@@ -28,10 +26,11 @@ type UseRuntimeRealtimeOptions = {
   currentSessionId: string | null;
   initialUser: AuthenticatedRuntimeUser | null;
   joinSessionRef: MutableRefObject<((sessionId: string) => void) | null>;
-  setCurrentSessionId(value: string | null): void;
-  setPendingJoin(value: string | null): void;
-  setProjectList(value: ProjectSummary[]): void;
-  setSessionList: Dispatch<SetStateAction<SessionSummary[]>>;
+  onProjectsUpdate(projects: ProjectSummary[], sessions: SessionSummary[]): void;
+  onSessionsUpdate(sessions: SessionSummary[]): void;
+  onSocketDisconnect(): void;
+  onSocketOpen(requestedSessionId: string | null): void;
+  onUsersUpdate(users: string[]): void;
   stopPolling(): void;
   terminalRef: MutableRefObject<TerminalHandle | null>;
 };
@@ -40,16 +39,22 @@ export function useRuntimeRealtime({
   currentSessionId,
   initialUser,
   joinSessionRef,
-  setCurrentSessionId,
-  setPendingJoin,
-  setProjectList,
-  setSessionList,
+  onProjectsUpdate,
+  onSessionsUpdate,
+  onSocketDisconnect,
+  onSocketOpen,
+  onUsersUpdate,
   stopPolling,
   terminalRef,
 }: UseRuntimeRealtimeOptions) {
   const wsRef = useRef<WebSocket | null>(null);
   const currentSessionIdRef = useRef(currentSessionId);
+  const projectsUpdateRef = useRef(onProjectsUpdate);
+  const sessionsUpdateRef = useRef(onSessionsUpdate);
+  const socketDisconnectRef = useRef(onSocketDisconnect);
+  const socketOpenRef = useRef(onSocketOpen);
   const stopPollingRef = useRef(stopPolling);
+  const usersUpdateRef = useRef(onUsersUpdate);
 
   const [currentUser, setCurrentUser] = useState<AuthenticatedRuntimeUser | null>(initialUser);
   const [connectedUsers, setConnectedUsers] = useState<string[]>([]);
@@ -71,8 +76,28 @@ export function useRuntimeRealtime({
   }, [currentSessionId]);
 
   useEffect(() => {
+    projectsUpdateRef.current = onProjectsUpdate;
+  }, [onProjectsUpdate]);
+
+  useEffect(() => {
+    sessionsUpdateRef.current = onSessionsUpdate;
+  }, [onSessionsUpdate]);
+
+  useEffect(() => {
+    socketDisconnectRef.current = onSocketDisconnect;
+  }, [onSocketDisconnect]);
+
+  useEffect(() => {
+    socketOpenRef.current = onSocketOpen;
+  }, [onSocketOpen]);
+
+  useEffect(() => {
     stopPollingRef.current = stopPolling;
   }, [stopPolling]);
+
+  useEffect(() => {
+    usersUpdateRef.current = onUsersUpdate;
+  }, [onUsersUpdate]);
 
   useEffect(() => {
     myNameRef.current = myName;
@@ -150,7 +175,7 @@ export function useRuntimeRealtime({
         if (!isActive) return;
         setWsConnected(true);
         const urlSession = new URL(window.location.href).searchParams.get("s");
-        setPendingJoin(urlSession || "__default__");
+        socketOpenRef.current(urlSession);
       };
 
       socket.onmessage = (event) => {
@@ -161,11 +186,10 @@ export function useRuntimeRealtime({
             setCurrentUser(data.user || null);
             break;
           case "projects":
-            setProjectList(data.projects || []);
-            setSessionList(data.sessions || []);
+            projectsUpdateRef.current(data.projects || [], data.sessions || []);
             break;
           case "sessions":
-            setSessionList(data.sessions || []);
+            sessionsUpdateRef.current(data.sessions || []);
             break;
           case "output":
             terminalRef.current?.writeOutput(data.data);
@@ -194,13 +218,7 @@ export function useRuntimeRealtime({
             break;
           case "users":
             setConnectedUsers(data.users || []);
-            if (currentSessionIdRef.current) {
-              setSessionList((current) => current.map((session) => (
-                session.id === currentSessionIdRef.current
-                  ? { ...session, users: data.users || [] }
-                  : session
-              )));
-            }
+            usersUpdateRef.current(data.users || []);
             break;
           case "mention":
             if (
@@ -239,7 +257,7 @@ export function useRuntimeRealtime({
       socket.onclose = () => {
         if (!isActive) return;
         setWsConnected(false);
-        setCurrentSessionId(null);
+        socketDisconnectRef.current();
         setConnectedUsers([]);
         terminalRef.current?.handleDisconnect();
         stopPollingRef.current();
@@ -260,7 +278,7 @@ export function useRuntimeRealtime({
       wsRef.current?.close();
       stopPollingRef.current();
     };
-  }, [setCurrentSessionId, setPendingJoin, setProjectList, setSessionList, terminalRef]);
+  }, [terminalRef]);
 
   return {
     appendSystem,
