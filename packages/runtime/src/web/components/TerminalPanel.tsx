@@ -38,6 +38,9 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
   const fitAddonRef = useRef<FitAddon | null>(null);
   const connectedUsersRef = useRef(connectedUsers);
   const currentUserNameRef = useRef(currentUserName);
+  const onClaudeReadyRef = useRef(onClaudeReady);
+  const onReadyRef = useRef(onReady);
+  const onTtyInputRef = useRef(onTtyInput);
   const userScrolledUpRef = useRef(false);
   const awaitingClaudeReadyRef = useRef(false);
   const interactiveRef = useRef(false);
@@ -60,6 +63,18 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
   useEffect(() => {
     currentUserNameRef.current = currentUserName;
   }, [currentUserName]);
+
+  useEffect(() => {
+    onClaudeReadyRef.current = onClaudeReady;
+  }, [onClaudeReady]);
+
+  useEffect(() => {
+    onReadyRef.current = onReady;
+  }, [onReady]);
+
+  useEffect(() => {
+    onTtyInputRef.current = onTtyInput;
+  }, [onTtyInput]);
 
   useEffect(() => {
     const container = terminalContainerRef.current;
@@ -86,7 +101,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
     term.loadAddon(fitAddon);
     term.open(container);
     fitAddon.fit();
-    onReady();
+    onReadyRef.current();
 
     const isNearBottom = () => term.buffer.active.viewportY >= term.buffer.active.baseY - 5;
 
@@ -114,7 +129,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
     });
     term.onData((data: string) => {
       if (!interactiveRef.current) return;
-      onTtyInput(data);
+      onTtyInputRef.current(data);
     });
 
     resizeObserver.observe(container);
@@ -127,7 +142,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
       fitAddonRef.current = null;
       termRef.current = null;
     };
-  }, [onReady, onTtyInput]);
+  }, []);
 
   useEffect(() => {
     const term = termRef.current;
@@ -206,7 +221,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
   const submitOauthKey = () => {
     const key = oauthKeyValue.trim();
     if (!key) return;
-    onTtyInput(`${key}\r`);
+    onTtyInputRef.current(`${key}\r`);
     hideOauthModal();
   };
 
@@ -249,11 +264,11 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
           awaitingClaudeReadyRef.current = false;
           hideOauthModal();
           setInteractive(false);
-          onClaudeReady();
+          onClaudeReadyRef.current();
         }
       });
     },
-  }), [oauthKeyValue, oauthUrl, onClaudeReady, onTtyInput]);
+  }), [oauthKeyValue, oauthUrl]);
 
   return (
     <>

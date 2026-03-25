@@ -5,6 +5,7 @@ import { RuntimeApp } from "../src/web/RuntimeApp";
 import type { RuntimeBootstrap } from "../src/web/types";
 
 const terminalWrites: string[] = [];
+let terminalConstructorCount = 0;
 
 vi.mock("@xterm/addon-fit", () => ({
   FitAddon: class {
@@ -28,6 +29,7 @@ vi.mock("@xterm/xterm", () => ({
     };
 
     constructor(options: Record<string, unknown>) {
+      terminalConstructorCount += 1;
       this.options = options;
     }
 
@@ -123,6 +125,7 @@ describe("RuntimeApp", () => {
     fetchMock.mockReset();
     MockWebSocket.instances = [];
     terminalWrites.splice(0);
+    terminalConstructorCount = 0;
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
     vi.stubGlobal("Notification", MockNotification);
@@ -264,9 +267,14 @@ describe("RuntimeApp", () => {
     });
 
     act(() => {
+      socket.emitMessage({ type: "users", users: ["jam-owner"] });
+    });
+
+    act(() => {
       socket.emitMessage({ type: "output", data: "Claude booted" });
     });
 
+    expect(terminalConstructorCount).toBe(1);
     expect(terminalWrites).toContain("Claude booted");
     expect(screen.getByText(/general/i)).toBeInTheDocument();
   });
