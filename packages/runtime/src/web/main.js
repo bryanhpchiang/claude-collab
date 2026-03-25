@@ -2,7 +2,6 @@ import { createChatController } from "./features/chat.js";
 import { createMentionController } from "./features/mentions.js";
 import { createStateSidebarController } from "./features/state-sidebar.js";
 import { createTerminalController } from "./features/terminal.js";
-import { initTreats } from "./features/treats.js";
 import { initUserController } from "./features/user.js";
 import { createWorkspaceController } from "./features/workspace.js";
 
@@ -92,13 +91,6 @@ const workspace = createWorkspaceController({
 });
 
 createMentionController({ state });
-
-initTreats({
-  state,
-  onAnnounce(text) {
-    chat.addSystem(text);
-  },
-});
 
 function maybeShowMentionNotification(message) {
   if (
