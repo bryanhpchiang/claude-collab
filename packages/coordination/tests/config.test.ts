@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { loadConfig } from "./config";
+import { loadConfig } from "../src/config";
 
 const COORDINATION_ENV_KEYS = [
   "PORT",

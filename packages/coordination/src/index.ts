@@ -7,6 +7,7 @@ import { createJamAccessService } from "./services/jam-access";
 import { createDatabase, ensureCoordinationTables } from "./services/db";
 import { createEc2Service } from "./services/ec2";
 import { createJamRecordsService } from "./services/jam-records";
+import { createJamSecretsService } from "./services/jam-secrets";
 
 const config = loadConfig();
 const db = createDatabase(config);
@@ -21,7 +22,34 @@ const context = {
   ec2: createEc2Service(config),
   jamAccess: createJamAccessService(db),
   jamRecords: createJamRecordsService(db),
+  jamSecrets: createJamSecretsService(config),
 };
+
+async function migratePlaintextJamSecrets() {
+  const legacyRecords = await context.jamRecords.scanJamRecordsWithPlaintextSecrets();
+
+  for (const record of legacyRecords) {
+    if (record.secret_arn) {
+      await context.jamRecords.clearPlaintextJamSecrets(record.id);
+      continue;
+    }
+
+    if (record.state === "terminated") {
+      await context.jamRecords.clearPlaintextJamSecrets(record.id);
+      continue;
+    }
+
+    if (!record.shared_secret || !record.deploy_secret) continue;
+
+    const secret = await context.jamSecrets.createJamSecrets(record.id, {
+      sharedSecret: record.shared_secret,
+      deploySecret: record.deploy_secret,
+    });
+    await context.jamRecords.assignJamSecretArn(record.id, secret.secretArn);
+  }
+}
+
+await migratePlaintextJamSecrets();
 
 const server = Bun.serve({
   port: config.port,

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { handleJamRoutes, type JamRouteContext } from "./jams";
+import { handleJamRoutes, type JamRouteContext } from "../../src/routes/jams";
 
 function createContext(options: {
   user?: {
@@ -60,6 +60,7 @@ function createContext(options: {
               creator_name: "Owner",
               creator_avatar: "",
               public_host: "abc123.jams.letsjam.now",
+              secret_arn: "arn:aws:secretsmanager:us-east-1:123456789012:secret:jam-abc123",
               shared_secret: "shared-secret",
               deploy_secret: "deploy-secret",
               target_group_arn: "tg-123",
@@ -85,6 +86,16 @@ function createContext(options: {
       createInviteLink: async () => undefined,
       revokeInviteLink: async () => undefined,
       removeMember: async () => undefined,
+    } as any,
+    jamSecrets: {
+      createJamSecrets: async () => ({
+        secretArn: "arn:aws:secretsmanager:us-east-1:123456789012:secret:jam-abc123",
+      }),
+      getJamSecrets: async () => ({
+        sharedSecret: "shared-secret",
+        deploySecret: "deploy-secret",
+      }),
+      deleteJamSecrets: async () => undefined,
     } as any,
     ec2: {
       probeRuntime: async () => true,

@@ -12,6 +12,7 @@ export type JamRecordRow = {
   creator_avatar: string;
   ip: string | null;
   public_host: string | null;
+  secret_arn: string | null;
   shared_secret: string | null;
   deploy_secret: string | null;
   target_group_arn: string | null;
@@ -122,6 +123,11 @@ export async function ensureCoordinationTables(
   await sql`
     alter table jam_records
     add column if not exists public_host text
+  `.execute(db);
+
+  await sql`
+    alter table jam_records
+    add column if not exists secret_arn text
   `.execute(db);
 
   await sql`

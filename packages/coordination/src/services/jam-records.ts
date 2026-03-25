@@ -10,6 +10,7 @@ export type JamRecord = {
   creator_avatar: string;
   ip?: string;
   public_host?: string;
+  secret_arn?: string;
   shared_secret?: string;
   deploy_secret?: string;
   target_group_arn?: string;
@@ -29,6 +30,7 @@ function toJamRecord(row: JamRecordRow): JamRecord {
     creator_avatar: row.creator_avatar,
     ...(row.ip ? { ip: row.ip } : {}),
     ...(row.public_host ? { public_host: row.public_host } : {}),
+    ...(row.secret_arn ? { secret_arn: row.secret_arn } : {}),
     ...(row.shared_secret ? { shared_secret: row.shared_secret } : {}),
     ...(row.deploy_secret ? { deploy_secret: row.deploy_secret } : {}),
     ...(row.target_group_arn ? { target_group_arn: row.target_group_arn } : {}),
@@ -57,6 +59,7 @@ export function createJamRecordsService(db: Kysely<CoordinationDatabase>) {
           creator_avatar: item.creator_avatar || "",
           ip: item.ip || null,
           public_host: item.public_host || null,
+          secret_arn: item.secret_arn || null,
           shared_secret: item.shared_secret || null,
           deploy_secret: item.deploy_secret || null,
           target_group_arn: item.target_group_arn || null,
@@ -97,6 +100,29 @@ export function createJamRecordsService(db: Kysely<CoordinationDatabase>) {
         .executeTakeFirst();
     },
 
+    async assignJamSecretArn(id: string, secretArn: string) {
+      await db
+        .updateTable("jam_records")
+        .set({
+          secret_arn: secretArn,
+          shared_secret: null,
+          deploy_secret: null,
+        })
+        .where("id", "=", id)
+        .executeTakeFirst();
+    },
+
+    async clearPlaintextJamSecrets(id: string) {
+      await db
+        .updateTable("jam_records")
+        .set({
+          shared_secret: null,
+          deploy_secret: null,
+        })
+        .where("id", "=", id)
+        .executeTakeFirst();
+    },
+
     async listActiveJamsVisibleToUser(userId: string): Promise<JamRecord[]> {
       const result = await db
         .selectFrom("jam_records")
@@ -122,6 +148,21 @@ export function createJamRecordsService(db: Kysely<CoordinationDatabase>) {
 
     async scanActiveJamRecords(): Promise<JamRecord[]> {
       const result = await getActiveRecords();
+      return result.map(toJamRecord);
+    },
+
+    async scanJamRecordsWithPlaintextSecrets(): Promise<JamRecord[]> {
+      const result = await db
+        .selectFrom("jam_records")
+        .selectAll()
+        .where((eb) =>
+          eb.or([
+            eb("shared_secret", "is not", null),
+            eb("deploy_secret", "is not", null),
+          ]),
+        )
+        .execute();
+
       return result.map(toJamRecord);
     },
   };

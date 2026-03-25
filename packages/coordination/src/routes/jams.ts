@@ -11,6 +11,7 @@ import { buildJamPath } from "../services/ec2";
 import { clearCookie, mergeHeaders, serializeCookie } from "../services/http";
 import type { JamAccessService } from "../services/jam-access";
 import type { JamRecord, JamRecordsService } from "../services/jam-records";
+import type { JamSecretsService } from "../services/jam-secrets";
 import { createRandomToken, hashInviteToken, signJamToken } from "../services/jam-tokens";
 import {
   buildJamInstanceUserData,
@@ -41,6 +42,7 @@ export type JamRouteContext = {
   auth: CoordinationAuth;
   jamRecords: JamRecordsService;
   jamAccess: JamAccessService;
+  jamSecrets: JamSecretsService;
   ec2: Ec2Service;
 };
 
@@ -252,6 +254,20 @@ async function handleInviteClaim(
   });
 }
 
+async function resolveJamSecrets(
+  jam: JamRecord,
+  jamSecrets: JamSecretsService,
+) {
+  if (jam.secret_arn) {
+    return jamSecrets.getJamSecrets(jam.secret_arn);
+  }
+
+  return {
+    sharedSecret: jam.shared_secret || "",
+    deploySecret: jam.deploy_secret || "",
+  };
+}
+
 export async function handleJamRoutes(
   request: Request,
   context: JamRouteContext,
@@ -285,9 +301,16 @@ export async function handleJamRoutes(
 
       let instanceId = "";
       let listenerRuleArn = "";
+      let secretArn = "";
       let targetGroupArn = "";
 
       try {
+        const secret = await context.jamSecrets.createJamSecrets(jamId, {
+          sharedSecret: runtimeEnv.sharedSecret,
+          deploySecret: runtimeEnv.deploySecret,
+        });
+        secretArn = secret.secretArn;
+
         instanceId = await context.ec2.launchJamInstance(
           jamId,
           buildJamInstanceUserData(context.config, runtimeEnv),
@@ -305,8 +328,7 @@ export async function handleJamRoutes(
           creator_name: authResult.user.name,
           creator_avatar: authResult.user.avatar_url,
           public_host: target.publicHost,
-          shared_secret: runtimeEnv.sharedSecret,
-          deploy_secret: runtimeEnv.deploySecret,
+          secret_arn: secretArn,
           target_group_arn: targetGroupArn,
           listener_rule_arn: listenerRuleArn,
           state: "pending",
@@ -338,6 +360,9 @@ export async function handleJamRoutes(
         }
         if (instanceId) {
           await context.ec2.terminateInstance(instanceId).catch(() => undefined);
+        }
+        if (secretArn) {
+          await context.jamSecrets.deleteJamSecrets(secretArn).catch(() => undefined);
         }
         throw error;
       }
@@ -402,18 +427,21 @@ export async function handleJamRoutes(
             (record) =>
               record.state === "running" &&
               record.public_host &&
-              record.deploy_secret,
+              (record.secret_arn || record.deploy_secret),
           ),
         )
         .then((records) =>
           Promise.all(
-            records.map((record) =>
-              fetch(context.ec2.buildDeployUrl(record.public_host!), {
+            records.map(async (record) => {
+              const secrets = await resolveJamSecrets(record, context.jamSecrets);
+              if (!secrets.deploySecret) return undefined;
+
+              return fetch(context.ec2.buildDeployUrl(record.public_host!), {
                 method: "POST",
-                headers: { [DEPLOY_HEADER]: record.deploy_secret! },
+                headers: { [DEPLOY_HEADER]: secrets.deploySecret },
                 signal: AbortSignal.timeout(30000),
-              }).catch(() => undefined),
-            ),
+              }).catch(() => undefined);
+            }),
           ),
         )
         .catch(() => undefined);
@@ -518,6 +546,9 @@ export async function handleJamRoutes(
       );
       await context.ec2.terminateInstance(ownerResult.jam.instance_id);
       await context.jamRecords.updateJamState(ownerResult.jam.id, "terminated");
+      if (ownerResult.jam.secret_arn) {
+        await context.jamSecrets.deleteJamSecrets(ownerResult.jam.secret_arn);
+      }
 
       return Response.json(
         { ok: true, terminated: ownerResult.jam.instance_id },
@@ -565,11 +596,16 @@ export async function handleJamRoutes(
       return new Response("Forbidden", { status: 403 });
     }
 
-    if (jam.state !== "running" || !jam.public_host || !jam.shared_secret) {
+    if (jam.state !== "running" || !jam.public_host) {
       return new Response("Jam not ready", { status: 409 });
     }
 
-    const bootstrapToken = await signJamToken(jam.shared_secret, {
+    const secrets = await resolveJamSecrets(jam, context.jamSecrets);
+    if (!secrets.sharedSecret) {
+      return new Response("Jam not ready", { status: 409 });
+    }
+
+    const bootstrapToken = await signJamToken(secrets.sharedSecret, {
       kind: "bootstrap",
       jamId: jam.id,
       user: {

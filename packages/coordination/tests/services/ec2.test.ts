@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { buildJamPath, buildJamRedirectUrl, waitForPublicIp } from "./ec2";
+import {
+  buildJamPath,
+  buildJamRedirectUrl,
+  waitForPublicIp,
+} from "../../src/services/ec2";
 
 describe("waitForPublicIp", () => {
   test("retries when a new instance is not immediately visible", async () => {
