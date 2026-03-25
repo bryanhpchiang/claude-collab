@@ -16,3 +16,12 @@ export {
   getCookie,
   isSecureRequest,
 } from "./http";
+
+export {
+  type ViteManifest,
+  type ViteManifestEntry,
+  escapeHtml,
+  readBootstrapData,
+  renderBootstrapScript,
+  resolveViteEntryAssets,
+} from "./ssr";

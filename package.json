@@ -11,8 +11,14 @@
     "runtime:start": "cd packages/runtime && bun run start",
     "runtime:dev": "cd packages/runtime && bun run dev",
     "runtime:test": "cd packages/runtime && bun test",
+    "runtime:web:dev": "cd packages/runtime && bun run web:dev",
+    "runtime:web:build": "cd packages/runtime && bun run web:build",
+    "runtime:web:test": "cd packages/runtime && bun run web:test",
     "coordination:start": "cd packages/coordination && bun run start",
     "coordination:dev": "cd packages/coordination && bun run dev",
-    "coordination:test": "cd packages/coordination && bun test"
+    "coordination:test": "cd packages/coordination && bun test",
+    "coordination:web:dev": "cd packages/coordination && bun run web:dev",
+    "coordination:web:build": "cd packages/coordination && bun run web:build",
+    "coordination:web:test": "cd packages/coordination && bun run web:test"
   }
 }
