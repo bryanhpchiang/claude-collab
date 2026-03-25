@@ -81,13 +81,16 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
     if (!container) return;
 
     const term = new XTerm({
-      cursorBlink: true,
+      cursorBlink: false,
+      cursorStyle: "bar",
+      cursorWidth: 0,
+      cursorInactiveStyle: "none",
       fontSize: typeof window !== "undefined" && window.innerWidth <= 600 ? 10 : 14,
       fontFamily: '"JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
       theme: {
         background: "#0d1117",
         foreground: "#e6edf3",
-        cursor: "#58a6ff",
+        cursor: "transparent",
         selectionBackground: "#264f78",
       },
       disableStdin: true,
@@ -149,7 +152,18 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
     if (!term) return;
     interactiveRef.current = interactive;
     term.options.disableStdin = !interactive;
-    if (interactive) term.focus();
+    if (interactive) {
+      term.options.cursorBlink = true;
+      term.options.cursorWidth = 1;
+      term.options.cursorInactiveStyle = "outline";
+      term.options.theme = { ...term.options.theme, cursor: "#58a6ff" };
+      term.focus();
+    } else {
+      term.options.cursorBlink = false;
+      term.options.cursorWidth = 0;
+      term.options.cursorInactiveStyle = "none";
+      term.options.theme = { ...term.options.theme, cursor: "transparent" };
+    }
   }, [interactive]);
 
   useEffect(() => {

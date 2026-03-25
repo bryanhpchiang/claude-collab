@@ -35,12 +35,12 @@ export function DashboardAccessModal({
       <div className="access-modal-dialog">
         <div className="access-modal-header">
           <div>
-            <p className="section-label">Access</p>
-            <h2 className="access-modal-title">{access.jamName || "Manage Access"}</h2>
+            <p className="section-label">People</p>
+            <h2 className="access-modal-title">{access.jamName || "Who's here"}</h2>
           </div>
           <div className="dash-card-actions">
             <button className="dash-card-delete" type="button" onClick={() => { onDelete(access.jamId!); onClose(); }}>
-              {deletingId === access.jamId ? "Terminating..." : "Terminate"}
+              {deletingId === access.jamId ? "Shutting down..." : "Shut Down"}
             </button>
             <button className="dash-card-delete" type="button" onClick={onClose}>
               Close
@@ -61,18 +61,18 @@ export function DashboardAccessModal({
             disabled={access.creatingLink || access.loading}
             onClick={onCreateInvite}
           >
-            {access.creatingLink ? "Creating..." : "Create Invite Link"}
+            {access.creatingLink ? "Creating..." : "Generate Invite Link"}
           </button>
         </div>
 
         <section className="access-section">
           <h3>Invite Links</h3>
           {!access.loading && !access.inviteLinks.length ? (
-            <div className="access-empty">No invite links yet.</div>
+            <div className="access-empty">No invite links yet. Generate one to share this Jam.</div>
           ) : null}
           <div className="access-list">
             {access.loading ? (
-              <div className="access-empty">Loading access controls...</div>
+              <div className="access-empty">Loading...</div>
             ) : (
               access.inviteLinks.map((link) => {
                 const status = accessLinkStatus(link);
@@ -85,7 +85,7 @@ export function DashboardAccessModal({
                         <span className={`access-pill access-pill-${status}`}>{status}</span>
                       </div>
                       <div className={`access-link-url${rawUrl ? "" : " is-muted"}`}>
-                        {rawUrl || "Raw invite URL is only shown when it is created."}
+                        {rawUrl || "Link is only visible right after it's generated."}
                       </div>
                     </div>
                     <div className="dash-card-actions">

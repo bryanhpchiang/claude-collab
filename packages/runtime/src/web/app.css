@@ -4,7 +4,7 @@
     }
     body {
       background: #0d1117; color: #e6edf3;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
       height: 100vh; display: flex; flex-direction: column; overflow: hidden;
     }
     #app {
@@ -127,7 +127,7 @@
     .chat-msg .text { color: #c9d1d9; }
     .chat-msg.system { color: #8b949e; font-style: italic; font-size: 12px; }
     #input-area {
-      display: flex; align-items: center; padding: 8px 12px; gap: 8px;
+      display: flex; align-items: flex-end; padding: 8px 12px; gap: 8px;
       background: #161b22; border-top: 1px solid #30363d;
     }
     #input-area .name-tag {
@@ -141,10 +141,19 @@
       padding: 5px 8px; border-radius: 6px; font-size: 13px; font-weight: 600;
       width: 100px; outline: none;
     }
+    #input-area.drag-over {
+      border-top: 2px dashed #ff9a56;
+      background: rgba(255,154,86,0.08);
+    }
+    #input-area.drag-over #msg-input {
+      border-color: #ff9a56;
+    }
     #msg-input {
       flex: 1; background: #0d1117; border: 1px solid #30363d; color: #e6edf3;
       padding: 8px 12px; border-radius: 6px; font-size: 14px; font-family: inherit;
       outline: none; transition: border-color 0.15s;
+      resize: none; min-height: 36px; max-height: 150px; overflow-y: auto;
+      line-height: 1.4;
     }
     #msg-input:focus { border-color: #58a6ff; }
     #msg-input:disabled { opacity: 0.5; }
@@ -156,9 +165,10 @@
     #send-btn:hover { background: #2ea043; }
     #send-btn:disabled { opacity: 0.5; cursor: default; }
     #key-bar {
-      display: flex; gap: 4px; padding: 6px 12px; background: #161b22;
+      display: none; gap: 4px; padding: 6px 12px; background: #161b22;
       border-top: 1px solid #30363d; flex-wrap: wrap;
     }
+    #terminal-container.interactive ~ #bottom-panel #key-bar { display: flex; }
     .key-btn {
       background: #21262d; color: #c9d1d9; border: 1px solid #30363d;
       padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
@@ -418,6 +428,34 @@
     }
     #mention-dropdown .mention-option .mention-dot {
       width: 8px; height: 8px; border-radius: 50%; background: #3fb950; flex-shrink: 0;
+    }
+
+    /* Slash command autocomplete dropdown */
+    #slash-dropdown {
+      position: absolute; top: 100%; left: 0; right: 0;
+      background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+      max-height: 240px; overflow-y: auto; display: none;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3); z-index: 50;
+      margin-top: 4px;
+    }
+    #slash-dropdown .slash-option {
+      padding: 8px 14px; cursor: pointer; font-size: 13px; color: #c9d1d9;
+      display: flex; align-items: center; gap: 12px;
+    }
+    #slash-dropdown .slash-option:hover,
+    #slash-dropdown .slash-option.active {
+      background: #21262d; color: #ff9a56;
+    }
+    #slash-dropdown .slash-option .slash-name {
+      font-family: 'SF Mono', Monaco, monospace; font-weight: 600;
+      color: #e6edf3; min-width: 120px;
+    }
+    #slash-dropdown .slash-option.active .slash-name,
+    #slash-dropdown .slash-option:hover .slash-name {
+      color: #ff9a56;
+    }
+    #slash-dropdown .slash-option .slash-desc {
+      color: #8b949e; font-size: 12px;
     }
 
     /* Unread mentions banner */

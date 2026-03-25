@@ -27,8 +27,8 @@ export function CreateJamModal({
       <div className="access-modal-dialog create-modal-dialog">
         <div className="access-modal-header">
           <div>
-            <p className="section-label">New Instance</p>
-            <h2 className="access-modal-title">Create a Jam</h2>
+            <p className="section-label">New Jam</p>
+            <h2 className="access-modal-title">Start a Jam</h2>
           </div>
           <button
             className="dash-card-open"
@@ -41,7 +41,7 @@ export function CreateJamModal({
         </div>
 
         <p className="create-modal-copy">
-          Launch a shared Claude Code session with an optional name for your team.
+          A Jam is a shared coding room. You and your team get a live Claude session in the browser. Give it a name so people know what they're joining.
         </p>
 
         {createError ? (
@@ -62,7 +62,7 @@ export function CreateJamModal({
             type="text"
             maxLength={64}
             autoComplete="off"
-            placeholder="Name your jam (optional)"
+            placeholder="e.g. friday-refactor, onboarding-setup"
             value={createName}
             onChange={(event) => onCreateNameChange(event.target.value)}
           />
@@ -72,7 +72,7 @@ export function CreateJamModal({
               type="submit"
               disabled={creating || activeJamExists}
             >
-              {creating ? "Creating..." : activeJamExists ? "Instance Running" : "Create Instance"}
+              {creating ? "Starting..." : activeJamExists ? "Jam Active" : "Start Jam"}
             </button>
           </div>
         </form>

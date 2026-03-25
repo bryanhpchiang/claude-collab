@@ -240,7 +240,7 @@ export class RuntimeStore {
       try {
         session.shell.kill();
       } catch {}
-      this.broadcastSystem(session.id, "Project deleted. Session closed.");
+      this.broadcastSystem(session.id, "Session closed.");
       this.sessions.delete(session.id);
     }
 

@@ -1,5 +1,6 @@
 import type {
   ClipboardEvent,
+  DragEvent,
   KeyboardEvent,
   RefObject,
 } from "react";
@@ -12,6 +13,7 @@ import type {
   ChatEntry,
   PendingMention,
 } from "../types";
+import type { SlashCommand } from "../hooks/useRuntimeComposer";
 
 const KEY_MAP: Record<string, string> = {
   Enter: "\r",
@@ -34,21 +36,30 @@ type ChatPanelProps = {
   chatEntries: ChatEntry[];
   chatLogRef: RefObject<HTMLDivElement>;
   chatUnread: number;
+  draggingOver: boolean;
   mentionActiveIndex: number;
   mentionDropdownVisible: boolean;
   mentionOptions: string[];
   mentionsBanner: PendingMention[];
   message: string;
-  messageInputRef: RefObject<HTMLInputElement>;
+  messageInputRef: RefObject<HTMLTextAreaElement>;
   myName: string;
   sendFailed: boolean;
+  slashActiveIndex: number;
+  slashDropdownVisible: boolean;
+  slashOptions: SlashCommand[];
   uploadingImage: boolean;
+  onCompleteSlashCommand(cmd: SlashCommand): void;
   onCompleteMention(user: string): void;
   onDismissMentions(): void;
+  onDragEnter(event: DragEvent<HTMLDivElement>): void;
+  onDragLeave(event: DragEvent<HTMLDivElement>): void;
+  onDragOver(event: DragEvent<HTMLDivElement>): void;
+  onDrop(event: DragEvent<HTMLDivElement>): void;
   onMessageChange(nextValue: string, cursor: number): void;
   onMessageClick(cursor: number): void;
-  onMessageKeyDown(event: KeyboardEvent<HTMLInputElement>): void;
-  onMessagePaste(event: ClipboardEvent<HTMLInputElement>): void;
+  onMessageKeyDown(event: KeyboardEvent<HTMLTextAreaElement>): void;
+  onMessagePaste(event: ClipboardEvent<HTMLTextAreaElement>): void;
   onSendKey(label: string, seq: string): void;
   onSendMessage(): void;
   onToggleCollapsed(): void;
@@ -60,6 +71,7 @@ export function ChatPanel({
   chatEntries,
   chatLogRef,
   chatUnread,
+  draggingOver,
   mentionActiveIndex,
   mentionDropdownVisible,
   mentionOptions,
@@ -68,9 +80,17 @@ export function ChatPanel({
   messageInputRef,
   myName,
   sendFailed,
+  slashActiveIndex,
+  slashDropdownVisible,
+  slashOptions,
   uploadingImage,
+  onCompleteSlashCommand,
   onCompleteMention,
   onDismissMentions,
+  onDragEnter,
+  onDragLeave,
+  onDragOver,
+  onDrop,
   onMessageChange,
   onMessageClick,
   onMessageKeyDown,
@@ -145,7 +165,15 @@ export function ChatPanel({
         ))}
       </div>
 
-      <div id="input-area" style={{ position: "relative" }}>
+      <div
+        id="input-area"
+        className={draggingOver ? "drag-over" : ""}
+        style={{ position: "relative" }}
+        onDragOver={onDragOver}
+        onDragEnter={onDragEnter}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+      >
         <div
           className="name-tag"
           id="my-name-tag"
@@ -156,10 +184,10 @@ export function ChatPanel({
         >
           {myName}
         </div>
-        <input
+        <textarea
           id="msg-input"
           ref={messageInputRef}
-          type="text"
+          rows={1}
           placeholder={uploadingImage ? "Uploading image..." : "Type a message to Claude..."}
           disabled={!canSendMessages}
           style={uploadingImage ? { borderColor: "#ffa657" } : undefined}
@@ -167,6 +195,9 @@ export function ChatPanel({
           onChange={(event) => {
             const nextValue = event.target.value;
             onMessageChange(nextValue, event.target.selectionStart ?? nextValue.length);
+            const el = event.target;
+            el.style.height = "auto";
+            el.style.height = `${Math.min(el.scrollHeight, 150)}px`;
           }}
           onClick={(event) => {
             onMessageClick(event.currentTarget.selectionStart ?? message.length);
@@ -192,6 +223,21 @@ export function ChatPanel({
             >
               <span className="mention-dot"></span>
               <span style={{ color: nameColor(user) }}>{user}</span>
+            </div>
+          ))}
+        </div>
+        <div id="slash-dropdown" style={{ display: slashDropdownVisible ? "block" : "none" }}>
+          {slashOptions.map((cmd, index) => (
+            <div
+              className={`slash-option${index === slashActiveIndex ? " active" : ""}`}
+              key={cmd.name}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                onCompleteSlashCommand(cmd);
+              }}
+            >
+              <span className="slash-name">{cmd.name}</span>
+              <span className="slash-desc">{cmd.description}</span>
             </div>
           ))}
         </div>

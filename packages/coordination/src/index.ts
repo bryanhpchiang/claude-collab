@@ -1,3 +1,4 @@
+import { getVersionInfo } from "shared";
 import { loadConfig } from "./config";
 import { handleAuthRoutes } from "./routes/auth";
 import { handleJamRoutes } from "./routes/jams";
@@ -67,10 +68,17 @@ const server = Bun.serve({
 
     const url = new URL(request.url);
     if (url.pathname === "/health") {
+      const { version, commit } = getVersionInfo();
       return Response.json({
         ok: true,
         service: config.serviceName,
+        version,
+        commit,
       });
+    }
+
+    if (url.pathname === "/api/version" && request.method === "GET") {
+      return Response.json(getVersionInfo());
     }
 
     const authResponse = await handleAuthRoutes(request, context);

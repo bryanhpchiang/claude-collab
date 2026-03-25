@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useMemo,
   useRef,
   useState,
   type MutableRefObject,
@@ -56,11 +55,7 @@ export function useRuntimeWorkspace({
   const currentSessionIdRef = useRef(currentSessionId);
   const sessionListRef = useRef(sessionList);
 
-  const filteredSessions = useMemo(() => (
-    currentProjectId
-      ? sessionList.filter((session) => session.projectId === currentProjectId)
-      : sessionList
-  ), [currentProjectId, sessionList]);
+  const filteredSessions = sessionList;
   const showSessionClose = filteredSessions.length > 1;
   const showProjectClose = projectList.length > 1;
 

@@ -1,5 +1,6 @@
 import {
   type ClipboardEvent,
+  type DragEvent,
   type KeyboardEvent,
   useRef,
   useState,
@@ -10,6 +11,40 @@ type MentionContext = {
   end: number;
   query: string;
 };
+
+export type SlashCommand = {
+  name: string;
+  description: string;
+};
+
+const SLASH_COMMANDS: SlashCommand[] = [
+  { name: "/help", description: "Get help" },
+  { name: "/clear", description: "Clear conversation" },
+  { name: "/compact", description: "Compact conversation" },
+  { name: "/config", description: "View configuration" },
+  { name: "/cost", description: "Show token usage" },
+  { name: "/doctor", description: "Check system health" },
+  { name: "/init", description: "Initialize workspace" },
+  { name: "/login", description: "Authenticate" },
+  { name: "/logout", description: "Sign out" },
+  { name: "/review", description: "Review code" },
+  { name: "/vim", description: "Toggle vim mode" },
+  { name: "/terminal-setup", description: "Setup terminal" },
+];
+
+function getSlashContext(value: string): string | null {
+  if (!value.startsWith("/")) return null;
+  const spaceIdx = value.indexOf(" ");
+  if (spaceIdx !== -1) return null;
+  return value.slice(1).toLowerCase();
+}
+
+function filterSlashCommands(query: string): SlashCommand[] {
+  if (query === "") return SLASH_COMMANDS;
+  return SLASH_COMMANDS.filter((cmd) =>
+    cmd.name.slice(1).startsWith(query) || cmd.name.slice(1).includes(query)
+  );
+}
 
 type UseRuntimeComposerOptions = {
   appendSystem(text: string): void;
@@ -53,14 +88,19 @@ export function useRuntimeComposer({
   myName,
   sendWs,
 }: UseRuntimeComposerOptions) {
-  const messageInputRef = useRef<HTMLInputElement | null>(null);
+  const messageInputRef = useRef<HTMLTextAreaElement | null>(null);
 
   const [message, setMessage] = useState("");
   const [mentionContext, setMentionContext] = useState<MentionContext | null>(null);
   const [mentionOptions, setMentionOptions] = useState<string[]>([]);
   const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [draggingOver, setDraggingOver] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
+  const dragCounter = useRef(0);
+
+  const [slashOptions, setSlashOptions] = useState<SlashCommand[]>([]);
+  const [slashActiveIndex, setSlashActiveIndex] = useState(0);
 
   const sendWsRef = useRef(sendWs);
   sendWsRef.current = sendWs;
@@ -69,6 +109,40 @@ export function useRuntimeComposer({
   messageRef.current = message;
 
   const mentionDropdownVisible = mentionOptions.length > 0 && Boolean(mentionContext);
+  const slashDropdownVisible = slashOptions.length > 0;
+
+  const refreshSlashState = (nextValue: string) => {
+    const query = getSlashContext(nextValue);
+    if (query === null) {
+      setSlashOptions([]);
+      setSlashActiveIndex(0);
+      return;
+    }
+    const options = filterSlashCommands(query);
+    setSlashOptions(options);
+    setSlashActiveIndex(0);
+  };
+
+  const completeSlashCommand = (cmd: SlashCommand) => {
+    setMessage(cmd.name);
+    setSlashOptions([]);
+    setSlashActiveIndex(0);
+    requestAnimationFrame(() => {
+      messageInputRef.current?.focus();
+      const pos = cmd.name.length;
+      messageInputRef.current?.setSelectionRange(pos, pos);
+    });
+  };
+
+  const selectAndSendSlashCommand = (cmd: SlashCommand) => {
+    setSlashOptions([]);
+    setSlashActiveIndex(0);
+    const ok = sendWs({ type: "input", text: cmd.name, direct: false });
+    if (!ok) { setSendFailed(true); return; }
+    setSendFailed(false);
+    setMessage("");
+    requestAnimationFrame(() => messageInputRef.current?.focus());
+  };
 
   const refreshMentionState = (nextValue: string, cursor: number) => {
     const nextContext = getMentionContext(nextValue, cursor);
@@ -116,13 +190,35 @@ export function useRuntimeComposer({
   const handleMessageChange = (nextValue: string, cursor: number) => {
     setMessage(nextValue);
     refreshMentionState(nextValue, cursor);
+    refreshSlashState(nextValue);
   };
 
   const handleMessageClick = (cursor: number) => {
     refreshMentionState(message, cursor);
   };
 
-  const handleMessageKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+  const handleMessageKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (slashDropdownVisible && ["Enter", "Tab", "ArrowDown", "ArrowUp", "Escape"].includes(event.key)) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setSlashActiveIndex((current) => (current + 1) % slashOptions.length);
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setSlashActiveIndex((current) => (current - 1 + slashOptions.length) % slashOptions.length);
+      } else if (event.key === "Tab") {
+        event.preventDefault();
+        completeSlashCommand(slashOptions[slashActiveIndex]);
+      } else if (event.key === "Enter") {
+        event.preventDefault();
+        selectAndSendSlashCommand(slashOptions[slashActiveIndex]);
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        setSlashOptions([]);
+        setSlashActiveIndex(0);
+      }
+      return;
+    }
+
     if (mentionDropdownVisible && ["Enter", "Tab", "ArrowDown", "ArrowUp", "Escape"].includes(event.key)) {
       if (event.key === "ArrowDown") {
         event.preventDefault();
@@ -142,6 +238,10 @@ export function useRuntimeComposer({
     }
 
     if (event.key !== "Enter") return;
+
+    // Shift+Enter inserts a newline in the textarea
+    if (event.shiftKey && !event.metaKey && !event.ctrlKey) return;
+
     event.preventDefault();
 
     if (!message.trim()) {
@@ -149,13 +249,17 @@ export function useRuntimeComposer({
       return;
     }
 
-    const direct = event.shiftKey;
+    const direct = event.shiftKey && (event.metaKey || event.ctrlKey);
     const wantEsc = !direct && (event.metaKey || event.ctrlKey);
     sendMessage(direct);
     if (wantEsc) sendWs({ type: "key", seq: "\x1b", label: "Esc" });
+
+    // Reset textarea height after sending
+    const el = messageInputRef.current;
+    if (el) { el.style.height = "auto"; }
   };
 
-  const handleImagePaste = async (event: ClipboardEvent<HTMLInputElement>) => {
+  const handleImagePaste = async (event: ClipboardEvent<HTMLTextAreaElement>) => {
     const items = event.clipboardData?.items;
     if (!items) return;
 
@@ -175,10 +279,7 @@ export function useRuntimeComposer({
         });
         const data = await response.json();
         if (data.path) {
-          const currentMessage = messageRef.current.trim();
-          const text = currentMessage ? `${currentMessage} ${data.path}` : data.path;
-          sendWsRef.current({ type: "input", text, direct: false });
-          setMessage("");
+          setMessage((current) => `${current ? `${current} ` : ""}${data.path} `);
           requestAnimationFrame(() => messageInputRef.current?.focus());
         } else {
           appendSystem(`Image upload failed: ${data.error || "unknown error"}`);
@@ -192,8 +293,80 @@ export function useRuntimeComposer({
     }
   };
 
+  const uploadImageFile = async (file: File) => {
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      const response = await fetch("/api/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await response.json();
+      if (data.path) {
+        setMessage((current) => `${current ? `${current} ` : ""}${data.path} `);
+        requestAnimationFrame(() => messageInputRef.current?.focus());
+      } else {
+        appendSystem(`Image upload failed: ${data.error || "unknown error"}`);
+      }
+    } catch (error: any) {
+      appendSystem(`Image upload failed: ${error.message}`);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dragCounter.current += 1;
+    if (event.dataTransfer?.types.includes("Files")) {
+      setDraggingOver(true);
+    }
+  };
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dragCounter.current -= 1;
+    if (dragCounter.current === 0) {
+      setDraggingOver(false);
+    }
+  };
+
+  const handleDrop = async (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    dragCounter.current = 0;
+    setDraggingOver(false);
+
+    const files = event.dataTransfer?.files;
+    if (!files?.length) return;
+
+    const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
+    if (!imageFiles.length) {
+      appendSystem("Only image files are supported for drag-and-drop upload.");
+      return;
+    }
+
+    for (const file of imageFiles) {
+      await uploadImageFile(file);
+    }
+  };
+
   return {
     completeMention,
+    completeSlashCommand,
+    draggingOver,
+    handleDragEnter,
+    handleDragLeave,
+    handleDragOver,
+    handleDrop,
     handleImagePaste,
     handleMessageChange,
     handleMessageClick,
@@ -205,6 +378,9 @@ export function useRuntimeComposer({
     messageInputRef,
     sendFailed,
     sendMessage,
+    slashActiveIndex,
+    slashDropdownVisible,
+    slashOptions,
     uploadingImage,
   };
 }

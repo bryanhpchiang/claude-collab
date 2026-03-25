@@ -11,6 +11,7 @@ import type { JamRecordsService } from "../services/jam-records";
 import { renderCoordinationPage } from "../server/web-render";
 import { serveCoordinationAsset } from "../server/web-assets";
 import { listJamsForUser } from "./jams";
+import { OG_IMAGE_PATH, serveOgImage } from "shared";
 
 type PageRouteContext = {
   config: CoordinationConfig;
@@ -25,6 +26,10 @@ export async function handlePageRoutes(
   context: PageRouteContext,
 ) {
   const url = new URL(request.url);
+
+  if (url.pathname === OG_IMAGE_PATH && request.method === "GET") {
+    return serveOgImage();
+  }
 
   if (url.pathname === "/" && request.method === "GET") {
     const session = await getSessionLookup(request, context.auth);

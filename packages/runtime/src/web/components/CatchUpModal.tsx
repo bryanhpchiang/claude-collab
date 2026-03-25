@@ -12,9 +12,9 @@ export function CatchUpModal({ open, onDismiss }: CatchUpModalProps) {
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    fetch("/api/state")
-      .then((res) => res.text())
-      .then((text) => setContent(text || ""))
+    fetch("/api/state-summary")
+      .then((res) => res.json())
+      .then((data) => setContent(data.markdown || ""))
       .catch(() => setContent(""))
       .finally(() => setLoading(false));
   }, [open]);

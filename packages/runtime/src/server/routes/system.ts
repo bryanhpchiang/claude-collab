@@ -1,5 +1,6 @@
 import { readFile } from "fs/promises";
 import { join } from "path";
+import { getVersionInfo } from "shared";
 import { HOME_DIR, JAM_DEPLOY_SECRET, WORKSPACE_ROOT } from "../../config";
 import { DEPLOY_HEADER_NAME } from "../runtime-auth";
 import type { RuntimeStore } from "../runtime-store";
@@ -84,7 +85,12 @@ async function deployLatestRuntime() {
 
 export async function handleSystemRoute(req: Request, url: URL, store: RuntimeStore) {
   if (url.pathname === "/health" && req.method === "GET") {
-    return Response.json({ ok: true });
+    const { version, commit } = getVersionInfo();
+    return Response.json({ ok: true, version, commit });
+  }
+
+  if (url.pathname === "/api/version" && req.method === "GET") {
+    return Response.json(getVersionInfo());
   }
 
   if (url.pathname === "/api/state-summary" && req.method === "GET") {

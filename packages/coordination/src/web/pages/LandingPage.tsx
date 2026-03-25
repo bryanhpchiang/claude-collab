@@ -64,8 +64,7 @@ export function LandingPage({ authEnabled, signedIn }: LandingPageProps) {
           </div>
           <h1 className="hero-logo">Jam</h1>
           <p className="hero-tagline">
-            Launch a shared Claude Code session, invite the team, and coordinate through one browser
-            link.
+            Code together with Claude in real time. One link, one room, everyone building at once.
           </p>
 
           <div className="hero-actions">
@@ -76,7 +75,7 @@ export function LandingPage({ authEnabled, signedIn }: LandingPageProps) {
             {!authEnabled && !signedIn ? (
               <p className="landing-note">GitHub OAuth is not configured on this deployment yet.</p>
             ) : null}
-            <div className="divider">or join an existing session</div>
+            <div className="divider">or join an existing Jam</div>
             <form className="join-row" onSubmit={handleJoin}>
               <input
                 className="join-input"
@@ -118,16 +117,16 @@ export function LandingPage({ authEnabled, signedIn }: LandingPageProps) {
 
         <section className="feature-grid">
           <article className="feature-card">
-            <h2>Real-time collaboration</h2>
-            <p>Everyone sees the same terminal, the same output, and the same conversation state.</p>
+            <h2>Same room, same context</h2>
+            <p>Everyone sees the same terminal and conversation. No syncing, no conflicts.</p>
           </article>
           <article className="feature-card">
-            <h2>Disposable runtimes</h2>
-            <p>Each Jam launches on its own instance so teams can experiment without colliding.</p>
+            <h2>Clean slate every time</h2>
+            <p>Each Jam gets its own environment. Experiment freely without stepping on anyone's work.</p>
           </article>
           <article className="feature-card">
-            <h2>Browser-first workflow</h2>
-            <p>Launch, monitor, and share a session without installing anything locally.</p>
+            <h2>Nothing to install</h2>
+            <p>Open a link, start coding. Works entirely in the browser.</p>
           </article>
         </section>
       </div>

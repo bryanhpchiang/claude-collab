@@ -1,5 +1,5 @@
 import { renderToString } from "react-dom/server";
-import { renderBootstrapScript } from "shared";
+import { renderBootstrapScript, renderOgMetaTags } from "shared";
 import type { CoordinationConfig } from "../config";
 import { COORDINATION_BOOTSTRAP_ID } from "../web/bootstrap";
 import { DashboardPage } from "../web/pages/DashboardPage";
@@ -39,10 +39,11 @@ export async function renderCoordinationPage(
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${pageTitle}</title>
-    <meta name="description" content="Jam coordination server for launching and managing collaborative Claude Code instances.">
+    <meta name="description" content="Code together with Claude">
+    ${renderOgMetaTags()}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
     ${styleTags}
   </head>
   <body class="${bodyClass}">
@@ -66,6 +67,7 @@ export async function renderForbiddenPage(config: CoordinationConfig) {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Access Denied — Jam</title>
+    ${renderOgMetaTags()}
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">

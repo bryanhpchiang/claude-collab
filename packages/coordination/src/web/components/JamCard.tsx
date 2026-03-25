@@ -63,14 +63,14 @@ function PendingProgress({
       <div className="pending-stuck">
         <div className="pending-stuck-title">Taking longer than expected</div>
         <div className="pending-stuck-desc">
-          This instance may have failed to start. Terminate it and launch a fresh one.
+          This Jam may have failed to start. Shut it down and try again.
         </div>
         <button
           className="pending-restart-btn"
           type="button"
           onClick={() => onRestart(jamId)}
         >
-          Terminate &amp; Start Over
+          Shut Down &amp; Retry
         </button>
       </div>
     );
@@ -81,7 +81,7 @@ function PendingProgress({
       <div className="pending-word">{LOADING_WORDS[pendingWordIndex]}</div>
       <div className="pending-copy">
         <div className="pending-desc">
-          Waiting for the EC2 instance and runtime health check to pass.
+          Setting up your Jam. This usually takes a moment.
         </div>
       </div>
     </>
@@ -127,14 +127,14 @@ export function JamCard({
         <div className="dash-card-actions">
           {jam.state === "running" && jam.url ? (
             <a className="dash-card-open" href={jam.url} target="_blank" rel="noopener">
-              Open
+              Enter
             </a>
           ) : (
-            <span className="dash-card-open is-disabled">Open</span>
+            <span className="dash-card-open is-disabled">Enter</span>
           )}
           {isOwner ? (
             <button className="dash-card-open" type="button" onClick={() => onAccess(jam.id)}>
-              Manage
+              People
             </button>
           ) : null}
         </div>
