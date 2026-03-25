@@ -14,7 +14,7 @@ export function renderDashboardPage(options: DashboardOptions) {
   });
 
   const cards = options.jams
-    .map((jam) => renderJamCard(jam, options.user.login))
+    .map((jam) => renderJamCard(jam, options.user.id))
     .join("");
 
   const content = `

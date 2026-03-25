@@ -73,6 +73,51 @@ describe("runtime auth", () => {
     expect(response?.headers.get("set-cookie")).toContain("Secure");
   });
 
+  test("rejects expired bootstrap tokens", async () => {
+    const token = await signJamToken("runtime-secret", {
+      kind: "bootstrap",
+      jamId: "abc123",
+      user,
+      redirectPath: "/",
+      exp: Date.now() - 1000,
+    });
+
+    const payload = await verifyJamToken(token);
+    expect(payload).toBeNull();
+  });
+
+  test("rejects tokens signed with the wrong secret", async () => {
+    const token = await signJamToken("wrong-secret", {
+      kind: "bootstrap",
+      jamId: "abc123",
+      user,
+      redirectPath: "/",
+      exp: Date.now() + 60_000,
+    });
+
+    const payload = await verifyJamToken(token);
+    expect(payload).toBeNull();
+  });
+
+  test("rejects tokens for a different jam id", async () => {
+    const token = await signJamToken("runtime-secret", {
+      kind: "bootstrap",
+      jamId: "other-jam",
+      user,
+      redirectPath: "/",
+      exp: Date.now() + 60_000,
+    });
+
+    const payload = await verifyJamToken(token);
+    expect(payload).toBeNull();
+  });
+
+  test("rejects malformed tokens", async () => {
+    expect(await verifyJamToken("")).toBeNull();
+    expect(await verifyJamToken("not-a-valid-token")).toBeNull();
+    expect(await verifyJamToken("abc.def")).toBeNull();
+  });
+
   test("builds redirects back to coordination using the jam id and current search params", () => {
     const gateUrl = buildCoordinationGateUrl(
       new Request("https://abc123.jams.letsjam.now/?s=General"),

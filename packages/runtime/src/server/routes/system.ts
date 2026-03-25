@@ -90,8 +90,9 @@ export async function handleSystemRoute(req: Request, url: URL, store: RuntimeSt
   }
 
   if (url.pathname === "/api/deploy" && req.method === "POST") {
+    const deploySecret = getDeploySecret();
     const sharedSecret = req.headers.get(DEPLOY_HEADER_NAME) || "";
-    if (!getDeploySecret() || sharedSecret !== getDeploySecret()) {
+    if (!deploySecret || sharedSecret !== deploySecret) {
       return Response.json({ error: "unauthorized" }, { status: 401 });
     }
 

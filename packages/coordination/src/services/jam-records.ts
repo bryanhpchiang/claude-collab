@@ -131,7 +131,6 @@ export function createJamRecordsService(db: Kysely<CoordinationDatabase>) {
             .onRef("jam_members.jam_id", "=", "jam_records.id")
             .on("jam_members.user_id", "=", userId),
         )
-        .select("jam_records.id")
         .selectAll("jam_records")
         .where("jam_records.state", "in", ["pending", "running"])
         .where((eb) =>

@@ -1,3 +1,6 @@
+export { serializeCookie, clearCookie, getCookie, isSecureRequest } from "shared";
+export type { CookieOptions } from "shared";
+
 function getSetCookies(headers: Headers) {
   const source = headers as Headers & { getSetCookie?: () => string[] };
   if (typeof source.getSetCookie === "function") {
@@ -26,32 +29,4 @@ export function mergeHeaders(...parts: Array<HeadersInit | undefined>) {
   }
 
   return merged;
-}
-
-type CookieOptions = {
-  httpOnly?: boolean;
-  maxAge?: number;
-  path?: string;
-  sameSite?: "Lax" | "Strict" | "None";
-  secure?: boolean;
-};
-
-export function serializeCookie(
-  name: string,
-  value: string,
-  options: CookieOptions = {},
-) {
-  const parts = [`${name}=${encodeURIComponent(value)}`];
-
-  if (options.maxAge !== undefined) parts.push(`Max-Age=${Math.max(0, Math.floor(options.maxAge))}`);
-  parts.push(`Path=${options.path || "/"}`);
-  parts.push(`SameSite=${options.sameSite || "Lax"}`);
-  if (options.httpOnly !== false) parts.push("HttpOnly");
-  if (options.secure !== false) parts.push("Secure");
-
-  return parts.join("; ");
-}
-
-export function clearCookie(name: string, options: Omit<CookieOptions, "maxAge"> = {}) {
-  return serializeCookie(name, "", { ...options, maxAge: 0 });
 }

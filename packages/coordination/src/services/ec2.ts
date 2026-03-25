@@ -235,13 +235,13 @@ export function createEc2Service(config: CoordinationConfig) {
       if (listenerRuleArn) {
         await elbv2
           .send(new DeleteRuleCommand({ RuleArn: listenerRuleArn }))
-          .catch(() => undefined);
+          .catch((error) => console.error("[alb] failed to delete listener rule", listenerRuleArn, error));
       }
 
       if (targetGroupArn) {
         await elbv2
           .send(new DeleteTargetGroupCommand({ TargetGroupArn: targetGroupArn }))
-          .catch(() => undefined);
+          .catch((error) => console.error("[alb] failed to delete target group", targetGroupArn, error));
       }
     },
 

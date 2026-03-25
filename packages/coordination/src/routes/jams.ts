@@ -8,7 +8,7 @@ import {
 } from "../services/auth";
 import type { Ec2Service } from "../services/ec2";
 import { buildJamPath } from "../services/ec2";
-import { clearCookie, mergeHeaders, serializeCookie } from "../services/http";
+import { clearCookie, getCookie, isSecureRequest, mergeHeaders, serializeCookie } from "../services/http";
 import type { JamAccessService } from "../services/jam-access";
 import type { JamRecord, JamRecordsService } from "../services/jam-records";
 import type { JamSecretsService } from "../services/jam-secrets";
@@ -20,7 +20,7 @@ import {
 
 const INVITE_CLAIM_COOKIE = "jam_invite_claim";
 const DEPLOY_HEADER = "x-jam-deploy-secret";
-const BOOTSTRAP_TTL_SECONDS = 5 * 60;
+const BOOTSTRAP_TTL_SECONDS = 60;
 const INVITE_CLAIM_TTL_SECONDS = 15 * 60;
 
 type JamSummary = {
@@ -29,6 +29,7 @@ type JamSummary = {
   url: string | null;
   state: string;
   creator: {
+    user_id: string;
     login: string;
     name: string;
     avatar_url: string;
@@ -56,17 +57,6 @@ function createJamId() {
   return Math.random().toString(36).slice(2, 8);
 }
 
-function getCookie(request: Request, name: string) {
-  const cookies = request.headers.get("cookie") || "";
-  const match = cookies.match(new RegExp(`(?:^|; )${name}=([^;]+)`));
-  return match ? decodeURIComponent(match[1]) : "";
-}
-
-function isSecureRequest(request: Request, config: CoordinationConfig) {
-  const forwardedProto = request.headers.get("x-forwarded-proto");
-  if (forwardedProto) return forwardedProto.includes("https");
-  return new URL(request.url).protocol === "https:" || config.baseUrl.startsWith("https://");
-}
 
 function buildAuthRedirect(returnTo: string, sessionHeaders: Headers, config: CoordinationConfig) {
   const location = isGitHubOAuthEnabled(config)
@@ -85,6 +75,7 @@ function toJamSummary(record: JamRecord): JamSummary {
     url: record.state === "running" ? buildJamPath(record.id) : null,
     state: record.state,
     creator: {
+      user_id: record.creator_user_id,
       login: record.creator_login,
       name: record.creator_name,
       avatar_url: record.creator_avatar,
@@ -221,7 +212,7 @@ async function handleInviteClaim(
 ) {
   const authResult = await requireUser(request, context, "/invite/claim");
   if (!authResult.ok) {
-    const secure = isSecureRequest(request, context.config);
+    const secure = isSecureRequest(request, context.config.baseUrl);
     return new Response(null, {
       status: 302,
       headers: mergeHeaders(authResult.response.headers, {
@@ -240,7 +231,7 @@ async function handleInviteClaim(
 
   const headers = mergeHeaders(authResult.session.headers, {
     "Set-Cookie": clearCookie(INVITE_CLAIM_COOKIE, {
-      secure: isSecureRequest(request, context.config),
+      secure: isSecureRequest(request, context.config.baseUrl),
     }),
   });
 
