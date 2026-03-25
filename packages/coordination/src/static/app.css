@@ -590,12 +590,17 @@ input {
 .dash-card-footer {
   padding-top: 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-wrap: wrap;
+  align-items: flex-start;
+  row-gap: 14px;
 }
 
 .dash-card-creator {
   display: inline-flex;
   align-items: center;
+  flex: 1 1 140px;
   gap: 8px;
+  min-width: 0;
   color: var(--text-muted);
   font-size: 13px;
 }
@@ -609,6 +614,19 @@ input {
 .dash-card-open {
   background: rgba(255, 255, 255, 0.03);
   color: var(--text);
+}
+
+.dash-card-actions {
+  flex: 1 1 280px;
+  min-width: 0;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.dash-card-open,
+.dash-card-delete {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .dash-card-delete,
