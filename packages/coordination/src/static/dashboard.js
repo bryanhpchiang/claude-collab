@@ -58,13 +58,13 @@ function escapeHtml(value) {
 function hasActiveJam() {
   return state.jams.some(
     (jam) =>
-      jam.creator?.login === state.user?.login &&
+      jam.creator?.user_id === state.user?.id &&
       (jam.state === "pending" || jam.state === "running"),
   );
 }
 
 function isOwner(jam) {
-  return jam.creator?.login === state.user?.login;
+  return jam.creator?.user_id === state.user?.id;
 }
 
 function renderStatusBadge(status) {
@@ -558,6 +558,9 @@ elements.errorDismiss?.addEventListener("click", () => {
 });
 
 elements.accessModalClose?.addEventListener("click", closeAccessModal);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && state.access.jamId) closeAccessModal();
+});
 elements.accessModal?.addEventListener("click", (event) => {
   const target = event.target instanceof Element ? event.target : null;
   if (target?.getAttribute("data-action") === "close-access") {

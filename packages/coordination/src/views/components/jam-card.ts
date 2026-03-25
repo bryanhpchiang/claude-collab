@@ -9,6 +9,7 @@ export type DashboardJam = {
   url: string | null;
   state: string;
   creator: {
+    user_id: string;
     login: string;
     name: string;
     avatar_url: string;
@@ -50,8 +51,8 @@ function renderOpenAction(jam: DashboardJam) {
   return `<span class="dash-card-open is-disabled">Open</span>`;
 }
 
-export function renderJamCard(jam: DashboardJam, currentUserLogin: string) {
-  const isOwner = jam.creator.login === currentUserLogin;
+export function renderJamCard(jam: DashboardJam, currentUserId: string) {
+  const isOwner = jam.creator.user_id === currentUserId;
   const jamName = jam.name || `jam-${jam.id}`;
   const body =
     jam.state === "pending"

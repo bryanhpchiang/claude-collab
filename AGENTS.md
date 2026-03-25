@@ -2,6 +2,10 @@
 
 Follow the project guidance in `CLAUDE.md`.
 
+## Do Not Reimplement Shared Code
+
+Before writing any utility function, **check `packages/shared/src/` first**. If the function already exists there, import it — do not rewrite it in your package. If a new helper would be useful across packages, add it to `shared/` instead of duplicating it.
+
 ## Solve The Real Requirement
 
 - Implement the underlying capability the user asked for, not a superficial approximation of it.

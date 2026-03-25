@@ -138,6 +138,16 @@ The runtime browser app is still framework-free, but it is no longer a single gi
 - Error handling via empty `catch {}` blocks (fail silently, keep going)
 - No logging framework -- plain `console.log`
 
+### Do not duplicate shared utilities
+
+`packages/shared/` contains crypto, cookie, and HTTP helpers used by both `coordination` and `runtime`. **Before writing any new utility function, check `packages/shared/src/` for an existing implementation.** If the function you need exists there, import it -- do not reimplement it in the consuming package. If a helper is useful to more than one package, add it to `shared/` rather than copying it.
+
+Key exports from `shared`:
+- **Crypto**: `signToken`, `verifyToken`, `hashToken`, `createRandomToken`, `toBase64Url`, `fromBase64Url`, `importHmacKey`
+- **HTTP**: `serializeCookie`, `clearCookie`, `getCookie`, `isSecureRequest`
+
+Package-specific wrappers (e.g. `coordination/services/jam-tokens.ts`, `coordination/services/http.ts`) re-export from `shared` and may add domain logic on top. Prefer importing from the wrapper when one exists for your package, and from `shared` directly otherwise.
+
 ## Solve The Real Requirement
 
 - Implement the underlying capability the user asked for, not a superficial approximation of it.
