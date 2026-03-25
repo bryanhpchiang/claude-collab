@@ -8,7 +8,7 @@ Before writing any utility function, **check `packages/shared/src/` first**. If 
 
 ## GitHub Tokens and Git Push
 
-When a user saves a GitHub token via the secrets panel, the runtime automatically stores it in `~/.git-credentials`. Just run `git push` directly — no need to look up or pass the token manually.
+When a user saves a GitHub token via the secrets panel, the runtime automatically stores it in `~/.git-credentials`. Just run `git push` directly — no need to look up or pass the token manually. If `git push` fails with a 403, tell the user to add a GitHub token with repo write access in the secrets panel and try again.
 
 ## Solve The Real Requirement
 
