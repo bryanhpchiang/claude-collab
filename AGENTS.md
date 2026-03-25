@@ -6,6 +6,10 @@ Follow the project guidance in `CLAUDE.md`.
 
 Before writing any utility function, **check `packages/shared/src/` first**. If the function already exists there, import it — do not rewrite it in your package. If a new helper would be useful across packages, add it to `shared/` instead of duplicating it.
 
+## GitHub Tokens and Git Push
+
+When a user saves a GitHub token via the secrets panel, the runtime automatically stores it in `~/.git-credentials`. Just run `git push` directly — no need to look up or pass the token manually.
+
 ## Solve The Real Requirement
 
 - Implement the underlying capability the user asked for, not a superficial approximation of it.

@@ -169,6 +169,7 @@ Package-specific wrappers (e.g. `coordination/services/jam-tokens.ts`, `coordina
 - Image uploads go to `/tmp/claude-uploads/` which is ephemeral.
 - The frontend uses `disableStdin: true` on xterm -- users cannot type directly into the terminal. All input goes through the chat input or key buttons.
 - WebSocket reconnects automatically after 2 seconds on disconnect.
+- **GitHub tokens**: When a user saves a GitHub token via the secrets panel, the runtime automatically stores it in `~/.git-credentials`. Just run `git push` directly — no need to look up or pass the token manually.
 
 ---
 
