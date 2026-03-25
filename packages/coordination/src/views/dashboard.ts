@@ -35,7 +35,7 @@ export function renderDashboardPage(options: DashboardOptions) {
           <div class="dash-title-block">
             <p class="section-label">Coordination</p>
             <h1 class="dash-title">Instances</h1>
-            <p class="dash-subtitle">Launch one Jam per creator, wait for it to boot, then open the shared terminal.</p>
+            <p class="dash-subtitle">Launch a jam, wait for it to boot, then manage access with one-time invite links.</p>
           </div>
           <div class="dash-create-area">
             <input
@@ -58,6 +58,38 @@ export function renderDashboardPage(options: DashboardOptions) {
         </div>
 
         <section id="dash-grid" class="dash-grid">${cards}</section>
+
+        <div id="access-modal" class="access-modal" hidden>
+          <div class="access-modal-backdrop" data-action="close-access"></div>
+          <div class="access-modal-dialog">
+            <div class="access-modal-header">
+              <div>
+                <p class="section-label">Access</p>
+                <h2 id="access-modal-title" class="access-modal-title">Manage Access</h2>
+              </div>
+              <button id="access-modal-close" class="dash-card-delete" type="button">Close</button>
+            </div>
+
+            <div id="access-modal-error" class="dash-error" hidden>
+              <div id="access-modal-error-text" class="dash-error-content"></div>
+            </div>
+
+            <div class="access-actions">
+              <button id="access-create-link-btn" class="dash-create-btn" type="button">Create Invite Link</button>
+            </div>
+
+            <section class="access-section">
+              <h3>Invite Links</h3>
+              <div id="access-links-empty" class="access-empty" hidden>No invite links yet.</div>
+              <div id="access-links-list" class="access-list"></div>
+            </section>
+
+            <section class="access-section">
+              <h3>Members</h3>
+              <div id="access-members-list" class="access-list"></div>
+            </section>
+          </div>
+        </div>
       </main>
     </div>
     <script>window.__JAM_DASHBOARD__ = ${initialState};</script>

@@ -49,7 +49,10 @@ describe("jam links", () => {
 
   test("redirects lobby jam paths to the instance root while preserving query params", () => {
     expect(
-      buildJamRedirectUrl("34.201.10.20", "https://letsjam.now/j/abc123?s=General"),
-    ).toBe("http://34.201.10.20:7681/?s=General");
+      buildJamRedirectUrl(
+        "abc123.jams.letsjam.now",
+        "https://letsjam.now/j/abc123?s=General",
+      ),
+    ).toBe("https://abc123.jams.letsjam.now/?s=General");
   });
 });

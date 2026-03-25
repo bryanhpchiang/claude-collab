@@ -7,10 +7,11 @@ import {
 } from "../services/auth";
 import type { Ec2Service } from "../services/ec2";
 import { mergeHeaders } from "../services/http";
+import type { JamAccessService } from "../services/jam-access";
 import type { JamRecordsService } from "../services/jam-records";
 import { renderDashboardPage } from "../views/dashboard";
 import { renderLandingPage } from "../views/landing";
-import { listJams } from "./jams";
+import { listJamsForUser } from "./jams";
 
 const MIME_TYPES: Record<string, string> = {
   ".css": "text/css; charset=utf-8",
@@ -21,6 +22,7 @@ type PageRouteContext = {
   config: CoordinationConfig;
   auth: CoordinationAuth;
   jamRecords: JamRecordsService;
+  jamAccess: JamAccessService;
   ec2: Ec2Service;
 };
 
@@ -70,7 +72,7 @@ export async function handlePageRoutes(
       });
     }
 
-    const jams = await listJams(context);
+    const jams = await listJamsForUser(context, user.id);
     return new Response(renderDashboardPage({ user, jams }), {
       headers: mergeHeaders(session.headers, {
         "Content-Type": "text/html; charset=utf-8",

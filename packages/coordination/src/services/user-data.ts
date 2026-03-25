@@ -1,6 +1,28 @@
 import type { CoordinationConfig } from "../config";
 
-export function buildJamInstanceUserDataScript(config: CoordinationConfig) {
+export type JamRuntimeEnv = {
+  jamId: string;
+  publicHost: string;
+  sharedSecret: string;
+  deploySecret: string;
+};
+
+function shellQuote(value: string) {
+  return `'${value.replaceAll("'", `'\\''`)}'`;
+}
+
+export function buildJamInstanceUserDataScript(
+  config: CoordinationConfig,
+  runtimeEnv: JamRuntimeEnv,
+) {
+  const exports = [
+    `JAM_ID=${shellQuote(runtimeEnv.jamId)}`,
+    `JAM_PUBLIC_HOST=${shellQuote(runtimeEnv.publicHost)}`,
+    `JAM_SHARED_SECRET=${shellQuote(runtimeEnv.sharedSecret)}`,
+    `JAM_DEPLOY_SECRET=${shellQuote(runtimeEnv.deploySecret)}`,
+    `COORDINATION_BASE_URL=${shellQuote(config.baseUrl)}`,
+  ].join(" ");
+
   return `#!/bin/bash
 set -ex
 if [ ! -f /home/ubuntu/.bun/bin/bun ]; then
@@ -12,10 +34,13 @@ if [ ! -d ${config.jamInstallDir} ]; then
   git clone ${config.jamRepoUrl} ${config.jamInstallDir}
 fi
 chown -R ubuntu:ubuntu ${config.jamInstallDir}
-su - ubuntu -c "git config --global user.name '${config.jamGitUserName}' && git config --global user.email '${config.jamGitUserEmail}' && export PATH=/home/ubuntu/.bun/bin:\\$PATH && cd ${config.jamInstallDir} && git pull origin main && bun install --frozen-lockfile && ${config.jamRuntimeStartCommand} &"
+su - ubuntu -c "git config --global user.name '${config.jamGitUserName}' && git config --global user.email '${config.jamGitUserEmail}' && export PATH=/home/ubuntu/.bun/bin:\\$PATH && export ${exports} && cd ${config.jamInstallDir} && git pull origin main && bun install --frozen-lockfile && ${config.jamRuntimeStartCommand} &"
 `;
 }
 
-export function buildJamInstanceUserData(config: CoordinationConfig) {
-  return Buffer.from(buildJamInstanceUserDataScript(config)).toString("base64");
+export function buildJamInstanceUserData(
+  config: CoordinationConfig,
+  runtimeEnv: JamRuntimeEnv,
+) {
+  return Buffer.from(buildJamInstanceUserDataScript(config, runtimeEnv)).toString("base64");
 }

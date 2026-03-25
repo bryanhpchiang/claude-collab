@@ -10,6 +10,7 @@ const DEFAULT_SESSION_SENTINEL = "__default__";
 
 const state = {
   ws: null,
+  currentUser: null,
   myName: "",
   currentSessionId: null,
   sessionList: [],
@@ -49,6 +50,7 @@ const terminal = createTerminalController({
 });
 
 const sidebar = createStateSidebarController({ state });
+const userController = initUserController({ state });
 
 const chat = createChatController({
   state,
@@ -195,7 +197,7 @@ function joinSession(sessionId) {
   terminal.resetForSession();
   chat.resetSessionView();
   sidebar.resetSummary();
-  sendWs({ type: "join-session", sessionId, name: state.myName });
+  sendWs({ type: "join-session", sessionId });
 
   workspace.renderSessionTabs();
   setTimeout(() => terminal.fit(), 50);
@@ -232,6 +234,9 @@ function connect() {
     const message = JSON.parse(event.data);
 
     switch (message.type) {
+      case "me":
+        userController.setCurrentUser(message.user || null);
+        break;
       case "projects":
         handleProjectsMessage(message);
         break;
@@ -292,14 +297,4 @@ function connect() {
   };
 }
 
-initUserController({
-  state,
-  onConnect: connect,
-  onRenameInSession(name) {
-    if (!state.currentSessionId) return;
-    sendWs({ type: "join-session", sessionId: state.currentSessionId, name });
-  },
-  onSendKey(seq) {
-    sendWs({ type: "key", seq });
-  },
-});
+connect();

@@ -624,6 +624,132 @@ input {
   color: var(--danger);
 }
 
+.access-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+}
+
+.access-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 6, 10, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+.access-modal-dialog {
+  position: relative;
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  margin: 24px auto;
+  padding: 24px;
+  overflow: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 22px;
+  background: linear-gradient(180deg, rgba(22, 27, 34, 0.98), rgba(13, 17, 23, 0.98));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+}
+
+.access-modal-header,
+.access-actions,
+.access-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.access-modal-title {
+  margin: 6px 0 0;
+  font-size: 28px;
+}
+
+.access-section {
+  margin-top: 24px;
+}
+
+.access-section h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.access-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.access-item {
+  padding: 14px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.access-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.access-item-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+}
+
+.access-item-subtitle,
+.access-link-url,
+.access-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.access-link-url {
+  word-break: break-all;
+}
+
+.access-link-url.is-muted {
+  font-style: italic;
+}
+
+.access-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.access-pill-active,
+.access-pill-member {
+  color: var(--accent);
+  border-color: rgba(255, 154, 86, 0.32);
+  background: rgba(255, 154, 86, 0.08);
+}
+
+.access-pill-claimed,
+.access-pill-creator {
+  color: var(--success);
+  border-color: rgba(63, 185, 80, 0.32);
+  background: rgba(63, 185, 80, 0.08);
+}
+
+.access-pill-revoked {
+  color: var(--danger);
+  border-color: rgba(248, 81, 73, 0.32);
+  background: rgba(248, 81, 73, 0.08);
+}
+
 .pending-progress {
   display: flex;
   flex-direction: column;
@@ -676,6 +802,12 @@ input {
     min-width: 0;
     flex-direction: column;
   }
+
+  .access-modal-dialog {
+    width: min(100vw - 24px, 760px);
+    margin: 12px auto;
+    padding: 18px;
+  }
 }
 
 @media (max-width: 640px) {
@@ -710,5 +842,12 @@ input {
     width: 100%;
     justify-content: flex-start;
     flex-wrap: wrap;
+  }
+
+  .access-modal-header,
+  .access-actions,
+  .access-item {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

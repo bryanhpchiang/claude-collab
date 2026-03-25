@@ -3,6 +3,7 @@ import { handleAuthRoutes } from "./routes/auth";
 import { handleJamRoutes } from "./routes/jams";
 import { handlePageRoutes } from "./routes/pages";
 import { createAuth, runAuthMigrations } from "./services/auth";
+import { createJamAccessService } from "./services/jam-access";
 import { createDatabase, ensureCoordinationTables } from "./services/db";
 import { createEc2Service } from "./services/ec2";
 import { createJamRecordsService } from "./services/jam-records";
@@ -18,6 +19,7 @@ const context = {
   config,
   auth,
   ec2: createEc2Service(config),
+  jamAccess: createJamAccessService(db),
   jamRecords: createJamRecordsService(db),
 };
 
