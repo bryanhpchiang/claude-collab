@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { nameColor } from "../lib/colors.js";
 import type { ProjectSummary, SessionSummary } from "../types";
 
@@ -7,6 +8,16 @@ type RuntimeHeaderProps = {
 };
 
 export function RuntimeHeader({ connectedUsers, onOpenInvite }: RuntimeHeaderProps) {
+  const [restarting, setRestarting] = useState(false);
+
+  async function handleRestart() {
+    if (!confirm("This will git pull and restart the server. All sessions will be lost. Continue?")) return;
+    setRestarting(true);
+    try {
+      await fetch("/api/restart", { method: "POST" });
+    } catch {}
+  }
+
   return (
     <div id="header">
       <a href="https://letsjam.now" rel="noopener" className="brand-link" title="Back to Jam lobby">
@@ -28,6 +39,32 @@ export function RuntimeHeader({ connectedUsers, onOpenInvite }: RuntimeHeaderPro
         <span className="brand-jam">Jam</span>
       </a>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <button
+          type="button"
+          onClick={handleRestart}
+          disabled={restarting}
+          title="Git pull latest changes and restart the server"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "4px 10px",
+            fontSize: 12,
+            fontWeight: 600,
+            color: restarting ? "#8b949e" : "#e6edf3",
+            background: "rgba(139,148,158,0.1)",
+            border: "1px solid rgba(139,148,158,0.3)",
+            borderRadius: 6,
+            cursor: restarting ? "not-allowed" : "pointer",
+            whiteSpace: "nowrap",
+          }}
+        >
+          <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" style={{ flexShrink: 0 }}>
+            <path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z" />
+            <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z" />
+          </svg>
+          {restarting ? "Restarting..." : "Restart"}
+        </button>
         {onOpenInvite && (
           <button
             type="button"

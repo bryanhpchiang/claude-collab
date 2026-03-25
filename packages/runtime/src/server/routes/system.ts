@@ -100,6 +100,25 @@ export async function handleSystemRoute(req: Request, url: URL, store: RuntimeSt
     }
   }
 
+  if (url.pathname === "/api/restart" && req.method === "POST") {
+    const gitPull = await runCommand({ label: "git pull", args: ["git", "pull"], cwd: WORKSPACE_ROOT });
+    if (gitPull.exitCode !== 0) {
+      return Response.json({ error: "git pull failed", stdout: gitPull.stdout, stderr: gitPull.stderr }, { status: 500 });
+    }
+
+    const startCommand = getRuntimeStartCommand();
+    const shellCmd = `sleep 1 && ${startCommand.args.map((a) => `'${a}'`).join(" ")}`;
+    const child = Bun.spawn(["bash", "-c", shellCmd], {
+      cwd: startCommand.cwd,
+      stdio: ["ignore", "ignore", "ignore"],
+      env: process.env,
+    });
+    child.unref();
+    setTimeout(() => process.exit(0), 200);
+
+    return Response.json({ ok: true, restarting: true });
+  }
+
   if (url.pathname === "/api/deploy" && req.method === "POST") {
     const deploySecret = getDeploySecret();
     const sharedSecret = req.headers.get(DEPLOY_HEADER_NAME) || "";
