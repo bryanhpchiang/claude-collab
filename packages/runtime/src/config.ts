@@ -4,7 +4,15 @@ import { join } from "path";
 export const SRC_ROOT = import.meta.dir;
 export const RUNTIME_ROOT = join(SRC_ROOT, "..");
 export const WORKSPACE_ROOT = join(RUNTIME_ROOT, "..", "..");
-export const WEB_DIR = join(SRC_ROOT, "web");
+export const WEB_SRC_DIR = join(SRC_ROOT, "web");
+export const WEB_DIR = WEB_SRC_DIR;
+export const WEB_DIST_DIR = join(RUNTIME_ROOT, "dist", "web");
+export const WEB_MANIFEST_PATH = join(WEB_DIST_DIR, ".vite", "manifest.json");
+export const WEB_CLIENT_ENTRY = "src/web/main.client.tsx";
+export const WEB_DEV_SERVER_URL =
+  process.env.RUNTIME_WEB_DEV_SERVER_URL ||
+  process.env.WEB_DEV_SERVER_URL ||
+  "";
 
 export const UPLOAD_DIR = "/tmp/claude-uploads";
 export const HOME_DIR = process.env.HOME || "/root";
@@ -24,7 +32,12 @@ const STATIC_MIME_TYPES: Record<string, string> = {
   html: "text/html; charset=utf-8",
   js: "application/javascript; charset=utf-8",
   json: "application/json; charset=utf-8",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  map: "application/json; charset=utf-8",
+  png: "image/png",
   svg: "image/svg+xml",
+  woff2: "font/woff2",
 };
 
 export function getStaticMimeType(pathname: string): string {

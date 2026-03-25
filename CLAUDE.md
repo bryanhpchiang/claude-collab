@@ -14,7 +14,7 @@ A web-based multiplayer interface for Claude Code. Multiple users connect throug
 
 The server starts on **port 7681**. Access the UI at `http://localhost:7681` (or via the exe.dev HTTPS proxy).
 
-There is no build step required for development -- `packages/runtime/src/index.ts` runs directly with Bun, server modules live under `packages/runtime/src/server`, and the browser app is served from `packages/runtime/src/web`.
+`packages/runtime/src/index.ts` still runs directly with Bun. The browser apps now live under `src/web` in each package and use React + TypeScript + Vite for hydration, client bundling, and frontend builds.
 
 ## Architecture
 
@@ -61,8 +61,11 @@ Browser (xterm.js) <--WebSocket--> Bun Server <--PTY--> Claude Code CLI
 | `packages/runtime/src/index.ts` | Runtime entrypoint. Boots Bun, the route handler, and the WebSocket handler. |
 | `packages/runtime/src/server/runtime-store.ts` | Core runtime state and session/project lifecycle logic for a single jam instance. |
 | `packages/runtime/src/server/routes` | HTTP route handlers split by projects, sessions, secrets, system, and static assets. |
-| `packages/runtime/src/web/index.html` | Browser app HTML shell. |
-| `packages/runtime/src/web/main.js` | Browser app entrypoint that wires terminal, workspace, chat, mentions, treats, and state sidebar modules together. |
+| `packages/runtime/src/server/static-app.ts` | Runtime SSR shell that renders the React app and injects frontend assets. |
+| `packages/runtime/src/web/main.client.tsx` | Runtime browser hydration entrypoint. |
+| `packages/runtime/src/web/RuntimeApp.tsx` | Runtime React UI for the multiplayer terminal, chat, sessions, projects, and modals. |
+| `packages/coordination/src/server/web-render.tsx` | Coordination SSR renderer for landing and dashboard pages. |
+| `packages/coordination/src/web/App.tsx` | Coordination React app used for SSR and hydration. |
 | `packages/runtime/package.json` | Runtime package manifest. Start script: `bun run src/index.ts`. |
 | `packages/coordination/src/index.ts` | Coordination server entrypoint for auth, dashboard, and EC2 orchestration. |
 | `packages/coordination/src/services/auth.ts` | Better Auth wiring for GitHub sign-in, session lookup, and auth migrations. |
@@ -73,13 +76,15 @@ Browser (xterm.js) <--WebSocket--> Bun Server <--PTY--> Claude Code CLI
 
 - **Bun** (`~/.bun/bin/bun`) -- JavaScript runtime, used as the server
 - **bun-pty** -- PTY (pseudo-terminal) bindings for Bun, used to spawn and control Claude Code processes
-- **xterm.js** (CDN) -- Terminal emulator in the browser, renders Claude's output
-- **xterm addon-fit** (CDN) -- Auto-sizes the terminal to fit its container
+- **React** -- SSR-rendered UI shells plus browser hydration for runtime and coordination
+- **Vite** -- Frontend dev server, client bundling, and asset manifests
+- **@xterm/xterm** -- Terminal emulator in the browser, bundled via ESM
+- **@xterm/addon-fit** -- Auto-sizes the terminal to fit its container
 
 ## Server Details (`packages/runtime/src/server`)
 
 ### HTTP routes
-- `GET /` -- serves `packages/runtime/src/web/index.html`
+- `GET /` -- serves the Bun-rendered React shell for the runtime app
 - `GET /api/sessions` -- returns active session list
 - `POST /api/sessions` -- creates a new session (body: `{ name, resumeId? }`)
 - `PATCH /api/sessions` -- renames a session (body: `{ id, name }`)
@@ -103,7 +108,7 @@ Browser (xterm.js) <--WebSocket--> Bun Server <--PTY--> Claude Code CLI
 
 ## Frontend Details (`packages/runtime/src/web`)
 
-The runtime browser app is still framework-free, but it is no longer a single giant file. `index.html` is the shell, `main.js` is the app entrypoint, and feature logic is split into focused browser modules under `features/` and shared helpers under `lib/`.
+The runtime browser app now uses React + TypeScript. Bun server code under `src/server` renders the initial HTML shell, while `src/web/main.client.tsx` hydrates the app in the browser. Runtime-specific UI state and behavior live in `RuntimeApp.tsx` and browser helpers under `src/web/lib`.
 
 ### UI components
 - **Name modal** -- shown on first visit; name persists in `localStorage`
@@ -129,9 +134,9 @@ The runtime browser app is still framework-free, but it is no longer a single gi
 
 ## Coding Conventions
 
-- **TypeScript** for the server, plain **JavaScript** browser modules for the frontend
-- No framework or bundler for the frontend -- browser code is split into ES modules under `packages/runtime/src/web`
-- CDN-loaded dependencies for the frontend (xterm.js)
+- **TypeScript** for both server and frontend code
+- React for browser UI and Bun SSR page shells
+- Vite for client bundling, HMR, and manifest-driven asset injection
 - Compact, terse code style -- short variable names, chained expressions, minimal whitespace
 - Runtime types live in `packages/runtime/src/server/types.ts`
 - Bun-native APIs preferred (`Bun.serve`, `Bun.file`, `Bun.write`)

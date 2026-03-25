@@ -1,9 +1,17 @@
 import { join } from "path";
+import {
+  COORDINATION_WEB_CLIENT_ENTRIES,
+} from "./web/bootstrap";
+
+type CoordinationWebClientEntries = typeof COORDINATION_WEB_CLIENT_ENTRIES;
 
 export type CoordinationConfig = {
   port: number;
   serviceName: string;
   staticDir: string;
+  webClientEntries?: CoordinationWebClientEntries;
+  webManifestPath?: string;
+  webDevServerUrl?: string;
   databaseUrl: string;
   databaseSslCaPath: string;
   betterAuthSecret: string;
@@ -57,7 +65,13 @@ export function loadConfig(): CoordinationConfig {
   return {
     port: Number.isFinite(port) ? port : 8080,
     serviceName: "jam-coordination",
-    staticDir: join(import.meta.dir, "static"),
+    staticDir: join(import.meta.dir, "..", "dist", "web"),
+    webClientEntries: COORDINATION_WEB_CLIENT_ENTRIES,
+    webManifestPath: join(import.meta.dir, "..", "dist", "web", ".vite", "manifest.json"),
+    webDevServerUrl:
+      process.env.COORDINATION_WEB_DEV_SERVER_URL ||
+      process.env.WEB_DEV_SERVER_URL ||
+      "",
     databaseUrl,
     databaseSslCaPath,
     betterAuthSecret,

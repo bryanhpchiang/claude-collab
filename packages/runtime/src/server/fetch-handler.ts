@@ -45,7 +45,8 @@ export function createFetchHandler(store: RuntimeStore) {
       (request: Request, nextUrl: URL, nextStore: RuntimeStore) =>
         handleSecretsRoute(request, nextUrl, nextStore, user),
       handleSystemRoute,
-      handleStaticRoute,
+      (request: Request, nextUrl: URL, nextStore: RuntimeStore) =>
+        handleStaticRoute(request, nextUrl, nextStore, user),
     ];
 
     for (const handler of handlers) {

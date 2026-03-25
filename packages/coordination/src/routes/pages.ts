@@ -1,4 +1,3 @@
-import { basename, join } from "path";
 import type { CoordinationConfig } from "../config";
 import {
   getSessionLookup,
@@ -9,14 +8,9 @@ import type { Ec2Service } from "../services/ec2";
 import { mergeHeaders } from "../services/http";
 import type { JamAccessService } from "../services/jam-access";
 import type { JamRecordsService } from "../services/jam-records";
-import { renderDashboardPage } from "../views/dashboard";
-import { renderLandingPage } from "../views/landing";
+import { renderCoordinationPage } from "../server/web-render";
+import { serveCoordinationAsset } from "../server/web-assets";
 import { listJamsForUser } from "./jams";
-
-const MIME_TYPES: Record<string, string> = {
-  ".css": "text/css; charset=utf-8",
-  ".js": "application/javascript; charset=utf-8",
-};
 
 type PageRouteContext = {
   config: CoordinationConfig;
@@ -25,11 +19,6 @@ type PageRouteContext = {
   jamAccess: JamAccessService;
   ec2: Ec2Service;
 };
-
-function getContentType(pathname: string) {
-  const match = pathname.match(/\.[a-z0-9]+$/i);
-  return match ? MIME_TYPES[match[0]] || "application/octet-stream" : "application/octet-stream";
-}
 
 export async function handlePageRoutes(
   request: Request,
@@ -47,17 +36,17 @@ export async function handlePageRoutes(
       });
     }
 
-    return new Response(
-      renderLandingPage({
+    return new Response(await renderCoordinationPage(context.config, {
+      bootstrap: {
+        page: "landing",
         signedIn: false,
         authEnabled: isGitHubOAuthEnabled(context.config),
-      }),
-      {
-        headers: mergeHeaders(session.headers, {
-          "Content-Type": "text/html; charset=utf-8",
-        }),
       },
-    );
+    }), {
+      headers: mergeHeaders(session.headers, {
+        "Content-Type": "text/html; charset=utf-8",
+      }),
+    });
   }
 
   if (url.pathname === "/dashboard" && request.method === "GET") {
@@ -73,26 +62,20 @@ export async function handlePageRoutes(
     }
 
     const jams = await listJamsForUser(context, user.id);
-    return new Response(renderDashboardPage({ user, jams }), {
+    return new Response(await renderCoordinationPage(context.config, {
+      bootstrap: {
+        page: "dashboard",
+        user,
+        jams,
+      },
+    }), {
       headers: mergeHeaders(session.headers, {
         "Content-Type": "text/html; charset=utf-8",
       }),
     });
   }
 
-  if (url.pathname.startsWith("/static/") && request.method === "GET") {
-    const requested = url.pathname.slice("/static/".length);
-    if (!requested || requested.includes("..") || basename(requested) !== requested) {
-      return new Response("Bad request", { status: 400 });
-    }
-
-    const file = Bun.file(join(context.config.staticDir, requested));
-    if (!(await file.exists())) {
-      return new Response("Not found", { status: 404 });
-    }
-
-    return new Response(file, {
-      headers: { "Content-Type": getContentType(requested) },
-    });
+  if (url.pathname.startsWith("/assets/") && request.method === "GET") {
+    return serveCoordinationAsset(url.pathname, context.config);
   }
 }
