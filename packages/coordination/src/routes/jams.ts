@@ -18,6 +18,7 @@ import {
   buildJamInstanceUserData,
   type JamRuntimeEnv,
 } from "../services/user-data";
+import { renderForbiddenPage } from "../server/web-render";
 
 const INVITE_CLAIM_COOKIE = "jam_invite_claim";
 const DEPLOY_HEADER = "x-jam-deploy-secret";
@@ -69,150 +70,6 @@ function buildAuthRedirect(returnTo: string, sessionHeaders: Headers, config: Co
   });
 }
 
-function buildForbiddenPage(): string {
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Access Denied — Jam</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-      html, body {
-        height: 100%;
-        background: #0d1117;
-        color: #e6edf3;
-        font-family: 'Inter', system-ui, sans-serif;
-      }
-
-      body {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        min-height: 100vh;
-        padding: 24px;
-        position: relative;
-        overflow: hidden;
-      }
-
-      /* Subtle radial glow behind the card */
-      body::before {
-        content: '';
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 600px;
-        height: 600px;
-        background: radial-gradient(ellipse at center, rgba(255, 107, 107, 0.08) 0%, transparent 70%);
-        pointer-events: none;
-      }
-
-      .card {
-        position: relative;
-        background: #161b22;
-        border: 1px solid #30363d;
-        border-radius: 16px;
-        padding: 48px 40px;
-        max-width: 480px;
-        width: 100%;
-        text-align: center;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-      }
-
-      .brand {
-        font-family: 'Fredoka', sans-serif;
-        font-weight: 700;
-        font-size: 1.5rem;
-        background: linear-gradient(135deg, #ff9a56, #ff6b6b);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        display: inline-block;
-        margin-bottom: 32px;
-        letter-spacing: 0.01em;
-      }
-
-      .lock-icon {
-        font-size: 3rem;
-        margin-bottom: 20px;
-        display: block;
-        filter: drop-shadow(0 2px 8px rgba(255, 107, 107, 0.3));
-      }
-
-      .heading {
-        font-size: 1.375rem;
-        font-weight: 600;
-        color: #e6edf3;
-        margin-bottom: 12px;
-        line-height: 1.3;
-      }
-
-      .subtext {
-        font-size: 0.9375rem;
-        color: #8b949e;
-        line-height: 1.6;
-        margin-bottom: 36px;
-      }
-
-      .divider {
-        height: 1px;
-        background: #21262d;
-        margin-bottom: 28px;
-      }
-
-      .btn-dashboard {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 22px;
-        border-radius: 8px;
-        background: linear-gradient(135deg, #ff9a56, #ff6b6b);
-        color: #fff;
-        font-family: inherit;
-        font-size: 0.9375rem;
-        font-weight: 600;
-        text-decoration: none;
-        transition: opacity 0.15s ease, transform 0.15s ease;
-        box-shadow: 0 2px 8px rgba(255, 107, 107, 0.35);
-      }
-
-      .btn-dashboard:hover {
-        opacity: 0.88;
-        transform: translateY(-1px);
-      }
-
-      .btn-dashboard:active {
-        opacity: 1;
-        transform: translateY(0);
-      }
-
-      @media (max-width: 520px) {
-        .card { padding: 36px 24px; }
-        .heading { font-size: 1.25rem; }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <div class="brand">Jam</div>
-      <span class="lock-icon">🔒</span>
-      <h1 class="heading">You don't have access to this jam</h1>
-      <p class="subtext">Have the owner of this jam send you an invite link.</p>
-      <div class="divider"></div>
-      <a class="btn-dashboard" href="/dashboard">
-        <span>&#8592;</span>
-        Go to Dashboard
-      </a>
-    </div>
-  </body>
-</html>`;
-}
 
 function toJamSummary(record: JamRecord): JamSummary {
   return {
@@ -405,9 +262,6 @@ async function resolveJamSecrets(
   };
 }
 
-function getRuntimeSecret(config: CoordinationConfig) {
-  return process.env.RUNTIME_SECRET || (config as any).runtimeSecret || "";
-}
 
 async function resolveInviteAuth(
   request: Request,
@@ -420,14 +274,21 @@ async function resolveInviteAuth(
   const authHeader = request.headers.get("Authorization");
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
-    const runtimeSecret = getRuntimeSecret(context.config);
-    if (!runtimeSecret) {
+    const jam = await context.jamRecords.getJamRecord(routeJamId);
+    if (!jam) {
+      return {
+        ok: false,
+        response: Response.json({ error: "Jam not found" }, { status: 404, headers: apiHeaders() }),
+      };
+    }
+    const { sharedSecret } = await resolveJamSecrets(jam, context.jamSecrets);
+    if (!sharedSecret) {
       return {
         ok: false,
         response: Response.json({ error: "Service auth not configured" }, { status: 500, headers: apiHeaders() }),
       };
     }
-    const payload = await verifyToken<ServiceTokenPayload>(runtimeSecret, token);
+    const payload = await verifyToken<ServiceTokenPayload>(sharedSecret, token);
     if (!payload || payload.kind !== "service" || typeof payload.exp !== "number" || payload.exp <= Date.now()) {
       return {
         ok: false,
@@ -787,7 +648,7 @@ export async function handleJamRoutes(
 
     const allowed = await userCanAccessJam(jam, authResult.user.id, context.jamAccess);
     if (!allowed) {
-      return new Response(buildForbiddenPage(), {
+      return new Response(await renderForbiddenPage(context.config), {
         status: 403,
         headers: mergeHeaders(authResult.session.headers, { "Content-Type": "text/html; charset=utf-8" }),
       });

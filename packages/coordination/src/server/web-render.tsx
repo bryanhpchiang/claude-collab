@@ -3,6 +3,7 @@ import { renderBootstrapScript } from "shared";
 import type { CoordinationConfig } from "../config";
 import { COORDINATION_BOOTSTRAP_ID } from "../web/bootstrap";
 import { DashboardPage } from "../web/pages/DashboardPage";
+import { ForbiddenPage } from "../web/pages/ForbiddenPage";
 import { LandingPage } from "../web/pages/LandingPage";
 import type { CoordinationBootstrap } from "../web/types";
 import { getCoordinationWebAssets } from "./web-assets";
@@ -49,5 +50,27 @@ export async function renderCoordinationPage(
     ${renderBootstrapScript(COORDINATION_BOOTSTRAP_ID, options.bootstrap)}
     ${scriptTags}
   </body>
+</html>`;
+}
+
+export async function renderForbiddenPage(config: CoordinationConfig) {
+  const assets = await getCoordinationWebAssets(config, "landing");
+  const styleTags = assets.styles
+    .map((href) => `<link rel="stylesheet" href="${href}">`)
+    .join("");
+  const bodyHtml = renderToString(<ForbiddenPage />);
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Access Denied — Jam</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    ${styleTags}
+  </head>
+  ${bodyHtml}
 </html>`;
 }

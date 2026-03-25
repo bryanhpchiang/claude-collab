@@ -817,6 +817,114 @@ input {
   color: var(--danger);
 }
 
+/* Forbidden / access-denied page */
+
+.page-forbidden {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+  overflow: hidden;
+}
+
+.page-forbidden::before {
+  content: '';
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(ellipse at center, rgba(255, 107, 107, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.forbidden-card {
+  position: relative;
+  background: var(--panel-solid);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  padding: 48px 40px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.forbidden-brand {
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+  margin-bottom: 32px;
+  letter-spacing: 0.01em;
+}
+
+.forbidden-lock-icon {
+  font-size: 3rem;
+  margin-bottom: 20px;
+  display: block;
+  filter: drop-shadow(0 2px 8px rgba(255, 107, 107, 0.3));
+}
+
+.forbidden-heading {
+  font-size: 1.375rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+  line-height: 1.3;
+}
+
+.forbidden-subtext {
+  font-size: 0.9375rem;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 36px;
+}
+
+.forbidden-divider {
+  height: 1px;
+  background: var(--border);
+  margin-bottom: 28px;
+}
+
+.forbidden-btn-dashboard {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 2px 8px rgba(255, 107, 107, 0.35);
+}
+
+.forbidden-btn-dashboard:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.forbidden-btn-dashboard:active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 520px) {
+  .forbidden-card { padding: 36px 24px; }
+  .forbidden-heading { font-size: 1.25rem; }
+}
+
 @media (max-width: 900px) {
   .feature-grid {
     grid-template-columns: 1fr;
