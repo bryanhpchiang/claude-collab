@@ -256,6 +256,10 @@ export class RuntimeStore {
     });
   }
 
+  broadcastTyping(sessionId: string, name: string, typing: boolean, _senderWs?: any) {
+    this.publishJson(`session:${sessionId}`, { type: "typing", name, typing });
+  }
+
   broadcastSystem(sessionId: string, text: string) {
     this.broadcastToSession(sessionId, { type: "system", text, timestamp: Date.now() });
   }

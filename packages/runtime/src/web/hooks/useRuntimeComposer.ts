@@ -108,6 +108,9 @@ export function useRuntimeComposer({
   const messageRef = useRef(message);
   messageRef.current = message;
 
+  const typingTimeoutRef = useRef<number | null>(null);
+  const isTypingRef = useRef(false);
+
   const mentionDropdownVisible = mentionOptions.length > 0 && Boolean(mentionContext);
   const slashDropdownVisible = slashOptions.length > 0;
 
@@ -184,13 +187,31 @@ export function useRuntimeComposer({
     setMessage("");
     setMentionContext(null);
     setMentionOptions([]);
+    if (typingTimeoutRef.current) window.clearTimeout(typingTimeoutRef.current);
+    sendTypingSignal(false);
     requestAnimationFrame(() => messageInputRef.current?.focus());
+  };
+
+  const sendTypingSignal = (typing: boolean) => {
+    if (isTypingRef.current === typing) return;
+    isTypingRef.current = typing;
+    sendWsRef.current({ type: "typing", typing });
   };
 
   const handleMessageChange = (nextValue: string, cursor: number) => {
     setMessage(nextValue);
     refreshMentionState(nextValue, cursor);
     refreshSlashState(nextValue);
+
+    if (typingTimeoutRef.current) window.clearTimeout(typingTimeoutRef.current);
+    if (nextValue.trim()) {
+      sendTypingSignal(true);
+      typingTimeoutRef.current = window.setTimeout(() => {
+        sendTypingSignal(false);
+      }, 3000);
+    } else {
+      sendTypingSignal(false);
+    }
   };
 
   const handleMessageClick = (cursor: number) => {

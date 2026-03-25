@@ -99,6 +99,13 @@ export function createWebSocketHandler(store: RuntimeStore) {
           return;
         }
 
+        if (data.type === "typing") {
+          const sessionId = store.getClientSession(ws);
+          if (!sessionId) return;
+          store.broadcastTyping(sessionId, user.login, Boolean(data.typing), ws);
+          return;
+        }
+
         if (data.type === "mark-mentions-read") {
           store.clearPendingMentions(user.login);
           return;

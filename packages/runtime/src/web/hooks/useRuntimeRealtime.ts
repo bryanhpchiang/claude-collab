@@ -68,6 +68,8 @@ export function useRuntimeRealtime({
   const [chatUnread, setChatUnread] = useState(0);
   const [mentionsBanner, setMentionsBanner] = useState<PendingMention[]>([]);
   const [errorOverlay, setErrorOverlay] = useState<ErrorOverlayState>(DEFAULT_ERROR_OVERLAY);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const typingTimers = useRef<Map<string, number>>(new Map());
 
   const myName = currentUser?.login || "";
   const myNameRef = useRef(myName);
@@ -170,6 +172,9 @@ export function useRuntimeRealtime({
   const resetSessionRealtime = () => {
     setChatEntries([]);
     setMentionsBanner([]);
+    setTypingUsers([]);
+    for (const timer of typingTimers.current.values()) window.clearTimeout(timer);
+    typingTimers.current.clear();
     dismissErrorOverlay();
   };
 
@@ -234,10 +239,13 @@ export function useRuntimeRealtime({
               });
             }
             break;
-          case "users":
-            setConnectedUsers(data.users || []);
-            usersUpdateRef.current(data.users || []);
+          case "users": {
+            const users: string[] = data.users || [];
+            setConnectedUsers(users);
+            usersUpdateRef.current(users);
+            setTypingUsers((prev) => prev.filter((u) => users.includes(u)));
             break;
+          }
           case "mention":
             if (
               data.mentioned &&
@@ -269,6 +277,24 @@ export function useRuntimeRealtime({
               setChatCollapsed(false);
             }
             break;
+          case "typing": {
+            const typingName = data.name as string;
+            if (typingName === myNameRef.current) break;
+            if (data.typing) {
+              setTypingUsers((prev) => prev.includes(typingName) ? prev : [...prev, typingName]);
+              const existingTimer = typingTimers.current.get(typingName);
+              if (existingTimer) window.clearTimeout(existingTimer);
+              typingTimers.current.set(typingName, window.setTimeout(() => {
+                setTypingUsers((prev) => prev.filter((u) => u !== typingName));
+                typingTimers.current.delete(typingName);
+              }, 5000));
+            } else {
+              setTypingUsers((prev) => prev.filter((u) => u !== typingName));
+              const existingTimer = typingTimers.current.get(typingName);
+              if (existingTimer) { window.clearTimeout(existingTimer); typingTimers.current.delete(typingName); }
+            }
+            break;
+          }
           case "pong":
             break;
         }
@@ -317,6 +343,7 @@ export function useRuntimeRealtime({
     resetSessionRealtime,
     sendWs,
     setChatCollapsed,
+    typingUsers,
     wsConnected,
   };
 }

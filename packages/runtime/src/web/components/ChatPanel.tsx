@@ -48,6 +48,7 @@ type ChatPanelProps = {
   slashActiveIndex: number;
   slashDropdownVisible: boolean;
   slashOptions: SlashCommand[];
+  typingUsers: string[];
   uploadingImage: boolean;
   onCompleteSlashCommand(cmd: SlashCommand): void;
   onCompleteMention(user: string): void;
@@ -64,6 +65,31 @@ type ChatPanelProps = {
   onSendMessage(): void;
   onToggleCollapsed(): void;
 };
+
+function TypingDots() {
+  return (
+    <span className="typing-dots">
+      <span className="typing-dot" />
+      <span className="typing-dot" />
+      <span className="typing-dot" />
+    </span>
+  );
+}
+
+function TypingIndicator({ users }: { users: string[] }) {
+  if (!users.length) return null;
+  const label = users.length === 1
+    ? <><span style={{ color: nameColor(users[0]) }}>{users[0]}</span> is typing</>
+    : users.length === 2
+    ? <><span style={{ color: nameColor(users[0]) }}>{users[0]}</span> and <span style={{ color: nameColor(users[1]) }}>{users[1]}</span> are typing</>
+    : <>{users.length} people are typing</>;
+  return (
+    <div className="typing-indicator">
+      {label}
+      <TypingDots />
+    </div>
+  );
+}
 
 export function ChatPanel({
   canSendMessages,
@@ -83,6 +109,7 @@ export function ChatPanel({
   slashActiveIndex,
   slashDropdownVisible,
   slashOptions,
+  typingUsers,
   uploadingImage,
   onCompleteSlashCommand,
   onCompleteMention,
@@ -105,8 +132,18 @@ export function ChatPanel({
         <span className="toggle-label">
           <span className="toggle-arrow">&#9660;</span> Chat
         </span>
-        <span id="chat-badge" style={{ display: chatUnread > 0 ? "inline" : "none" }}>
-          {chatUnread > 99 ? "99+" : chatUnread}
+        <span className="toggle-right">
+          {chatCollapsed && typingUsers.length > 0 && (
+            <span className="typing-pill">
+              {typingUsers.length === 1
+                ? <><span style={{ color: nameColor(typingUsers[0]) }}>{typingUsers[0]}</span> typing</>
+                : <>{typingUsers.length} typing</>}
+              <TypingDots />
+            </span>
+          )}
+          <span id="chat-badge" style={{ display: chatUnread > 0 ? "inline" : "none" }}>
+            {chatUnread > 99 ? "99+" : chatUnread}
+          </span>
         </span>
       </div>
 
@@ -163,6 +200,7 @@ export function ChatPanel({
             )}
           </div>
         ))}
+        <TypingIndicator users={typingUsers} />
       </div>
 
       <div

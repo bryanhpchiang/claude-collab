@@ -115,6 +115,7 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
     resetSessionRealtime,
     sendWs,
     setChatCollapsed,
+    typingUsers,
     wsConnected,
   } = useRuntimeRealtime({
     currentSessionId,
@@ -285,6 +286,7 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
       messageInputRef,
       myName,
       sendFailed,
+      typingUsers,
       uploadingImage,
       slashActiveIndex,
       slashDropdownVisible,
