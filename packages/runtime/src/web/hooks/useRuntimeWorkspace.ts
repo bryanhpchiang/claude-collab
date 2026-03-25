@@ -203,8 +203,10 @@ export function useRuntimeWorkspace({
   };
 
   const handleSocketDisconnect = () => {
-    setCurrentSessionId(null);
-    setPendingJoin(null);
+    // Don't clear currentSessionId — keep the terminal visible during a transient
+    // disconnect. The session will be re-joined when handleSocketOpen fires on
+    // reconnect. The useEffect above (lines 79-101) handles the case where the
+    // session disappears from the server's session list.
   };
 
   const createFreshSession = async () => {

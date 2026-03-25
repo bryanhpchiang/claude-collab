@@ -8,7 +8,7 @@ const store = new RuntimeStore();
 const server = Bun.serve({
   port: Number.isFinite(PORT) ? PORT : 7681,
   fetch: createFetchHandler(store),
-  websocket: createWebSocketHandler(store),
+  websocket: { ...createWebSocketHandler(store), idleTimeout: 120 },
 });
 
 store.attachPublisher((channel, payload) => {
