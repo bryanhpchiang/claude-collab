@@ -1,10 +1,10 @@
 /** Open Graph meta tags and image for Jam link previews. */
 
-export const OG_TITLE = "Jam — Multiplayer Claude";
+export const OG_TITLE = "Jam \u2014 Multiplayer Claude";
 export const OG_DESCRIPTION = "Code together with Claude";
 export const OG_SITE_NAME = "Jam";
 export const OG_SITE_URL = "https://letsjam.now";
-export const OG_IMAGE_PATH = "/og-image.svg";
+export const OG_IMAGE_PATH = "/og-image.png";
 
 /** OG meta tags HTML snippet for injection into <head>. */
 export function renderOgMetaTags(url?: string) {
@@ -25,7 +25,7 @@ export function renderOgMetaTags(url?: string) {
     <meta name="twitter:image" content="${imageUrl}">`;
 }
 
-/** 1200x630 SVG OG image with Jam branding. */
+/** 1200x630 SVG OG image with Jam branding (kept for reference). */
 export const OG_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
     <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
@@ -53,13 +53,3 @@ export const OG_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1200
   <!-- Tagline -->
   <text x="600" y="500" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-weight="400" font-size="24" fill="#6e7681">Code together with Claude</text>
 </svg>`;
-
-/** Serve the OG image SVG as an HTTP response. */
-export function serveOgImage(): Response {
-  return new Response(OG_IMAGE_SVG, {
-    headers: {
-      "Content-Type": "image/svg+xml",
-      "Cache-Control": "public, max-age=86400",
-    },
-  });
-}

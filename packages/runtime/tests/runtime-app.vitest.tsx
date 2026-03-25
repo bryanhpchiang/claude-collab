@@ -174,6 +174,7 @@ describe("RuntimeApp", () => {
         name: "Jam Owner",
         avatar_url: "",
       },
+      jamName: null,
       requestedSessionId: null,
     };
 
@@ -215,6 +216,7 @@ describe("RuntimeApp", () => {
         name: "Jam Owner",
         avatar_url: "",
       },
+      jamName: null,
       requestedSessionId: null,
     };
 

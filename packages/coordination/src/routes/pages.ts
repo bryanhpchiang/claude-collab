@@ -11,7 +11,8 @@ import type { JamRecordsService } from "../services/jam-records";
 import { renderCoordinationPage } from "../server/web-render";
 import { serveCoordinationAsset } from "../server/web-assets";
 import { listJamsForUser } from "./jams";
-import { OG_IMAGE_PATH, serveOgImage } from "shared";
+import { OG_IMAGE_PATH } from "shared";
+import { serveOgImage } from "shared/src/og-image";
 
 type PageRouteContext = {
   config: CoordinationConfig;

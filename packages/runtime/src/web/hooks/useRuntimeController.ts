@@ -176,6 +176,20 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
   }, [currentSessionId]);
 
   useEffect(() => {
+    const jamName = bootstrap.jamName;
+    const session = filteredSessions.find((s) => s.id === currentSessionId);
+    if (jamName && session) {
+      document.title = `${session.name} — ${jamName} — Jam`;
+    } else if (jamName) {
+      document.title = `${jamName} — Jam`;
+    } else if (session) {
+      document.title = `${session.name} — Jam`;
+    } else {
+      document.title = "Jam — Multiplayer Claude";
+    }
+  }, [bootstrap.jamName, currentSessionId, filteredSessions]);
+
+  useEffect(() => {
     if (!myName) return;
     try {
       const seen = localStorage.getItem(JAM_CATCHUP_KEY);

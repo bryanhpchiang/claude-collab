@@ -5,7 +5,7 @@ import { handleSecretsRoute } from "./routes/secrets";
 import { handleSessionsRoute } from "./routes/sessions";
 import { handleStaticRoute } from "./routes/static";
 import { handleSystemRoute } from "./routes/system";
-import { serveOgImage } from "shared";
+import { serveOgImage } from "shared/src/og-image";
 import { buildCoordinationGateUrl, getAuthenticatedUser } from "./runtime-auth";
 import type { RuntimeStore } from "./runtime-store";
 
@@ -25,7 +25,7 @@ export function createFetchHandler(store: RuntimeStore) {
     const authResponse = await handleAuthRoute(req, url);
     if (authResponse) return authResponse;
 
-    if (url.pathname === "/og-image.svg" && req.method === "GET") {
+    if (url.pathname === "/og-image.png" && req.method === "GET") {
       return serveOgImage();
     }
 

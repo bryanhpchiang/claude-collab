@@ -5,14 +5,17 @@ import type { AuthenticatedRuntimeUser } from "./runtime-auth";
 import { RuntimeApp } from "../web/RuntimeApp";
 import { RUNTIME_BOOTSTRAP_ID } from "../web/bootstrap";
 import { getRuntimeWebAssets } from "./web-assets";
+import { JAM_NAME } from "../config";
 
 export async function renderRuntimeApp(
   initialUser: AuthenticatedRuntimeUser | null,
   requestedSessionId?: string,
 ) {
   const assets = await getRuntimeWebAssets();
+  const jamName = JAM_NAME || null;
   const bootstrap = {
     initialUser,
+    jamName,
     requestedSessionId: requestedSessionId || null,
   };
   const appHtml = renderToString(createElement(RuntimeApp, { bootstrap }));
@@ -28,7 +31,7 @@ export async function renderRuntimeApp(
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jam — Multiplayer Claude</title>
+  <title>${jamName ? `${jamName} — Jam` : "Jam — Multiplayer Claude"}</title>
   ${renderOgMetaTags()}
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d1117'/%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%23ff9a56'/%3E%3Cstop offset='100%25' stop-color='%23ff6b6b'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg transform='translate(32,34)'%3E%3Crect x='-12' y='-18' width='24' height='28' rx='4' fill='none' stroke='url(%23g)' stroke-width='2.5'/%3E%3Crect x='-14' y='-20' width='28' height='8' rx='3' fill='url(%23g)' opacity='0.9'/%3E%3Ccircle cx='-4' cy='0' r='2.5' fill='%23ff9a56' opacity='0.8'/%3E%3Ccircle cx='4' cy='4' r='2' fill='%23ffcc80' opacity='0.7'/%3E%3Ccircle cx='-2' cy='6' r='1.5' fill='%23ff6b6b' opacity='0.6'/%3E%3C/g%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">

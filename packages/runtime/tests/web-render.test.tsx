@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { renderRuntimeApp } from "../src/server/static-app";
 
 test("renderRuntimeApp injects bootstrap data and app shell", async () => {
+  process.env.JAM_NAME = "";
   const response = await renderRuntimeApp({
     id: "user-1",
     email: "octo@example.com",

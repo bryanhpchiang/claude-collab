@@ -22,6 +22,7 @@ export const DEFAULT_NEW_PROJECTS_DIR = join(HOME_DIR, "projects");
 export const PORT = process.env.PORT === undefined ? 7681 : Number(process.env.PORT);
 export const CLAUDE_PATH = process.env.CLAUDE_PATH || execSync("which claude").toString().trim();
 export const JAM_ID = process.env.JAM_ID || "";
+export const JAM_NAME = process.env.JAM_NAME || "";
 export const JAM_PUBLIC_HOST = process.env.JAM_PUBLIC_HOST || "";
 export const JAM_SHARED_SECRET = process.env.JAM_SHARED_SECRET || "";
 export const JAM_DEPLOY_SECRET = process.env.JAM_DEPLOY_SECRET || "";

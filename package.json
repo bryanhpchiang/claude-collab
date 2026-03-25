@@ -2,9 +2,6 @@
   "name": "claude-collab",
   "version": "1.0.0",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
   "scripts": {
     "start": "bun run runtime:start",
     "dev": "bun run runtime:dev",
@@ -20,5 +17,8 @@
     "coordination:web:dev": "cd packages/coordination && bun run web:dev",
     "coordination:web:build": "cd packages/coordination && bun run web:build",
     "coordination:web:test": "cd packages/coordination && bun run web:test"
-  }
+  },
+  "workspaces": [
+    "packages/*"
+  ]
 }

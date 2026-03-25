@@ -36,7 +36,6 @@ export {
 export {
   OG_IMAGE_PATH,
   renderOgMetaTags,
-  serveOgImage,
 } from "./og";
 
 export { type VersionInfo, getVersionInfo } from "./version";

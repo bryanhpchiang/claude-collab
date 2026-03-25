@@ -2,6 +2,7 @@ import type { CoordinationConfig } from "../config";
 
 export type JamRuntimeEnv = {
   jamId: string;
+  jamName?: string;
   publicHost: string;
   sharedSecret: string;
   deploySecret: string;
@@ -20,6 +21,7 @@ export function buildJamInstanceUserDataScript(
     `JAM_PUBLIC_HOST=${shellQuote(runtimeEnv.publicHost)}`,
     `JAM_SHARED_SECRET=${shellQuote(runtimeEnv.sharedSecret)}`,
     `JAM_DEPLOY_SECRET=${shellQuote(runtimeEnv.deploySecret)}`,
+    ...(runtimeEnv.jamName ? [`JAM_NAME=${shellQuote(runtimeEnv.jamName)}`] : []),
     `COORDINATION_BASE_URL=${shellQuote(config.baseUrl)}`,
   ].join(" ");
 

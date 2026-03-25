@@ -348,6 +348,7 @@ export async function handleJamRoutes(
       const jamId = createJamId();
       const runtimeEnv: JamRuntimeEnv = {
         jamId,
+        jamName: jamName || undefined,
         publicHost: context.ec2.buildJamHost(jamId),
         sharedSecret: createRandomToken(48),
         deploySecret: createRandomToken(48),

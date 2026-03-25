@@ -51,5 +51,6 @@ export type ChatEntry =
 
 export type RuntimeBootstrap = {
   initialUser: AuthenticatedRuntimeUser | null;
+  jamName: string | null;
   requestedSessionId: string | null;
 };
