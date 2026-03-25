@@ -1,4 +1,5 @@
 import { spawnSync } from "child_process";
+import { appendFileSync } from "fs";
 import { mkdir, readdir, readFile, stat } from "fs/promises";
 import { join } from "path";
 import {
@@ -7,6 +8,15 @@ import {
   HOME_DIR,
   UPLOAD_DIR,
 } from "../config";
+
+const JAM_MESSAGES_LOG = join(HOME_DIR, ".claude", "jam-messages.log");
+
+function appendMessageLog(username: string, text: string) {
+  const ts = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  try {
+    appendFileSync(JAM_MESSAGES_LOG, `${ts} [${username}]: ${text}\n`);
+  } catch {}
+}
 import { resolveProjectCwd } from "../project-paths";
 import { buildClaudeInput } from "../session-input";
 import { spawnClaude, SYSTEM_PROMPT } from "./claude";
@@ -261,6 +271,7 @@ export class RuntimeStore {
     const session = this.sessions.get(sessionId);
     if (!session) return;
 
+    appendMessageLog(name, text);
     this.broadcastChat(sessionId, name, text);
     session.shell.write(buildClaudeInput({ name, text, direct }));
     this.recordMentions(sessionId, name, text);

@@ -1,3 +1,5 @@
+import { readFile } from "fs/promises";
+import { join } from "path";
 import { HOME_DIR, JAM_DEPLOY_SECRET, WORKSPACE_ROOT } from "../../config";
 import { DEPLOY_HEADER_NAME } from "../runtime-auth";
 import type { RuntimeStore } from "../runtime-store";
@@ -87,6 +89,15 @@ export async function handleSystemRoute(req: Request, url: URL, store: RuntimeSt
 
   if (url.pathname === "/api/state-summary" && req.method === "GET") {
     return Response.json(store.buildStateSummary());
+  }
+
+  if (url.pathname === "/api/state" && req.method === "GET") {
+    try {
+      const content = await readFile(join(WORKSPACE_ROOT, "STATE.md"), "utf-8");
+      return new Response(content, { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+    } catch {
+      return new Response("", { headers: { "Content-Type": "text/plain; charset=utf-8" } });
+    }
   }
 
   if (url.pathname === "/api/deploy" && req.method === "POST") {
