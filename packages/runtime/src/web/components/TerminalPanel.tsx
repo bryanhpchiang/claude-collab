@@ -25,11 +25,12 @@ type TerminalPanelProps = {
   connectedUsers: string[];
   currentUserName: string;
   onClaudeReady(): void;
+  onReady(): void;
   onTtyInput(data: string): void;
 };
 
 export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(function TerminalPanel(
-  { children, connectedUsers, currentUserName, onClaudeReady, onTtyInput },
+  { children, connectedUsers, currentUserName, onClaudeReady, onReady, onTtyInput },
   ref,
 ) {
   const terminalContainerRef = useRef<HTMLDivElement | null>(null);
@@ -85,6 +86,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
     term.loadAddon(fitAddon);
     term.open(container);
     fitAddon.fit();
+    onReady();
 
     const isNearBottom = () => term.buffer.active.viewportY >= term.buffer.active.baseY - 5;
 
@@ -125,7 +127,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
       fitAddonRef.current = null;
       termRef.current = null;
     };
-  }, [onTtyInput]);
+  }, [onReady, onTtyInput]);
 
   useEffect(() => {
     const term = termRef.current;

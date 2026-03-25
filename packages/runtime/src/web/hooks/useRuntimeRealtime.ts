@@ -24,6 +24,7 @@ const DEFAULT_ERROR_OVERLAY: ErrorOverlayState = {
 
 type UseRuntimeRealtimeOptions = {
   currentSessionId: string | null;
+  enabled: boolean;
   initialUser: AuthenticatedRuntimeUser | null;
   joinSessionRef: MutableRefObject<((sessionId: string) => void) | null>;
   onProjectsUpdate(projects: ProjectSummary[], sessions: SessionSummary[]): void;
@@ -37,6 +38,7 @@ type UseRuntimeRealtimeOptions = {
 
 export function useRuntimeRealtime({
   currentSessionId,
+  enabled,
   initialUser,
   joinSessionRef,
   onProjectsUpdate,
@@ -163,6 +165,8 @@ export function useRuntimeRealtime({
   };
 
   useEffect(() => {
+    if (!enabled) return;
+
     let isActive = true;
     let reconnectTimer: number | null = null;
 
@@ -278,7 +282,7 @@ export function useRuntimeRealtime({
       wsRef.current?.close();
       stopPollingRef.current();
     };
-  }, [terminalRef]);
+  }, [enabled, terminalRef]);
 
   return {
     appendSystem,

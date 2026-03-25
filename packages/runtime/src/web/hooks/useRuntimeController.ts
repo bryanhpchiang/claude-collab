@@ -1,6 +1,7 @@
 import {
   useEffect,
   useRef,
+  useState,
 } from "react";
 import type { TerminalHandle } from "../components/TerminalPanel";
 import { useRuntimeComposer } from "./useRuntimeComposer";
@@ -15,6 +16,7 @@ const EMPTY_STATE_HTML =
 export function useRuntimeController(bootstrap: RuntimeBootstrap) {
   const terminalRef = useRef<TerminalHandle | null>(null);
   const chatLogRef = useRef<HTMLDivElement | null>(null);
+  const [terminalReady, setTerminalReady] = useState(false);
   const joinSessionRef = useRef<((sessionId: string) => void) | null>(null);
   const appendSystemRef = useRef<(text: string) => void>(() => undefined);
   const resetSessionRealtimeRef = useRef<() => void>(() => undefined);
@@ -112,6 +114,7 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
     wsConnected,
   } = useRuntimeRealtime({
     currentSessionId,
+    enabled: terminalReady,
     initialUser: bootstrap.initialUser,
     joinSessionRef,
     onProjectsUpdate: handleProjectsUpdate,
@@ -224,6 +227,9 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
       currentUserName: myName,
       onClaudeReady() {
         messageInputRef.current?.focus();
+      },
+      onReady() {
+        setTerminalReady(true);
       },
       onTtyInput(data: string) {
         sendWs({ type: "tty-input", data });
