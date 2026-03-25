@@ -9,6 +9,8 @@ const state = {
   user: initialState.user,
   jams: initialState.jams || [],
   creating: false,
+  createModalOpen: false,
+  createError: "",
   deletingId: null,
   error: "",
   access: {
@@ -32,6 +34,12 @@ const elements = {
   errorText: document.getElementById("dash-error-text"),
   errorDismiss: document.getElementById("dash-error-dismiss"),
   createButton: document.getElementById("jam-create-btn"),
+  createModal: document.getElementById("create-modal"),
+  createModalClose: document.getElementById("create-modal-close"),
+  createModalError: document.getElementById("create-modal-error"),
+  createModalErrorText: document.getElementById("create-modal-error-text"),
+  createModalForm: document.getElementById("create-modal-form"),
+  createSubmitButton: document.getElementById("jam-create-submit"),
   nameInput: document.getElementById("jam-name-input"),
   accessModal: document.getElementById("access-modal"),
   accessModalTitle: document.getElementById("access-modal-title"),
@@ -114,7 +122,7 @@ function renderJamCard(jam) {
       ? `<a class="dash-card-open" href="${escapeHtml(jam.url)}" target="_blank" rel="noopener">Open</a>`
       : `<span class="dash-card-open is-disabled">Open</span>`;
   const accessAction = ownJam
-    ? `<button class="dash-card-open" type="button" data-action="access" data-jam-id="${escapeHtml(jam.id)}">Manage Access</button>`
+    ? `<button class="dash-card-open" type="button" data-action="access" data-jam-id="${escapeHtml(jam.id)}">Manage</button>`
     : "";
   const deleteAction = ownJam
     ? `<button class="dash-card-delete" type="button" data-action="delete" data-jam-id="${escapeHtml(jam.id)}">${state.deletingId === jam.id ? "Terminating..." : "Terminate"}</button>`
@@ -224,6 +232,32 @@ function renderAccessModal() {
   renderMembers();
 }
 
+function renderCreateModal() {
+  elements.createModal.hidden = !state.createModalOpen;
+  if (!state.createModalOpen) return;
+
+  const active = hasActiveJam();
+  elements.createModalError.hidden = !state.createError;
+  elements.createModalErrorText.textContent = state.createError;
+
+  if (elements.nameInput) {
+    elements.nameInput.disabled = state.creating || active;
+  }
+
+  if (elements.createModalClose) {
+    elements.createModalClose.disabled = state.creating;
+  }
+
+  if (elements.createSubmitButton) {
+    elements.createSubmitButton.disabled = state.creating || active;
+    elements.createSubmitButton.textContent = state.creating
+      ? "Creating..."
+      : active
+        ? "Instance Running"
+        : "Create Instance";
+  }
+}
+
 function setError(message) {
   state.error = message || "";
   render();
@@ -232,6 +266,24 @@ function setError(message) {
 function setAccessError(message) {
   state.access.error = message || "";
   renderAccessModal();
+}
+
+function openCreateModal() {
+  if (state.creating || hasActiveJam()) return;
+  state.createModalOpen = true;
+  state.createError = "";
+  render();
+  window.requestAnimationFrame(() => {
+    elements.nameInput?.focus();
+    elements.nameInput?.select();
+  });
+}
+
+function closeCreateModal() {
+  if (state.creating) return;
+  state.createModalOpen = false;
+  state.createError = "";
+  render();
 }
 
 function resetAccessState() {
@@ -273,11 +325,8 @@ function render() {
         : "Create Instance";
   }
 
-  if (elements.nameInput) {
-    elements.nameInput.disabled = state.creating || active;
-  }
-
   renderAccessModal();
+  renderCreateModal();
   syncPolling();
 }
 
@@ -309,6 +358,7 @@ async function createJam(nameOverride) {
   if (hasActiveJam()) return;
 
   state.creating = true;
+  state.createError = "";
   render();
 
   try {
@@ -335,10 +385,18 @@ async function createJam(nameOverride) {
     if (elements.nameInput) {
       elements.nameInput.value = "";
     }
+    state.createModalOpen = false;
+    state.createError = "";
     state.error = "";
     await loadJams();
   } catch (error) {
-    setError(error.message || "Failed to create instance");
+    const message = error.message || "Failed to create instance";
+    if (state.createModalOpen) {
+      state.createError = message;
+      renderCreateModal();
+    } else {
+      setError(message);
+    }
   } finally {
     state.creating = false;
     render();
@@ -543,14 +601,13 @@ function syncPolling() {
 }
 
 elements.createButton?.addEventListener("click", () => {
-  createJam();
+  openCreateModal();
 });
 
-elements.nameInput?.addEventListener("keydown", (event) => {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    createJam();
-  }
+elements.createModalClose?.addEventListener("click", closeCreateModal);
+elements.createModalForm?.addEventListener("submit", (event) => {
+  event.preventDefault();
+  createJam();
 });
 
 elements.errorDismiss?.addEventListener("click", () => {
@@ -559,7 +616,15 @@ elements.errorDismiss?.addEventListener("click", () => {
 
 elements.accessModalClose?.addEventListener("click", closeAccessModal);
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && state.access.jamId) closeAccessModal();
+  if (event.key !== "Escape") return;
+  if (state.access.jamId) closeAccessModal();
+  if (state.createModalOpen) closeCreateModal();
+});
+elements.createModal?.addEventListener("click", (event) => {
+  const target = event.target instanceof Element ? event.target : null;
+  if (target?.getAttribute("data-action") === "close-create") {
+    closeCreateModal();
+  }
 });
 elements.accessModal?.addEventListener("click", (event) => {
   const target = event.target instanceof Element ? event.target : null;

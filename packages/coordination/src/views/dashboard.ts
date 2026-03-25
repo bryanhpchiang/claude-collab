@@ -24,7 +24,6 @@ export function renderDashboardPage(options: DashboardOptions) {
           <a href="/" class="dash-brand">Jam</a>
           <div class="dash-header-right">
             <span class="dash-greeting">Hey, ${escapeHtml(options.user.name || options.user.login)}</span>
-            <a href="https://buymeacoffee.com/jam" target="_blank" rel="noopener" class="dash-donate">Donate</a>
             <a href="/auth/logout" class="dash-card-open">Sign out</a>
           </div>
         </div>
@@ -33,17 +32,10 @@ export function renderDashboardPage(options: DashboardOptions) {
       <main class="container dash-main">
         <section class="dash-top">
           <div class="dash-title-block">
-            <p class="section-label">Coordination</p>
             <h1 class="dash-title">Instances</h1>
-            <p class="dash-subtitle">Launch a jam, wait for it to boot, then manage access with one-time invite links.</p>
+            <p class="dash-subtitle">Build and deploy together in live multiplayer Claude Code sessions.</p>
           </div>
           <div class="dash-create-area">
-            <input
-              id="jam-name-input"
-              class="dash-name-input"
-              type="text"
-              maxlength="64"
-              placeholder="Name your jam (optional)">
             <button id="jam-create-btn" class="dash-create-btn" type="button">Create Instance</button>
           </div>
         </section>
@@ -89,6 +81,38 @@ export function renderDashboardPage(options: DashboardOptions) {
             <h3>Members</h3>
             <div id="access-members-list" class="access-list"></div>
           </section>
+        </div>
+      </div>
+
+      <div id="create-modal" class="access-modal" hidden>
+        <div class="access-modal-backdrop" data-action="close-create"></div>
+        <div class="access-modal-dialog create-modal-dialog">
+          <div class="access-modal-header">
+            <div>
+              <p class="section-label">New Instance</p>
+              <h2 class="access-modal-title">Create a Jam</h2>
+            </div>
+            <button id="create-modal-close" class="dash-card-open" type="button">Cancel</button>
+          </div>
+
+          <p class="create-modal-copy">Launch a shared Claude Code session with an optional name for your team.</p>
+
+          <div id="create-modal-error" class="dash-error" hidden>
+            <div id="create-modal-error-text" class="dash-error-content"></div>
+          </div>
+
+          <form id="create-modal-form" class="create-modal-form">
+            <input
+              id="jam-name-input"
+              class="dash-name-input"
+              type="text"
+              maxlength="64"
+              autocomplete="off"
+              placeholder="Name your jam (optional)">
+            <div class="create-modal-actions">
+              <button id="jam-create-submit" class="dash-create-btn" type="submit">Create Instance</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>

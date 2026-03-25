@@ -48,7 +48,6 @@ export function renderLandingPage(options: LandingOptions) {
         <a href="/" class="nav-brand">Jam</a>
         <div class="nav-links">
           <a href="https://github.com/bryanhpchiang/claude-collab" target="_blank" rel="noopener">GitHub</a>
-          <a href="https://buymeacoffee.com/jam" target="_blank" rel="noopener">Donate</a>
           ${navAction}
         </div>
       </nav>

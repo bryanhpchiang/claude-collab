@@ -67,7 +67,7 @@ export function renderJamCard(jam: DashboardJam, currentUserId: string) {
     ? `<button class="dash-card-delete" type="button" data-action="delete" data-jam-id="${escapeHtml(jam.id)}">Terminate</button>`
     : "";
   const accessAction = isOwner
-    ? `<button class="dash-card-open" type="button" data-action="access" data-jam-id="${escapeHtml(jam.id)}">Manage Access</button>`
+    ? `<button class="dash-card-open" type="button" data-action="access" data-jam-id="${escapeHtml(jam.id)}">Manage</button>`
     : "";
 
   return `<article class="dash-card${isOwner ? " dash-card-own" : ""}" data-jam-id="${escapeHtml(jam.id)}">
