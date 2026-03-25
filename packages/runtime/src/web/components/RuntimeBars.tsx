@@ -3,9 +3,10 @@ import type { ProjectSummary, SessionSummary } from "../types";
 
 type RuntimeHeaderProps = {
   connectedUsers: string[];
+  onOpenInvite?(): void;
 };
 
-export function RuntimeHeader({ connectedUsers }: RuntimeHeaderProps) {
+export function RuntimeHeader({ connectedUsers, onOpenInvite }: RuntimeHeaderProps) {
   return (
     <div id="header">
       <a href="https://letsjam.now" rel="noopener" className="brand-link" title="Back to Jam lobby">
@@ -27,6 +28,33 @@ export function RuntimeHeader({ connectedUsers }: RuntimeHeaderProps) {
         <span className="brand-jam">Jam</span>
       </a>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {onOpenInvite && (
+          <button
+            type="button"
+            onClick={onOpenInvite}
+            title="Invite someone to this jam"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "4px 10px",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#e6edf3",
+              background: "linear-gradient(135deg, rgba(255,154,86,0.15), rgba(255,107,107,0.15))",
+              border: "1px solid rgba(255,154,86,0.3)",
+              borderRadius: 6,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
+            <svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor" style={{ flexShrink: 0 }}>
+              <path d="M11 2a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM0 13c0-2.8 2.2-5 5-5h6c2.8 0 5 2.2 5 5v1H0v-1z" />
+              <path d="M13 5.5a.5.5 0 0 1 .5-.5H15v-1.5a.5.5 0 0 1 1 0V5h1.5a.5.5 0 0 1 0 1H16v1.5a.5.5 0 0 1-1 0V6h-1.5a.5.5 0 0 1-.5-.5z" />
+            </svg>
+            Invite
+          </button>
+        )}
         <div id="users-bar">
           {connectedUsers.map((user, index) => (
             <span key={user}>

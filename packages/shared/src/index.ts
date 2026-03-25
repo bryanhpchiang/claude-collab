@@ -9,6 +9,13 @@ export {
   verifyToken,
 } from "./crypto";
 
+export type ServiceTokenPayload = {
+  kind: "service";
+  userId: string;
+  jamId: string;
+  exp: number;
+};
+
 export {
   type CookieOptions,
   serializeCookie,

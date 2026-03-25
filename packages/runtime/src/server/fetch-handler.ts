@@ -1,4 +1,5 @@
 import { handleAuthRoute } from "./routes/auth";
+import { handleInvitesRoute } from "./routes/invites";
 import { handleProjectsRoute } from "./routes/projects";
 import { handleSecretsRoute } from "./routes/secrets";
 import { handleSessionsRoute } from "./routes/sessions";
@@ -38,6 +39,7 @@ export function createFetchHandler(store: RuntimeStore) {
     }
 
     const handlers = [
+      (request: Request, nextUrl: URL) => handleInvitesRoute(request, nextUrl),
       (request: Request, nextUrl: URL, nextStore: RuntimeStore) =>
         handleProjectsRoute(request, nextUrl, nextStore),
       (request: Request, nextUrl: URL, nextStore: RuntimeStore) =>

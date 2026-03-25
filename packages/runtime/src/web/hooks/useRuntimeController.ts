@@ -10,6 +10,8 @@ import { useRuntimeSidebar } from "./useRuntimeSidebar";
 import { useRuntimeWorkspace } from "./useRuntimeWorkspace";
 import type { RuntimeBootstrap } from "../types";
 
+const JAM_CATCHUP_KEY = "jam-catchup-seen-v1";
+
 const EMPTY_STATE_HTML =
   '<div id="state-summary-empty">No activity yet. Start chatting and an AI summary will appear here.</div>';
 
@@ -17,6 +19,8 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
   const terminalRef = useRef<TerminalHandle | null>(null);
   const chatLogRef = useRef<HTMLDivElement | null>(null);
   const [terminalReady, setTerminalReady] = useState(false);
+  const [catchUpOpen, setCatchUpOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const joinSessionRef = useRef<((sessionId: string) => void) | null>(null);
   const appendSystemRef = useRef<(text: string) => void>(() => undefined);
   const resetSessionRealtimeRef = useRef<() => void>(() => undefined);
@@ -161,6 +165,17 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
   }, [currentSessionId]);
 
   useEffect(() => {
+    if (!myName) return;
+    try {
+      const seen = localStorage.getItem(JAM_CATCHUP_KEY);
+      if (!seen) {
+        setCatchUpOpen(true);
+        localStorage.setItem(JAM_CATCHUP_KEY, "1");
+      }
+    } catch {}
+  }, [myName]);
+
+  useEffect(() => {
     chatLogRef.current?.scrollTo({ top: chatLogRef.current.scrollHeight });
   }, [chatEntries]);
 
@@ -190,6 +205,9 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
     terminalRef,
     headerProps: {
       connectedUsers,
+      onOpenInvite() {
+        setInviteOpen(true);
+      },
     },
     projectBarProps: {
       currentProjectId,
@@ -322,6 +340,18 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
       },
       onProjectCwdChange: setNewProjectCwd,
       onProjectNameChange: setNewProjectName,
+    },
+    catchUpModalProps: {
+      open: catchUpOpen,
+      onDismiss() {
+        setCatchUpOpen(false);
+      },
+    },
+    inviteModalProps: {
+      open: inviteOpen,
+      onDismiss() {
+        setInviteOpen(false);
+      },
     },
   };
 }

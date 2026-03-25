@@ -2,8 +2,10 @@ import {
   NewProjectModal,
   NewSessionModal,
 } from "./components/CreationModals";
+import { CatchUpModal } from "./components/CatchUpModal";
 import { ErrorOverlay } from "./components/ErrorOverlay";
 import { ChatPanel } from "./components/ChatPanel";
+import { InviteModal } from "./components/InviteModal";
 import {
   ProjectBar,
   RuntimeHeader,
@@ -37,6 +39,8 @@ export function RuntimeApp({ bootstrap }: RuntimeAppProps) {
       <StateSidebar {...runtime.stateSidebarProps} />
       <NewSessionModal {...runtime.newSessionModalProps} />
       <NewProjectModal {...runtime.newProjectModalProps} />
+      <CatchUpModal {...runtime.catchUpModalProps} />
+      <InviteModal {...runtime.inviteModalProps} />
     </>
   );
 }
