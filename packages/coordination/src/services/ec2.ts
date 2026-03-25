@@ -21,6 +21,12 @@ type InstanceLike = {
   PublicIpAddress?: string | null;
 };
 
+type InstanceStateLike = {
+  State?: {
+    Name?: string | null;
+  } | null;
+};
+
 type WaitForPublicIpOptions = {
   maxAttempts?: number;
   delayMs?: number;
@@ -79,6 +85,40 @@ export async function waitForPublicIp(
   }
 
   throw new Error("Timed out waiting for public IP");
+}
+
+export async function waitForInstanceRunning(
+  loadInstance: () => Promise<InstanceStateLike | undefined>,
+  options: WaitForPublicIpOptions = {},
+) {
+  const maxAttempts = options.maxAttempts ?? 20;
+  const delayMs = options.delayMs ?? 3000;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      const instance = await loadInstance();
+      const state = instance?.State?.Name;
+
+      if (state === "running") {
+        return;
+      }
+
+      if (state && state !== "pending") {
+        throw new Error(`Instance entered '${state}' before reaching 'running'`);
+      }
+    } catch (error) {
+      const isLastAttempt = attempt === maxAttempts - 1;
+      if (!isRetryableInstanceLookupError(error) || isLastAttempt) {
+        throw error;
+      }
+    }
+
+    if (attempt < maxAttempts - 1) {
+      await sleep(delayMs);
+    }
+  }
+
+  throw new Error("Timed out waiting for instance to enter running state");
 }
 
 export function buildJamPath(jamId: string) {
@@ -187,6 +227,8 @@ export function createEc2Service(config: CoordinationConfig) {
       }
 
       try {
+        await waitForInstanceRunning(() => getInstance(instanceId));
+
         await elbv2.send(
           new RegisterTargetsCommand({
             TargetGroupArn: targetGroupArn,

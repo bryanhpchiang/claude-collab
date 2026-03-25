@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   buildJamPath,
   buildJamRedirectUrl,
+  waitForInstanceRunning,
   waitForPublicIp,
 } from "../../src/services/ec2";
 
@@ -43,6 +44,44 @@ describe("waitForPublicIp", () => {
         { maxAttempts: 3, delayMs: 0 },
       ),
     ).rejects.toBe(error);
+  });
+});
+
+describe("waitForInstanceRunning", () => {
+  test("retries until the instance reaches the running state", async () => {
+    let attempts = 0;
+
+    await waitForInstanceRunning(
+      async () => {
+        attempts += 1;
+
+        if (attempts === 1) {
+          const error = new Error(
+            "The instance ID 'i-0905a2e9052ec13f6' does not exist",
+          ) as Error & { name: string };
+          error.name = "InvalidInstanceID.NotFound";
+          throw error;
+        }
+
+        if (attempts === 2) {
+          return { State: { Name: "pending" } };
+        }
+
+        return { State: { Name: "running" } };
+      },
+      { maxAttempts: 4, delayMs: 0 },
+    );
+
+    expect(attempts).toBe(3);
+  });
+
+  test("fails fast when the instance enters a terminal state", async () => {
+    await expect(
+      waitForInstanceRunning(
+        async () => ({ State: { Name: "terminated" } }),
+        { maxAttempts: 3, delayMs: 0 },
+      ),
+    ).rejects.toThrow("Instance entered 'terminated' before reaching 'running'");
   });
 });
 
