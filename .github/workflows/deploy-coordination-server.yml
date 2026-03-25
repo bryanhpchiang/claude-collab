@@ -9,6 +9,7 @@ on:
       - bun.lock
       - packages/coordination/**
       - packages/runtime/package.json
+      - packages/shared/**
       - .github/workflows/deploy-coordination-server.yml
   workflow_dispatch:
 
