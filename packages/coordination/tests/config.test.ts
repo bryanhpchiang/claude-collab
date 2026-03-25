@@ -83,4 +83,13 @@ describe("loadConfig", () => {
       },
     );
   });
+
+  test("builds web assets before starting the coordination package", async () => {
+    const pkg = await Bun.file(new URL("../package.json", import.meta.url)).json() as {
+      scripts?: Record<string, string>;
+    };
+
+    expect(pkg.scripts?.start).toContain("web:build");
+    expect(pkg.scripts?.dev).toContain("web:build");
+  });
 });

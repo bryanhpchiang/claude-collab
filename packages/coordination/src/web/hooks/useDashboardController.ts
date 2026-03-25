@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type {
   CoordinationUser,
   DashboardAccessState,
@@ -58,6 +64,7 @@ export function useDashboardController({ initialJams, user }: UseDashboardContro
   const [createName, setCreateName] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [access, setAccess] = useState<DashboardAccessState>(createAccessState);
+  const jamsRef = useRef(initialJams);
 
   const activeJamExists = useMemo(() => hasActiveJam(jams, user.id), [jams, user.id]);
 
@@ -78,7 +85,9 @@ export function useDashboardController({ initialJams, user }: UseDashboardContro
       if (!response.ok) {
         throw new Error(`Failed to fetch jams (${response.status})`);
       }
-      setJams(await response.json());
+      const nextJams = await response.json();
+      jamsRef.current = nextJams;
+      setJams(nextJams);
       setError((current) => (current.startsWith("Failed to fetch") ? "" : current));
     } catch (nextError) {
       setError(getErrorMessage(nextError, "Failed to fetch jams"));
@@ -134,7 +143,7 @@ export function useDashboardController({ initialJams, user }: UseDashboardContro
   };
 
   const createJam = async (nameOverride?: string) => {
-    if (activeJamExists) return;
+    if (hasActiveJam(jamsRef.current, user.id)) return;
 
     setCreating(true);
     setCreateError("");
