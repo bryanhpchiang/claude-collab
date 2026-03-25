@@ -19,7 +19,14 @@ export function escapeHtml(value: string) {
 }
 
 export function renderBootstrapScript(id: string, data: unknown) {
-  return `<script id="${escapeHtml(id)}" type="application/json">${escapeHtml(JSON.stringify(data))}</script>`;
+  const payload = (JSON.stringify(data) || "null")
+    .replaceAll("<", "\\u003c")
+    .replaceAll(">", "\\u003e")
+    .replaceAll("&", "\\u0026")
+    .replaceAll("\u2028", "\\u2028")
+    .replaceAll("\u2029", "\\u2029");
+
+  return `<script id="${escapeHtml(id)}" type="application/json">${payload}</script>`;
 }
 
 export function readBootstrapData<T>(id: string): T {

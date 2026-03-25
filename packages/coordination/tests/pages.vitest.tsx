@@ -95,4 +95,94 @@ describe("Coordination App", () => {
     expect(await screen.findByRole("heading", { name: /alpha jam/i, level: 2 })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /create invite link/i })).toBeInTheDocument();
   });
+
+  test("restarts a stuck jam after terminating it", async () => {
+    let jamsCallCount = 0;
+
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url === "/api/jams/jam-1" && init?.method === "DELETE") {
+        return jsonResponse({});
+      }
+
+      if (url === "/api/jams" && !init?.method) {
+        jamsCallCount += 1;
+        return jsonResponse(
+          jamsCallCount === 1
+            ? []
+            : [
+              {
+                id: "jam-2",
+                instanceId: "i-456",
+                url: "https://jam-2.example.com",
+                state: "running",
+                creator: {
+                  user_id: "user-1",
+                  login: "jam-owner",
+                  name: "Jam Owner",
+                  avatar_url: "",
+                },
+                created_at: new Date().toISOString(),
+                name: "Alpha Jam",
+              },
+            ],
+        );
+      }
+
+      if (url === "/api/jams" && init?.method === "POST") {
+        return jsonResponse({});
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const user = userEvent.setup();
+
+    render(
+      <DashboardPage
+        user={{
+          id: "user-1",
+          email: "jam@example.com",
+          login: "jam-owner",
+          name: "Jam Owner",
+          avatar_url: "",
+        }}
+        initialJams={[
+          {
+            id: "jam-1",
+            instanceId: "i-123",
+            url: null,
+            state: "pending",
+            creator: {
+              user_id: "user-1",
+              login: "jam-owner",
+              name: "Jam Owner",
+              avatar_url: "",
+            },
+            created_at: new Date(Date.now() - 6 * 60 * 1000).toISOString(),
+            name: "Alpha Jam",
+          },
+        ]}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /terminate & start over/i }));
+
+    await waitFor(() => {
+      expect(
+        fetchMock.mock.calls.some(([input, init]) => (
+          String(input) === "/api/jams" && (init as RequestInit | undefined)?.method === "POST"
+        )),
+      ).toBe(true);
+    });
+
+    const postCall = fetchMock.mock.calls.find(([input, init]) => (
+      String(input) === "/api/jams" && (init as RequestInit | undefined)?.method === "POST"
+    ));
+    expect(postCall).toBeDefined();
+    expect(JSON.parse(String((postCall?.[1] as RequestInit).body))).toMatchObject({
+      name: "Alpha Jam",
+    });
+  });
 });
