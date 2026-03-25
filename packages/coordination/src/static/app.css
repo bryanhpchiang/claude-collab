@@ -433,7 +433,7 @@ input {
 
 .dash-top {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
   margin-bottom: 28px;
