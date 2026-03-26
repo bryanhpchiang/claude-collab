@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { RuntimeApp } from "../src/web/RuntimeApp";
@@ -134,7 +134,10 @@ describe("RuntimeApp", () => {
     MockWebSocket.instances = [];
     terminalWrites.splice(0);
     terminalConstructorCount = 0;
-    localStorage.setItem("jam-catchup-seen-v1", "1");
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input) === "/health") return jsonResponse({ ok: true });
+      throw new Error(`Unexpected fetch: ${String(input)}`);
+    });
     Object.defineProperty(HTMLElement.prototype, "clientWidth", {
       configurable: true,
       get() {
@@ -158,7 +161,9 @@ describe("RuntimeApp", () => {
   });
 
   afterEach(() => {
-    localStorage.clear();
+    cleanup();
+    if (typeof localStorage?.clear === "function") localStorage.clear();
+    history.replaceState(null, "", "/");
     if (clientWidthDescriptor) {
       Object.defineProperty(HTMLElement.prototype, "clientWidth", clientWidthDescriptor);
     } else {
@@ -175,6 +180,10 @@ describe("RuntimeApp", () => {
   test("creates a fresh session when the new tab button is clicked", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
+
+      if (url === "/health") {
+        return jsonResponse({ ok: true });
+      }
 
       if (url === "/api/sessions" && init?.method === "POST") {
         return jsonResponse({ id: "session-2" });
@@ -201,10 +210,16 @@ describe("RuntimeApp", () => {
     await user.click(screen.getByRole("button", { name: "+" }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(
+        fetchMock.mock.calls.some(([input, init]) =>
+          input === "/api/sessions" && (init as RequestInit | undefined)?.method === "POST"),
+      ).toBe(true);
     });
 
-    const createCall = fetchMock.mock.calls[0];
+    const createCall = fetchMock.mock.calls.find(([input, init]) =>
+      input === "/api/sessions" && (init as RequestInit | undefined)?.method === "POST");
+    expect(createCall).toBeTruthy();
+    if (!createCall) throw new Error("Missing session creation request");
     expect(createCall[0]).toBe("/api/sessions");
     expect(createCall[1]).toMatchObject({
       method: "POST",
@@ -217,6 +232,11 @@ describe("RuntimeApp", () => {
   });
 
   test("auto-joins the default session and writes runtime output to the terminal", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input) === "/health") return jsonResponse({ ok: true });
+      throw new Error(`Unexpected fetch: ${String(input)}`);
+    });
+
     const bootstrap: RuntimeBootstrap = {
       initialUser: {
         id: "user-1",
@@ -239,6 +259,9 @@ describe("RuntimeApp", () => {
 
     act(() => {
       socket.emitOpen();
+    });
+
+    act(() => {
       socket.emitMessage({
         type: "projects",
         projects: [
@@ -271,6 +294,7 @@ describe("RuntimeApp", () => {
       });
     });
 
+    expect((await screen.findAllByText(/general/i)).length).toBeGreaterThan(0);
     await waitFor(() => {
       expect(
         socket.sent.some((payload) => JSON.parse(payload).type === "join-session"),
@@ -290,6 +314,11 @@ describe("RuntimeApp", () => {
   });
 
   test("loads and auto-joins sessions even before the terminal reports ready", async () => {
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      if (String(input) === "/health") return jsonResponse({ ok: true });
+      throw new Error(`Unexpected fetch: ${String(input)}`);
+    });
+
     const widthDescriptor = Object.getOwnPropertyDescriptor(
       HTMLElement.prototype,
       "clientWidth",
@@ -367,7 +396,7 @@ describe("RuntimeApp", () => {
         });
       });
 
-      expect(await screen.findByText(/general/i)).toBeInTheDocument();
+      expect((await screen.findAllByText(/general/i)).length).toBeGreaterThan(0);
 
       await waitFor(() => {
         expect(
@@ -387,5 +416,92 @@ describe("RuntimeApp", () => {
         delete (HTMLElement.prototype as Partial<HTMLElement>).clientHeight;
       }
     }
+  });
+
+  test("keeps new tabs visible when session creation succeeds before websocket connect", async () => {
+    let sessionFetchCount = 0;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url === "/health") {
+        return jsonResponse({ ok: true });
+      }
+
+      if (url === "/api/sessions" && !init?.method) {
+        sessionFetchCount += 1;
+        return jsonResponse(sessionFetchCount > 1 ? [
+          {
+            id: "session-1",
+            name: "General",
+            projectId: "project-1",
+            users: [],
+            createdAt: 1,
+          },
+          {
+            id: "session-2",
+            name: "Tab 9:31 PM",
+            projectId: "project-1",
+            users: [],
+            createdAt: 2,
+          },
+        ] : [
+          {
+            id: "session-1",
+            name: "General",
+            projectId: "project-1",
+            users: [],
+            createdAt: 1,
+          },
+        ]);
+      }
+
+      if (url === "/api/projects" && !init?.method) {
+        return jsonResponse([
+          {
+            id: "project-1",
+            name: "Default",
+            cwd: "/tmp",
+            sessionCount: sessionFetchCount > 1 ? 2 : 1,
+            createdAt: 1,
+            sessions: [],
+          },
+        ]);
+      }
+
+      if (url === "/api/projects/project-1/sessions" && init?.method === "POST") {
+        return jsonResponse({
+          id: "session-2",
+          name: "Tab 9:31 PM",
+          projectId: "project-1",
+        });
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+
+    const user = userEvent.setup();
+    const bootstrap: RuntimeBootstrap = {
+      initialUser: {
+        id: "user-1",
+        email: "jam@example.com",
+        login: "jam-owner",
+        name: "Jam Owner",
+        avatar_url: "",
+      },
+      jamName: null,
+      requestedSessionId: null,
+    };
+
+    const { container } = render(<RuntimeApp bootstrap={bootstrap} />);
+
+    expect((await screen.findAllByText("General")).length).toBeGreaterThan(0);
+
+    await user.click(screen.getByRole("button", { name: "+" }));
+
+    expect(await screen.findByText("Tab 9:31 PM")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(window.location.search).toBe("?s=session-2");
+    });
+    expect(container.querySelector('.session-tab.active .tab-name')?.textContent).toBe("Tab 9:31 PM");
   });
 });

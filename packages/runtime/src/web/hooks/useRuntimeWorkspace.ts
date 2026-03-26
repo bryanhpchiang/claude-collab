@@ -51,29 +51,63 @@ export function useRuntimeWorkspace({
 
   const showSessionClose = sessionList.length > 1;
 
+  const mergeSession = (session: Partial<SessionSummary> | null | undefined, fallbackName?: string) => {
+    if (!session?.id) return null;
+    const nextSession: SessionSummary = {
+      id: session.id,
+      name: session.name || fallbackName || "Untitled",
+      projectId: session.projectId || currentProjectIdRef.current || "",
+      users: Array.isArray(session.users) ? session.users : [],
+      createdAt: typeof session.createdAt === "number" ? session.createdAt : Date.now(),
+    };
+    if (nextSession.projectId) currentProjectIdRef.current = nextSession.projectId;
+    setSessionList((current) => {
+      const existingIndex = current.findIndex((entry) => entry.id === nextSession.id);
+      if (existingIndex === -1) return [...current, nextSession];
+      const copy = [...current];
+      copy[existingIndex] = { ...copy[existingIndex], ...nextSession };
+      return copy;
+    });
+    return nextSession;
+  };
+
+  const syncWorkspaceSnapshot = async (
+    onlyIfEmpty = false,
+    isActive: (() => boolean) | null = null,
+  ) => {
+    const [sessionsResponse, projectsResponse] = await Promise.all([
+      fetch("/api/sessions"),
+      fetch("/api/projects"),
+    ]);
+
+    if (
+      (!isActive || isActive()) &&
+      sessionsResponse.ok &&
+      (!onlyIfEmpty || sessionListRef.current.length === 0)
+    ) {
+      const sessions: SessionSummary[] = await sessionsResponse.json();
+      if ((!isActive || isActive()) && (!onlyIfEmpty || sessionListRef.current.length === 0)) {
+        setSessionList(sessions);
+      }
+    }
+
+    if ((!isActive || isActive()) && projectsResponse.ok && !currentProjectIdRef.current) {
+      const projects: ProjectSummary[] = await projectsResponse.json();
+      if ((!isActive || isActive()) && projects.length > 0 && !currentProjectIdRef.current) {
+        currentProjectIdRef.current = projects[0].id;
+      }
+    }
+  };
+
   // Fetch sessions via HTTP on mount as a fallback in case the WS is slow or broken
   useEffect(() => {
-    let cancelled = false;
+    let active = true;
     (async () => {
       try {
-        const [sessRes, projRes] = await Promise.all([
-          fetch("/api/sessions"),
-          fetch("/api/projects"),
-        ]);
-        if (cancelled) return;
-        if (sessRes.ok && sessionListRef.current.length === 0) {
-          const sessions: SessionSummary[] = await sessRes.json();
-          if (!cancelled && sessionListRef.current.length === 0) setSessionList(sessions);
-        }
-        if (projRes.ok && !currentProjectIdRef.current) {
-          const projects: ProjectSummary[] = await projRes.json();
-          if (!cancelled && projects.length > 0 && !currentProjectIdRef.current) {
-            currentProjectIdRef.current = projects[0].id;
-          }
-        }
+        await syncWorkspaceSnapshot(true, () => active);
       } catch {}
     })();
-    return () => { cancelled = true; };
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -233,7 +267,10 @@ export function useRuntimeWorkspace({
       const text = await response.text().catch(() => "");
       throw new Error(text || `HTTP ${response.status}`);
     }
-    return response.json();
+    const session = await response.json();
+    mergeSession(session, name);
+    syncWorkspaceSnapshot().catch(() => undefined);
+    return session;
   };
 
   const createSession = async (resumeId?: string, nameOverride?: string) => {
@@ -247,10 +284,17 @@ export function useRuntimeWorkspace({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, resumeId, projectId: currentProjectIdRef.current }),
     });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(text || `HTTP ${response.status}`);
+    }
     const session = await response.json();
+    mergeSession(session, name);
+    syncWorkspaceSnapshot().catch(() => undefined);
     if (session.id) {
       joinSession(session.id);
     }
+    return session;
   };
 
   const deleteSession = async (sessionId: string, userCount: number) => {
@@ -275,6 +319,9 @@ export function useRuntimeWorkspace({
       return;
     }
 
+    setSessionList((current) => current.filter((session) => session.id !== sessionId));
+    syncWorkspaceSnapshot().catch(() => undefined);
+
     if (currentSessionIdRef.current === sessionId) {
       const nextSession = sessionList.find((session) => session.id !== sessionId);
       if (nextSession) joinSession(nextSession.id);
@@ -295,6 +342,13 @@ export function useRuntimeWorkspace({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id: editingSessionId, name: nextName }),
     }).catch(() => undefined);
+
+    setSessionList((current) => current.map((session) => (
+      session.id === editingSessionId
+        ? { ...session, name: nextName }
+        : session
+    )));
+    syncWorkspaceSnapshot().catch(() => undefined);
 
     setEditingSessionId(null);
   };
