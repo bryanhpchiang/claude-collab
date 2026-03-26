@@ -13,10 +13,12 @@ ENV BUN_INSTALL="/root/.bun"
 ENV PATH="${BUN_INSTALL}/bin:${PATH}"
 
 COPY package.json bun.lock ./
+COPY apps/web/package.json ./apps/web/package.json
 COPY packages/coordination/package.json ./packages/coordination/package.json
 COPY packages/jam-proxy/package.json ./packages/jam-proxy/package.json
 COPY packages/runtime/package.json ./packages/runtime/package.json
 COPY packages/shared/package.json ./packages/shared/package.json
+COPY packages/ui/package.json ./packages/ui/package.json
 RUN bun install --frozen-lockfile --filter @jam/jam-proxy
 
 COPY packages/shared ./packages/shared
