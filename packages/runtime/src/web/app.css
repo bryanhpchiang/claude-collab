@@ -239,7 +239,8 @@
       color: #9B8FC2; font-size: 14px;
     }
     body.in-lobby #lobby-view { display: flex; }
-    body.in-lobby #terminal-container, body.in-lobby #bottom-panel { display: none; }
+    body.in-lobby #terminal-container { visibility: hidden; position: absolute; width: 100%; height: 100%; }
+    body.in-lobby #bottom-panel { display: none; }
 
     /* Error/restart overlay */
     #error-overlay {
