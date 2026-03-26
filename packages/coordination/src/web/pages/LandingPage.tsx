@@ -84,10 +84,12 @@ export function LandingPage({ authEnabled, signedIn }: LandingPageProps) {
               <path d="M28 22c-2 0-4 2-4 4v36c0 8 6 14 14 14h24c8 0 14-6 14-14V26c0-2-2-4-4-4H28z" fill="url(#lp-jar-body)"/>
               <path d="M28 48c0 0 8-6 22-6s22 6 22 6v14c0 8-6 14-14 14H42c-8 0-14-6-14-14V48z" fill="url(#lp-jar-fill)" opacity="0.7"/>
               <path d="M34 30v20" stroke="rgba(255,255,255,0.1)" strokeWidth="3" strokeLinecap="round"/>
+              {/* Left blob — small, the "bite" */}
+              <ellipse cx="17" cy="73" rx="5" ry="3.5" fill="#A855F7" opacity="0.35"/>
               {/* Right blob — big, sitting on the ground next to jar base */}
-              <ellipse cx="84" cy="73" rx="8" ry="5" fill="#A855F7" opacity="0.35"/>
+              <ellipse cx="84" cy="72" rx="9" ry="5.5" fill="#A855F7" opacity="0.4"/>
               {/* Right blob — smaller, further right, same ground line */}
-              <ellipse cx="100" cy="75" rx="5" ry="3" fill="#7C3AED" opacity="0.25"/>
+              <ellipse cx="102" cy="74" rx="5.5" ry="3.5" fill="#7C3AED" opacity="0.35"/>
               <defs>
                 <linearGradient id="lp-jar-lid" x1="30" y1="8" x2="70" y2="22" gradientUnits="userSpaceOnUse">
                   <stop stopColor="#E8A838"/><stop offset="1" stopColor="#D4872C"/>
