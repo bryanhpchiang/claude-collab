@@ -3,7 +3,7 @@ const COLORS = [
   "#d2a8ff",
   "#79c0ff",
   "#7ee787",
-  "#ffa657",
+  "#E8A838",
   "#f778ba",
   "#a5d6ff",
   "#ffd8b1",
@@ -37,7 +37,7 @@ export function colorizeOutput(data, connectedUsers, currentUser) {
       const bracketPattern = new RegExp(`\\[${escaped}\\]`, "g");
       const mentionPattern = new RegExp(`@${escaped}\\b`, "g");
       const isCurrentUser = currentUser && user.toLowerCase() === currentUser.toLowerCase();
-      const mentionAnsi = isCurrentUser ? "\x1b[1;7;38;2;255;154;86m" : ansi;
+      const mentionAnsi = isCurrentUser ? "\x1b[1;7;38;2;232;168;56m" : ansi;
 
       parts[index] = parts[index].replace(bracketPattern, `${ansi}[${user}]\x1b[0m`);
       parts[index] = parts[index].replace(mentionPattern, `${mentionAnsi}@${user}\x1b[0m`);

@@ -257,7 +257,7 @@ export function useRuntimeRealtime({
               const preview = data.text.length > 80 ? `${data.text.slice(0, 80)}...` : data.text;
               const notification = new Notification(`${data.from} mentioned you in Jam`, {
                 body: preview,
-                icon: `data:image/svg+xml,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='#0d1117'/><text x='32' y='42' text-anchor='middle' font-size='32' fill='#ff9a56'>@</text></svg>")}`,
+                icon: `data:image/svg+xml,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='#0C0A14'/><text x='32' y='42' text-anchor='middle' font-size='32' fill='#E8A838'>@</text></svg>")}`,
                 tag: `jam-mention-${Date.now()}`,
                 requireInteraction: true,
               });

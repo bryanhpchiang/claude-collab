@@ -22,15 +22,15 @@ function linkStatus(link: InviteLink): "active" | "claimed" | "revoked" {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  active: "#3fb950",
-  claimed: "#8b949e",
-  revoked: "#f85149",
+  active: "#34D399",
+  claimed: "#9B8FC2",
+  revoked: "#f87171",
 };
 
 const STATUS_BG: Record<string, string> = {
-  active: "rgba(63,185,80,0.12)",
-  claimed: "rgba(139,148,158,0.12)",
-  revoked: "rgba(248,81,73,0.12)",
+  active: "rgba(52,211,153,0.12)",
+  claimed: "rgba(155,143,194,0.12)",
+  revoked: "rgba(248,113,113,0.12)",
 };
 
 export function InviteModal({ open, onDismiss }: InviteModalProps) {
@@ -101,7 +101,7 @@ export function InviteModal({ open, onDismiss }: InviteModalProps) {
         <div style={{ marginBottom: 4 }}>
           <h2
             style={{
-              background: "linear-gradient(135deg, #ff9a56, #ff6b6b)",
+              background: "linear-gradient(135deg, #E8A838, #D4872C)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
@@ -112,7 +112,7 @@ export function InviteModal({ open, onDismiss }: InviteModalProps) {
           >
             Invite to Jam
           </h2>
-          <p style={{ color: "#8b949e", fontSize: 12, margin: 0 }}>
+          <p style={{ color: "#9B8FC2", fontSize: 12, margin: 0 }}>
             Share a one-time invite link with someone to join this jam
           </p>
         </div>
@@ -122,10 +122,10 @@ export function InviteModal({ open, onDismiss }: InviteModalProps) {
             style={{
               marginTop: 12,
               padding: "8px 12px",
-              background: "rgba(248,81,73,0.1)",
-              border: "1px solid rgba(248,81,73,0.3)",
+              background: "rgba(248,113,113,0.1)",
+              border: "1px solid rgba(248,113,113,0.3)",
               borderRadius: 6,
-              color: "#f85149",
+              color: "#f87171",
               fontSize: 13,
             }}
           >
@@ -144,11 +144,11 @@ export function InviteModal({ open, onDismiss }: InviteModalProps) {
           }}
         >
           {loading ? (
-            <div style={{ color: "#484f58", textAlign: "center", padding: "20px 0", fontSize: 13 }}>
+            <div style={{ color: "#5B4F7A", textAlign: "center", padding: "20px 0", fontSize: 13 }}>
               Loading…
             </div>
           ) : links.length === 0 ? (
-            <div style={{ color: "#484f58", textAlign: "center", padding: "20px 0", fontSize: 13 }}>
+            <div style={{ color: "#5B4F7A", textAlign: "center", padding: "20px 0", fontSize: 13 }}>
               No invite links yet. Create one below.
             </div>
           ) : (
@@ -159,8 +159,8 @@ export function InviteModal({ open, onDismiss }: InviteModalProps) {
                   <div
                     key={link.id}
                     style={{
-                      background: "#161b22",
-                      border: "1px solid #30363d",
+                      background: "#110E1A",
+                      border: "1px solid rgba(168, 85, 247, 0.12)",
                       borderRadius: 8,
                       padding: "10px 14px",
                       display: "flex",
@@ -185,10 +185,10 @@ export function InviteModal({ open, onDismiss }: InviteModalProps) {
                           {status}
                         </span>
                         {copied === link.id && (
-                          <span style={{ fontSize: 11, color: "#3fb950" }}>Copied!</span>
+                          <span style={{ fontSize: 11, color: "#34D399" }}>Copied!</span>
                         )}
                       </div>
-                      <span style={{ fontSize: 11, color: "#484f58" }}>
+                      <span style={{ fontSize: 11, color: "#5B4F7A" }}>
                         Created {new Date(link.created_at).toLocaleDateString()}
                         {link.claimed_at ? ` · Claimed ${new Date(link.claimed_at).toLocaleDateString()}` : ""}
                         {link.revoked_at ? ` · Revoked ${new Date(link.revoked_at).toLocaleDateString()}` : ""}
@@ -202,9 +202,9 @@ export function InviteModal({ open, onDismiss }: InviteModalProps) {
                           padding: "4px 10px",
                           fontSize: 12,
                           fontWeight: 500,
-                          color: "#f85149",
-                          background: "rgba(248,81,73,0.1)",
-                          border: "1px solid rgba(248,81,73,0.3)",
+                          color: "#f87171",
+                          background: "rgba(248,113,113,0.1)",
+                          border: "1px solid rgba(248,113,113,0.3)",
                           borderRadius: 6,
                           cursor: "pointer",
                           flexShrink: 0,
@@ -225,8 +225,8 @@ export function InviteModal({ open, onDismiss }: InviteModalProps) {
             type="button"
             style={{
               background: "transparent",
-              border: "1px solid #30363d",
-              color: "#8b949e",
+              border: "1px solid rgba(168, 85, 247, 0.12)",
+              color: "#9B8FC2",
               padding: "10px 20px",
               borderRadius: 6,
               cursor: "pointer",
@@ -241,9 +241,9 @@ export function InviteModal({ open, onDismiss }: InviteModalProps) {
             type="button"
             disabled={creating}
             style={{
-              background: creating ? "#21262d" : "linear-gradient(135deg, #ff9a56, #ff6b6b)",
+              background: creating ? "rgba(168, 85, 247, 0.08)" : "linear-gradient(135deg, #E8A838, #D4872C)",
               border: "none",
-              color: creating ? "#8b949e" : "#fff",
+              color: creating ? "#9B8FC2" : "#fff",
               padding: "10px 20px",
               borderRadius: 6,
               cursor: creating ? "default" : "pointer",

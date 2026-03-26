@@ -24,16 +24,16 @@ export function RuntimeHeader({ connectedUsers, onOpenInvite }: RuntimeHeaderPro
         <svg className="logo-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="hg" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#ff9a56" />
-              <stop offset="100%" stopColor="#ff6b6b" />
+              <stop offset="0%" stopColor="#E8A838" />
+              <stop offset="100%" stopColor="#D4872C" />
             </linearGradient>
           </defs>
           <g transform="translate(32,34)">
             <rect x="-12" y="-18" width="24" height="28" rx="4" fill="none" stroke="url(#hg)" strokeWidth="3" />
             <rect x="-14" y="-20" width="28" height="8" rx="3" fill="url(#hg)" opacity="0.9" />
-            <circle cx="-4" cy="0" r="2.5" fill="#ff9a56" opacity="0.8" />
-            <circle cx="4" cy="4" r="2" fill="#ffcc80" opacity="0.7" />
-            <circle cx="-2" cy="6" r="1.5" fill="#ff6b6b" opacity="0.6" />
+            <circle cx="-4" cy="0" r="2.5" fill="#E8A838" opacity="0.8" />
+            <circle cx="4" cy="4" r="2" fill="#F5D78E" opacity="0.7" />
+            <circle cx="-2" cy="6" r="1.5" fill="#D4872C" opacity="0.6" />
           </g>
         </svg>
         <span className="brand-jam">Jam</span>
@@ -51,9 +51,9 @@ export function RuntimeHeader({ connectedUsers, onOpenInvite }: RuntimeHeaderPro
             padding: "4px 10px",
             fontSize: 12,
             fontWeight: 600,
-            color: restarting ? "#8b949e" : "#e6edf3",
-            background: "rgba(139,148,158,0.1)",
-            border: "1px solid rgba(139,148,158,0.3)",
+            color: restarting ? "#9B8FC2" : "#E8E2F4",
+            background: "rgba(155,143,194,0.1)",
+            border: "1px solid rgba(155,143,194,0.3)",
             borderRadius: 6,
             cursor: restarting ? "not-allowed" : "pointer",
             whiteSpace: "nowrap",
@@ -77,9 +77,9 @@ export function RuntimeHeader({ connectedUsers, onOpenInvite }: RuntimeHeaderPro
               padding: "4px 10px",
               fontSize: 12,
               fontWeight: 600,
-              color: "#e6edf3",
-              background: "linear-gradient(135deg, rgba(255,154,86,0.15), rgba(255,107,107,0.15))",
-              border: "1px solid rgba(255,154,86,0.3)",
+              color: "#E8E2F4",
+              background: "linear-gradient(135deg, rgba(232,168,56,0.15), rgba(212,135,44,0.15))",
+              border: "1px solid rgba(232,168,56,0.3)",
               borderRadius: 6,
               cursor: "pointer",
               whiteSpace: "nowrap",
@@ -196,9 +196,9 @@ export function SessionBar({
             <input
               autoFocus
               style={{
-                background: "#0d1117",
-                border: "1px solid #58a6ff",
-                color: "#e6edf3",
+                background: "#0C0A14",
+                border: "1px solid #E8A838",
+                color: "#E8E2F4",
                 padding: "2px 6px",
                 borderRadius: 4,
                 fontSize: 12,

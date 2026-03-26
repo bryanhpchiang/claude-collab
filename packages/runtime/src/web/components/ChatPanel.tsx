@@ -171,7 +171,7 @@ export function ChatPanel({
                 <div className="banner-msg" key={`${mention.timestamp}-${mention.from}`}>
                   <span className="banner-from">{mention.from}</span> in <strong>{mention.sessionName}</strong>:{" "}
                   <span dangerouslySetInnerHTML={{ __html: renderMentions(preview, myName) }}></span>{" "}
-                  <span style={{ color: "#8b949e", fontSize: 11 }}>
+                  <span style={{ color: "#9B8FC2", fontSize: 11 }}>
                     {formatSessionTime(new Date(mention.timestamp).toISOString())}
                   </span>
                 </div>
@@ -228,7 +228,7 @@ export function ChatPanel({
           rows={1}
           placeholder={uploadingImage ? "Uploading image..." : "Type a message to Claude..."}
           disabled={!canSendMessages}
-          style={uploadingImage ? { borderColor: "#ffa657" } : undefined}
+          style={uploadingImage ? { borderColor: "#E8A838" } : undefined}
           value={message}
           onChange={(event) => {
             const nextValue = event.target.value;
@@ -247,7 +247,7 @@ export function ChatPanel({
           Send
         </button>
         {sendFailed && (
-          <span style={{ color: "#ffa657", fontSize: 11, marginLeft: 6 }}>Connection lost, reconnecting...</span>
+          <span style={{ color: "#E8A838", fontSize: 11, marginLeft: 6 }}>Connection lost, reconnecting...</span>
         )}
         <div id="mention-dropdown" style={{ display: mentionDropdownVisible ? "block" : "none" }}>
           {mentionOptions.map((user, index) => (

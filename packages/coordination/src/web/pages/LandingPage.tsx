@@ -62,7 +62,7 @@ export function LandingPage({ authEnabled, signedIn }: LandingPageProps) {
             <span className="dot"></span>
             Multiplayer Claude Code
           </div>
-          <h1 className="hero-logo">Jam</h1>
+          <h1 className="hero-logo" style={{ background: 'linear-gradient(135deg, #E8A838 0%, #D4872C 30%, #C06028 50%, #A855F7 80%, #7C3AED 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>Jam</h1>
           <p className="hero-tagline">
             Code together with Claude in real time. One link, one room, everyone building at once.
           </p>
@@ -114,6 +114,27 @@ export function LandingPage({ authEnabled, signedIn }: LandingPageProps) {
             </div>
           </section>
         </main>
+
+        <section className="how-it-works">
+          <h2 className="how-it-works-title">How it works</h2>
+          <div className="how-it-works-steps">
+            <div className="how-it-works-step">
+              <span className="how-it-works-number">1</span>
+              <h3>Start a Jam</h3>
+              <p>Create a new shared session in one click. You get a fresh environment with Claude ready to go.</p>
+            </div>
+            <div className="how-it-works-step">
+              <span className="how-it-works-number">2</span>
+              <h3>Share the link</h3>
+              <p>Send the invite link to your team. Anyone with the link can join instantly.</p>
+            </div>
+            <div className="how-it-works-step">
+              <span className="how-it-works-number">3</span>
+              <h3>Build together</h3>
+              <p>Everyone codes in the same room with Claude. Real-time collaboration, zero setup.</p>
+            </div>
+          </div>
+        </section>
 
         <section className="feature-grid">
           <article className="feature-card">

@@ -36,7 +36,7 @@ export function CatchUpModal({ open, onDismiss }: CatchUpModalProps) {
         <div style={{ marginBottom: 4 }}>
           <h2
             style={{
-              background: "linear-gradient(135deg, #ff9a56, #ff6b6b)",
+              background: "linear-gradient(135deg, #E8A838, #D4872C)",
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
@@ -47,7 +47,7 @@ export function CatchUpModal({ open, onDismiss }: CatchUpModalProps) {
           >
             Welcome to this Jam
           </h2>
-          <p style={{ color: "#8b949e", fontSize: 12, margin: 0 }}>{dateStr}</p>
+          <p style={{ color: "#9B8FC2", fontSize: 12, margin: 0 }}>{dateStr}</p>
         </div>
 
         <div
@@ -56,21 +56,21 @@ export function CatchUpModal({ open, onDismiss }: CatchUpModalProps) {
             overflowY: "auto",
             marginTop: 16,
             marginBottom: 16,
-            background: "#0d1117",
-            border: "1px solid #30363d",
+            background: "#0C0A14",
+            border: "1px solid rgba(168, 85, 247, 0.12)",
             borderRadius: 8,
             padding: "12px 16px",
             minHeight: 80,
             maxHeight: 400,
             fontSize: 13,
-            color: "#c9d1d9",
+            color: "#D4CCE8",
             lineHeight: 1.6,
           }}
         >
           {loading ? (
-            <div style={{ color: "#484f58", textAlign: "center", padding: "20px 0" }}>Loading…</div>
+            <div style={{ color: "#5B4F7A", textAlign: "center", padding: "20px 0" }}>Loading…</div>
           ) : isEmpty ? (
-            <div style={{ color: "#484f58", textAlign: "center", padding: "20px 0" }}>
+            <div style={{ color: "#5B4F7A", textAlign: "center", padding: "20px 0" }}>
               No activity yet in this session
             </div>
           ) : (
@@ -82,7 +82,7 @@ export function CatchUpModal({ open, onDismiss }: CatchUpModalProps) {
           <button
             type="button"
             style={{
-              background: "linear-gradient(135deg, #ff9a56, #ff6b6b)",
+              background: "linear-gradient(135deg, #E8A838, #D4872C)",
               border: "none",
               color: "#fff",
               padding: "10px 28px",
@@ -114,7 +114,7 @@ function StateMarkdown({ content }: { content: string }) {
           style={{
             fontSize: 12,
             fontWeight: 700,
-            color: "#ff9a56",
+            color: "#E8A838",
             textTransform: "uppercase",
             letterSpacing: "0.5px",
             margin: "14px 0 6px",
@@ -125,14 +125,14 @@ function StateMarkdown({ content }: { content: string }) {
       );
     } else if (line.startsWith("# ")) {
       elements.push(
-        <h2 key={i} style={{ fontSize: 15, fontWeight: 700, color: "#e6edf3", margin: "10px 0 6px" }}>
+        <h2 key={i} style={{ fontSize: 15, fontWeight: 700, color: "#E8E2F4", margin: "10px 0 6px" }}>
           {line.slice(2)}
         </h2>,
       );
     } else if (line.startsWith("- ") || line.startsWith("* ")) {
       elements.push(
         <div key={i} style={{ paddingLeft: 14, margin: "2px 0" }}>
-          <span style={{ color: "#ff9a56", marginRight: 6 }}>•</span>
+          <span style={{ color: "#E8A838", marginRight: 6 }}>•</span>
           <InlineMarkdown text={line.slice(2)} />
         </div>,
       );
@@ -157,7 +157,7 @@ function InlineMarkdown({ text }: { text: string }) {
     <>
       {parts.map((part, i) =>
         part.startsWith("**") && part.endsWith("**") ? (
-          <strong key={i} style={{ color: "#e6edf3" }}>
+          <strong key={i} style={{ color: "#E8E2F4" }}>
             {part.slice(2, -2)}
           </strong>
         ) : (

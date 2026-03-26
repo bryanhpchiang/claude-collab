@@ -88,8 +88,8 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
       fontSize: typeof window !== "undefined" && window.innerWidth <= 600 ? 10 : 14,
       fontFamily: '"JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
       theme: {
-        background: "#0d1117",
-        foreground: "#e6edf3",
+        background: "#0C0A14",
+        foreground: "#E8E2F4",
         cursor: "transparent",
         selectionBackground: "#264f78",
       },
@@ -156,7 +156,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
       term.options.cursorBlink = true;
       term.options.cursorWidth = 1;
       term.options.cursorInactiveStyle = "outline";
-      term.options.theme = { ...term.options.theme, cursor: "#58a6ff" };
+      term.options.theme = { ...term.options.theme, cursor: "#E8A838" };
       term.focus();
     } else {
       term.options.cursorBlink = false;
@@ -312,7 +312,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
             </div>
           ) : (
             <div id="oauth-key-input" style={{ display: "block", marginTop: 18 }}>
-              <p style={{ color: "#8b949e", fontSize: 13, marginBottom: 10 }}>
+              <p style={{ color: "#9B8FC2", fontSize: 13, marginBottom: 10 }}>
                 Paste the code from the sign-in page, or enter your Anthropic API key:
               </p>
               <div style={{ display: "flex", gap: 8 }}>
@@ -322,9 +322,9 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
                   placeholder="Paste code or API key here..."
                   style={{
                     flex: 1,
-                    background: "#0d1117",
-                    border: "1px solid #30363d",
-                    color: "#e6edf3",
+                    background: "#0C0A14",
+                    border: "1px solid rgba(168, 85, 247, 0.12)",
+                    color: "#E8E2F4",
                     padding: "10px 14px",
                     borderRadius: 6,
                     fontSize: 14,
@@ -343,7 +343,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
                   id="oauth-key-submit"
                   type="button"
                   style={{
-                    background: "#238636",
+                    background: "#E8A838",
                     color: "white",
                     border: "none",
                     padding: "10px 20px",

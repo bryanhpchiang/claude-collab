@@ -29,12 +29,12 @@ export function DashboardPage({ initialJams, user }: DashboardPageProps) {
               <path d="M34 48c4 8 12 14 16 18 4-4 12-10 16-18" stroke="rgba(255,255,255,0.15)" strokeWidth="2" strokeLinecap="round" fill="none"/>
               <defs>
                 <linearGradient id="jar-lid" x1="25" y1="18" x2="75" y2="33" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#ff9a56"/>
-                  <stop offset="1" stopColor="#ff6b6b"/>
+                  <stop stopColor="#E8A838"/>
+                  <stop offset="1" stopColor="#D4872C"/>
                 </linearGradient>
                 <linearGradient id="jar-body" x1="20" y1="38" x2="80" y2="82" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="rgba(255,154,86,0.18)"/>
-                  <stop offset="1" stopColor="rgba(255,107,107,0.08)"/>
+                  <stop stopColor="rgba(232,168,56,0.18)"/>
+                  <stop offset="1" stopColor="rgba(212,135,44,0.08)"/>
                 </linearGradient>
               </defs>
             </svg>

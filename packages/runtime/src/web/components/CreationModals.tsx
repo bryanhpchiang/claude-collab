@@ -39,11 +39,11 @@ export function NewSessionModal({
           Create
         </button>
         <div style={{ marginTop: 18, textAlign: "left" }}>
-          <p style={{ color: "#8b949e", fontSize: 12, marginBottom: 8 }}>Resume from disk:</p>
+          <p style={{ color: "#9B8FC2", fontSize: 12, marginBottom: 8 }}>Resume from disk:</p>
           {loadingDiskSessions ? (
-            <div style={{ color: "#8b949e", fontSize: 12 }}>Loading sessions from disk...</div>
+            <div style={{ color: "#9B8FC2", fontSize: 12 }}>Loading sessions from disk...</div>
           ) : !diskSessions.length ? (
-            <div style={{ color: "#8b949e", fontSize: 12 }}>No sessions found on disk</div>
+            <div style={{ color: "#9B8FC2", fontSize: 12 }}>No sessions found on disk</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 260, overflowY: "auto" }}>
               {diskSessions.map((diskSession) => {
@@ -54,9 +54,9 @@ export function NewSessionModal({
                     type="button"
                     style={{
                       textAlign: "left",
-                      background: "#0d1117",
-                      border: "1px solid #30363d",
-                      color: "#e6edf3",
+                      background: "#0C0A14",
+                      border: "1px solid rgba(168, 85, 247, 0.12)",
+                      color: "#E8E2F4",
                       padding: 10,
                       borderRadius: 8,
                       cursor: "pointer",
@@ -64,7 +64,7 @@ export function NewSessionModal({
                     onClick={() => onResumeSession(diskSession)}
                   >
                     <div style={{ marginBottom: 4 }}>{diskSession.firstMessage}</div>
-                    <div style={{ fontSize: 11, color: "#8b949e" }}>
+                    <div style={{ fontSize: 11, color: "#9B8FC2" }}>
                       {diskSession.project} · {diskSession.claudeSessionId.slice(0, 8)}
                       {time ? ` · ${time}` : ""}
                     </div>
@@ -123,7 +123,7 @@ export function NewProjectModal({
           value={newProjectCwd}
           onChange={(event) => onProjectCwdChange(event.target.value)}
         />
-        <div style={{ color: "#484f58", fontSize: 11, marginTop: 8 }}>
+        <div style={{ color: "#5B4F7A", fontSize: 11, marginTop: 8 }}>
           Leave directory blank to auto-create in ~/projects/
         </div>
         <div className="oauth-modal-actions">
