@@ -24,7 +24,8 @@ COPY packages/jam-proxy/package.json ./packages/jam-proxy/package.json
 COPY packages/runtime/package.json ./packages/runtime/package.json
 COPY packages/shared/package.json ./packages/shared/package.json
 
-RUN bun install --frozen-lockfile --filter @jam/runtime
+RUN bun install --frozen-lockfile --production --filter @jam/runtime \
+  && npm install --prefix /home/user/jam --no-save vite@5.4.14 @vitejs/plugin-react@4.3.4 typescript@6.0.2
 
 COPY packages/runtime ./packages/runtime
 COPY packages/shared ./packages/shared

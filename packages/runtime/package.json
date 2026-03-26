@@ -9,7 +9,7 @@
     "test": "bun test",
     "web:dev": "bun ../../node_modules/vite/bin/vite.js",
     "web:build": "bun ../../node_modules/vite/bin/vite.js build",
-    "web:test": "bun x vitest run"
+    "web:test": "bun x vitest run -c vitest.config.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.80.0",
