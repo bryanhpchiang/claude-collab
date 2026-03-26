@@ -83,7 +83,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
     const term = new XTerm({
       cursorBlink: false,
       cursorStyle: "bar",
-      cursorWidth: 0,
+      cursorWidth: 1,
       cursorInactiveStyle: "none",
       fontSize: typeof window !== "undefined" && window.innerWidth <= 600 ? 10 : 14,
       fontFamily: '"JetBrains Mono", Menlo, Monaco, "Courier New", monospace',
@@ -160,7 +160,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
       term.focus();
     } else {
       term.options.cursorBlink = false;
-      term.options.cursorWidth = 0;
+      term.options.cursorWidth = 1;
       term.options.cursorInactiveStyle = "none";
       term.options.theme = { ...term.options.theme, cursor: "transparent" };
     }
