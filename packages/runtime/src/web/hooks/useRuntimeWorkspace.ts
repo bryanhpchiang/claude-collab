@@ -39,8 +39,6 @@ export function useRuntimeWorkspace({
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [sessionList, setSessionList] = useState<SessionSummary[]>([]);
   const [pendingJoin, setPendingJoin] = useState<string | null>(null);
-  const [newSessionModalOpen, setNewSessionModalOpen] = useState(false);
-  const [newSessionName, setNewSessionName] = useState("");
   const [diskSessions, setDiskSessions] = useState<DiskSession[]>([]);
   const [loadingDiskSessions, setLoadingDiskSessions] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
@@ -133,22 +131,6 @@ export function useRuntimeWorkspace({
     setPendingJoin(null);
   }, [pendingJoin, sessionList]);
 
-  useEffect(() => {
-    if (!newSessionModalOpen) return;
-
-    setLoadingDiskSessions(true);
-    fetch("/api/disk-sessions")
-      .then((response) => response.json())
-      .then((payload) => {
-        setDiskSessions(payload);
-      })
-      .catch(() => {
-        setDiskSessions([]);
-      })
-      .finally(() => {
-        setLoadingDiskSessions(false);
-      });
-  }, [newSessionModalOpen]);
 
   useEffect(() => {
     joinSessionRef.current = joinSession;
@@ -187,7 +169,7 @@ export function useRuntimeWorkspace({
   };
 
   const createFreshSession = async () => {
-    const name = `Session ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+    const name = `Tab ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
     const url = currentProjectIdRef.current
       ? `/api/projects/${currentProjectIdRef.current}/sessions`
       : "/api/sessions";
@@ -200,8 +182,8 @@ export function useRuntimeWorkspace({
   };
 
   const createSession = async (resumeId?: string, nameOverride?: string) => {
-    const name = (nameOverride ?? newSessionName).trim() ||
-      `Session ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+    const name = (nameOverride ?? "").trim() ||
+      `Tab ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
     const url = currentProjectIdRef.current
       ? `/api/projects/${currentProjectIdRef.current}/sessions`
       : "/api/sessions";
@@ -212,8 +194,6 @@ export function useRuntimeWorkspace({
     });
     const session = await response.json();
     if (session.id) {
-      setNewSessionModalOpen(false);
-      setNewSessionName("");
       joinSession(session.id);
     }
   };
@@ -223,7 +203,7 @@ export function useRuntimeWorkspace({
     if (
       userCount > 0 &&
       !window.confirm(
-        `There ${userCount === 1 ? "is 1 user" : `are ${userCount} users`} in this session. Close it?`,
+        `There ${userCount === 1 ? "is 1 user" : `are ${userCount} users`} in this tab. Close it?`,
       )
     ) {
       return;
@@ -236,7 +216,7 @@ export function useRuntimeWorkspace({
     });
     if (!response.ok) {
       const data = await response.json().catch(() => null);
-      appendSystemRef.current(data?.error || "Failed to delete session.");
+      appendSystemRef.current(data?.error || "Failed to close tab.");
       return;
     }
 
@@ -271,7 +251,6 @@ export function useRuntimeWorkspace({
 
   const resumeDiskSession = (diskSession: DiskSession) => {
     const nextName = diskSession.firstMessage.slice(0, 30) || diskSession.claudeSessionId.slice(0, 8);
-    setNewSessionName(nextName);
     createSession(diskSession.claudeSessionId, nextName).catch(() => undefined);
   };
 
@@ -291,14 +270,10 @@ export function useRuntimeWorkspace({
     handleUsersUpdate,
     joinSession,
     loadingDiskSessions,
-    newSessionModalOpen,
-    newSessionName,
     resumeDiskSession,
     saveSessionRename,
     sessionList,
     setEditingSessionName,
-    setNewSessionModalOpen,
-    setNewSessionName,
     showSessionClose,
   };
 }

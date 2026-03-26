@@ -71,7 +71,7 @@ export function CatchUpModal({ open, onDismiss }: CatchUpModalProps) {
             <div style={{ color: "#5B4F7A", textAlign: "center", padding: "20px 0" }}>Loading…</div>
           ) : isEmpty ? (
             <div style={{ color: "#5B4F7A", textAlign: "center", padding: "20px 0" }}>
-              No activity yet in this session
+              No activity yet in this tab
             </div>
           ) : (
             <StateMarkdown content={content!} />

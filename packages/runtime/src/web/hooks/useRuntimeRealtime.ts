@@ -16,9 +16,9 @@ import type {
 
 const DEFAULT_ERROR_OVERLAY: ErrorOverlayState = {
   visible: false,
-  title: "Session ended",
+  title: "Tab ended",
   description:
-    "The Claude process has exited. You can start a new session or try reconnecting.",
+    "The Claude process has exited. You can start a new tab or try reconnecting.",
   showNewSession: false,
 };
 
@@ -227,14 +227,14 @@ export function useRuntimeRealtime({
                 visible: true,
                 title: "Claude process exited",
                 description:
-                  "The Claude session has ended. This can happen if there was an error during startup or the process crashed. You can start a fresh session to try again.",
+                  "The Claude process has ended. This can happen if there was an error during startup or the process crashed. You can start a fresh tab to try again.",
                 showNewSession: true,
               });
             } else if (data.text?.includes("Session closed")) {
               setErrorOverlay({
                 visible: true,
-                title: "Session closed",
-                description: "This session has been shut down. Start a new session to continue.",
+                title: "Tab closed",
+                description: "This tab has been shut down. Start a new tab to continue.",
                 showNewSession: true,
               });
             }

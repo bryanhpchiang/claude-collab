@@ -57,7 +57,6 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
     createSession,
     currentSessionId,
     deleteSession,
-    diskSessions,
     editingSessionId,
     editingSessionName,
     handleProjectsUpdate,
@@ -66,15 +65,9 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
     handleSocketOpen,
     handleUsersUpdate,
     joinSession,
-    loadingDiskSessions,
-    newSessionModalOpen,
-    newSessionName,
-    resumeDiskSession,
     saveSessionRename,
     sessionList,
     setEditingSessionName,
-    setNewSessionModalOpen,
-    setNewSessionName,
     showSessionClose,
   } = useRuntimeWorkspace({
     appendSystemRef,
@@ -210,7 +203,7 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
       const session = await createFreshSession();
       if (session?.id) joinSession(session.id);
     } catch (error: any) {
-      appendSystem(`Failed to create new session: ${error.message}`);
+      appendSystem(`Failed to create new tab: ${error.message}`);
     }
   };
 
@@ -228,14 +221,16 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
       editingSessionName,
       filteredSessions: sessionList,
       showSessionClose,
+      onCreateTab() {
+        createFreshSession().then((session: any) => {
+          if (session?.id) joinSession(session.id);
+        }).catch(() => undefined);
+      },
       onDeleteSession(sessionId: string, userCount: number) {
         deleteSession(sessionId, userCount).catch(() => undefined);
       },
       onEditingSessionNameChange: setEditingSessionName,
       onJoinSession: joinSession,
-      onOpenNewSession() {
-        setNewSessionModalOpen(true);
-      },
       onSaveSessionRename() {
         saveSessionRename().catch(() => undefined);
       },
@@ -325,20 +320,6 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
       onSecretValueChange: setSecretValue,
       onToggleSecrets: toggleSecrets,
       onToggleSidebar: toggleSidebar,
-    },
-    newSessionModalProps: {
-      diskSessions,
-      loadingDiskSessions,
-      newSessionName,
-      open: newSessionModalOpen,
-      onClose() {
-        setNewSessionModalOpen(false);
-      },
-      onCreate() {
-        createSession().catch(() => undefined);
-      },
-      onResumeSession: resumeDiskSession,
-      onSessionNameChange: setNewSessionName,
     },
     catchUpModalProps: {
       open: catchUpOpen,

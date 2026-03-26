@@ -1,6 +1,3 @@
-import {
-  NewSessionModal,
-} from "./components/CreationModals";
 import { CatchUpModal } from "./components/CatchUpModal";
 import { ErrorOverlay } from "./components/ErrorOverlay";
 import { ChatPanel } from "./components/ChatPanel";
@@ -26,7 +23,7 @@ export function RuntimeApp({ bootstrap }: RuntimeAppProps) {
       <RuntimeHeader {...runtime.headerProps} />
       <SessionBar {...runtime.sessionBarProps} />
 
-      <div id="lobby-view">Pick a session above or start a new one</div>
+      <div id="lobby-view"></div>
 
       <TerminalPanel ref={runtime.terminalRef} {...runtime.terminalPanelProps}>
         <ErrorOverlay {...runtime.errorOverlayProps} />
@@ -34,7 +31,6 @@ export function RuntimeApp({ bootstrap }: RuntimeAppProps) {
 
       <ChatPanel {...runtime.chatPanelProps} />
       <StateSidebar {...runtime.stateSidebarProps} />
-      <NewSessionModal {...runtime.newSessionModalProps} />
       <CatchUpModal {...runtime.catchUpModalProps} />
       <InviteModal {...runtime.inviteModalProps} />
     </>

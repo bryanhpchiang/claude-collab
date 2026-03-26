@@ -88,11 +88,12 @@
     }
     .session-tab:hover .close-btn.visible { display: inline-block; }
     .session-tab .close-btn:hover { color: #f87171; background: rgba(248,113,113,0.15); }
-    #new-session-btn {
-      padding: 4px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;
-      border: 1px dashed rgba(168, 85, 247, 0.12); background: transparent; color: #E8A838; white-space: nowrap;
+    #new-tab-btn {
+      padding: 4px 8px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;
+      border: 1px dashed rgba(168, 85, 247, 0.12); background: transparent; color: #E8A838;
+      line-height: 1; min-width: 28px; text-align: center;
     }
-    #new-session-btn:hover { border-color: #E8A838; background: #110E1A; }
+    #new-tab-btn:hover { border-color: #E8A838; background: #110E1A; }
     #terminal-container { flex: 1; min-height: 0; padding: 4px; }
     #terminal-container.interactive {
       outline: 1px solid rgba(232,168,56,0.5);
@@ -532,7 +533,7 @@
       #session-bar { padding: 4px 8px; gap: 3px; }
       .session-tab { padding: 4px 8px; font-size: 11px; }
       .session-tab .user-count { font-size: 9px; padding: 1px 4px; }
-      #new-session-btn { padding: 4px 8px; font-size: 11px; }
+      #new-tab-btn { padding: 3px 6px; font-size: 12px; }
 
       #terminal-container { padding: 2px; }
 

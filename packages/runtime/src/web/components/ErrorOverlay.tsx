@@ -19,7 +19,7 @@ export function ErrorOverlay({ error, onDismiss, onStartNewSession }: ErrorOverl
       <div className="error-actions">
         {error.showNewSession ? (
           <button className="error-btn error-btn-primary" type="button" onClick={onStartNewSession}>
-            Start New Session
+            Start New Tab
           </button>
         ) : null}
         <button className="error-btn error-btn-secondary" type="button" onClick={onDismiss}>

@@ -11,7 +11,7 @@ export function RuntimeHeader({ connectedUsers, onOpenInvite }: RuntimeHeaderPro
   const [restarting, setRestarting] = useState(false);
 
   async function handleRestart() {
-    if (!confirm("This will git pull and restart the server. All sessions will be lost. Continue?")) return;
+    if (!confirm("This will git pull and restart the server. All tabs will be lost. Continue?")) return;
     setRestarting(true);
     try {
       await fetch("/api/restart", { method: "POST" });
@@ -118,10 +118,10 @@ type SessionBarProps = {
   editingSessionName: string;
   filteredSessions: SessionSummary[];
   showSessionClose: boolean;
+  onCreateTab(): void;
   onDeleteSession(sessionId: string, userCount: number): void;
   onEditingSessionNameChange(value: string): void;
   onJoinSession(sessionId: string): void;
-  onOpenNewSession(): void;
   onSaveSessionRename(): void;
   onStartRename(session: SessionSummary): void;
 };
@@ -132,10 +132,10 @@ export function SessionBar({
   editingSessionName,
   filteredSessions,
   showSessionClose,
+  onCreateTab,
   onDeleteSession,
   onEditingSessionNameChange,
   onJoinSession,
-  onOpenNewSession,
   onSaveSessionRename,
   onStartRename,
 }: SessionBarProps) {
@@ -179,7 +179,7 @@ export function SessionBar({
           <span className="user-count">{session.users.length}</span>
           <button
             className={`close-btn${showSessionClose ? " visible" : ""}`}
-            title="Close session"
+            title="Close tab"
             type="button"
             onClick={(event) => {
               event.stopPropagation();
@@ -190,8 +190,8 @@ export function SessionBar({
           </button>
         </div>
       ))}
-      <button id="new-session-btn" type="button" onClick={onOpenNewSession}>
-        + New Session
+      <button id="new-tab-btn" type="button" onClick={onCreateTab}>
+        +
       </button>
     </div>
   );
