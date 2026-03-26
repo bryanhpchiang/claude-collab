@@ -96,61 +96,75 @@ async function postJson<T>(url: string, init: RequestInit) {
 function JamJarAnimation() {
   return (
     <div className="relative mx-auto mb-6 size-32">
-      <svg viewBox="0 0 128 128" className="size-full" xmlns="http://www.w3.org/2000/svg">
+      {/* Based on the actual Jam favicon SVG from the landing page */}
+      <svg viewBox="0 0 64 64" className="size-full" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="lid-grad" x1="30" y1="16" x2="98" y2="36" gradientUnits="userSpaceOnUse">
+          <linearGradient id="lid-g" x1="20" y1="8" x2="44" y2="18" gradientUnits="userSpaceOnUse">
             <stop stopColor="#E8A838" />
             <stop offset="1" stopColor="#D4872C" />
           </linearGradient>
-          <linearGradient id="jam-grad" x1="64" y1="60" x2="64" y2="120" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#A855F7" />
-            <stop offset="1" stopColor="#7C3AED" />
-          </linearGradient>
         </defs>
 
+        {/* Lid knob */}
+        <rect x="20" y="8" width="24" height="6" rx="3" fill="url(#lid-g)" />
+        {/* Lid rim */}
+        <path d="M18 14h28v3c0 1-3 3-6 3H24c-3 0-6-2-6-3v-3z" fill="url(#lid-g)" opacity="0.8" />
+
         {/* Jar body */}
-        <path d="M32 40c-4 0-8 4-8 8v40c0 16 12 28 28 28h24c16 0 28-12 28-28V48c0-4-4-8-8-8H32z" fill="#1E1832" />
+        <path d="M16 20c-2 0-4 2-4 4v20c0 8 6 14 14 14h12c8 0 14-6 14-14V24c0-2-2-4-4-4H16z" fill="#1E1832" />
 
-        {/* Jam fill with wave animation */}
-        <g className="animate-jam-wave">
-          <path d="M24 72c4-4 16-8 28-6s22 6 28 4 18-6 28-4v26c0 16-12 28-28 28H52c-16 0-28-12-28-28V72z" fill="url(#jam-grad)" opacity="0.65" />
+        {/* Jam fill — animated wave */}
+        <g className="jam-wave">
+          <path d="M12 38c2-2 8-4 14-3s11 3 14 2 9-3 14-2v10c0 8-6 14-14 14H26c-8 0-14-6-14-14V38z" fill="#A855F7" opacity="0.55" />
         </g>
 
-        {/* Jam spill blob — animated */}
-        <g className="animate-jam-spill">
-          <ellipse cx="96" cy="42" rx="8" ry="12" fill="#A855F7" opacity="0.5" />
-          <ellipse cx="100" cy="56" rx="5" ry="5" fill="#7C3AED" opacity="0.35" />
+        {/* Spill blob — slides over rim and back */}
+        <g className="jam-spill">
+          <path d="M44 52 C44 50 45.5 48.5 48 48.5 C50.5 48.5 52 50 52 52 C52 53 51 53.5 48 53.5 C45 53.5 44 53 44 52Z" fill="#6D4BA0" />
         </g>
-
-        {/* Lid */}
-        <rect x="30" y="16" width="68" height="12" rx="6" fill="url(#lid-grad)" />
-        <path d="M26 28h76v6c0 2-6 6-12 6H38c-6 0-12-4-12-6v-6z" fill="url(#lid-grad)" opacity="0.8" />
 
         {/* Drip drops */}
-        <circle cx="22" cy="108" r="4" fill="#A855F7" opacity="0.4" className="animate-jam-drip" />
-        <circle cx="110" cy="112" r="3" fill="#7C3AED" opacity="0.35" className="animate-jam-drip-delayed" />
+        <circle cx="11" cy="53" r="2" fill="#A855F7" opacity="0.45" className="jam-drip-l" />
+        <circle cx="55" cy="53.5" r="1.5" fill="#7C3AED" opacity="0.4" className="jam-drip-r" />
+
+        {/* Spill over rim — animated */}
+        <g className="jam-overflow">
+          <ellipse cx="50" cy="22" rx="4" ry="6" fill="#A855F7" opacity="0" />
+        </g>
       </svg>
 
       <style>{`
-        @keyframes jam-wave {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-3px); }
+        @keyframes wave {
+          0%, 100% { transform: translateY(0) scaleX(1); }
+          25% { transform: translateY(-1.5px) scaleX(1.02); }
+          50% { transform: translateY(0.5px) scaleX(0.98); }
+          75% { transform: translateY(-0.5px) scaleX(1.01); }
         }
-        @keyframes jam-spill {
-          0% { transform: translateY(0) scaleY(0.3); opacity: 0; }
-          20% { transform: translateY(-8px) scaleY(1); opacity: 1; }
-          50% { transform: translateY(4px) scaleY(0.8); opacity: 0.7; }
-          80% { transform: translateY(-2px) scaleY(0.5); opacity: 0.3; }
-          100% { transform: translateY(0) scaleY(0.3); opacity: 0; }
+        @keyframes overflow {
+          0%, 100% { transform: translateY(0); opacity: 0; }
+          15% { transform: translateY(-6px); opacity: 0.5; }
+          30% { transform: translateY(-3px) scaleY(1.4); opacity: 0.45; }
+          50% { transform: translateY(2px) scaleY(0.6); opacity: 0.3; }
+          70% { transform: translateY(-1px); opacity: 0.15; }
+          85% { transform: translateY(0); opacity: 0; }
         }
-        @keyframes jam-drip {
+        @keyframes drip-l {
+          0%, 100% { transform: translateY(0); opacity: 0.45; }
+          40% { transform: translateY(4px); opacity: 0.2; }
+          60% { transform: translateY(5px); opacity: 0.1; }
+          80% { transform: translateY(2px); opacity: 0.35; }
+        }
+        @keyframes drip-r {
           0%, 100% { transform: translateY(0); opacity: 0.4; }
-          50% { transform: translateY(6px); opacity: 0.15; }
+          30% { transform: translateY(3px); opacity: 0.15; }
+          70% { transform: translateY(4px); opacity: 0.1; }
+          90% { transform: translateY(1px); opacity: 0.3; }
         }
-        .animate-jam-wave { animation: jam-wave 3s ease-in-out infinite; transform-origin: center; }
-        .animate-jam-spill { animation: jam-spill 4s ease-in-out infinite; transform-origin: 96px 42px; }
-        .animate-jam-drip { animation: jam-drip 2.5s ease-in-out infinite; }
-        .animate-jam-drip-delayed { animation: jam-drip 2.5s ease-in-out infinite 1.2s; }
+        .jam-wave { animation: wave 3s ease-in-out infinite; transform-origin: 32px 45px; }
+        .jam-overflow { animation: overflow 4.5s ease-in-out infinite; transform-origin: 50px 22px; }
+        .jam-drip-l { animation: drip-l 3.5s ease-in-out infinite; }
+        .jam-drip-r { animation: drip-r 3.5s ease-in-out infinite 0.8s; }
+        .jam-spill { animation: overflow 4.5s ease-in-out infinite 0.5s; transform-origin: 48px 52px; }
       `}</style>
     </div>
   )
@@ -539,9 +553,19 @@ export function TerminalWorkspace() {
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border px-4 py-2">
         <div className="flex items-center gap-3">
-          <h1 className="font-brand text-xl font-bold" style={{ background: "linear-gradient(135deg, #E8A838, #D4872C)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-            Jam
-          </h1>
+          <div className="flex items-center gap-2">
+            <svg viewBox="0 0 64 64" className="size-6" xmlns="http://www.w3.org/2000/svg">
+              <defs><linearGradient id="hdr-lid" x1="20" y1="8" x2="44" y2="18" gradientUnits="userSpaceOnUse"><stop stopColor="#E8A838" /><stop offset="1" stopColor="#D4872C" /></linearGradient></defs>
+              <rect x="20" y="8" width="24" height="6" rx="3" fill="url(#hdr-lid)" />
+              <path d="M18 14h28v3c0 1-3 3-6 3H24c-3 0-6-2-6-3v-3z" fill="url(#hdr-lid)" opacity="0.8" />
+              <path d="M16 20c-2 0-4 2-4 4v20c0 8 6 14 14 14h12c8 0 14-6 14-14V24c0-2-2-4-4-4H16z" fill="#1E1832" />
+              <path d="M12 38c2-2 8-4 14-3s11 3 14 2 9-3 14-2v10c0 8-6 14-14 14H26c-8 0-14-6-14-14V38z" fill="#A855F7" opacity="0.55" />
+              <circle cx="11" cy="53" r="2" fill="#A855F7" opacity="0.45" />
+            </svg>
+            <span className="font-brand text-lg font-bold" style={{ background: "linear-gradient(135deg, #E8A838, #D4872C)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+              Jam
+            </span>
+          </div>
           {connectedUsers.length > 0 && (
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Users className="size-3.5" />
