@@ -4,17 +4,17 @@ import {
   buildE2bPublicHost,
   buildJamPublicHost,
 } from "shared";
-import type { CoordinationConfig } from "../config";
+import {
+  DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND,
+  DEFAULT_JAM_RUNTIME_START_COMMAND,
+  type CoordinationConfig,
+} from "../config";
 import {
   type JamComputeClient,
   type JamEnvironmentHandle,
   type JamRuntimeStatus,
 } from "./jam-compute-types";
-import {
-  buildJamRuntimeEnvVars,
-  shellQuote,
-  type JamRuntimeEnv,
-} from "./jam-runtime";
+import { buildJamRuntimeEnvVars, shellQuote } from "./jam-runtime";
 
 function getErrorName(error: unknown) {
   return typeof error === "object" && error && "name" in error
@@ -59,13 +59,7 @@ async function fetchRuntimeHealth(
 
 export function buildE2bBootstrapScript(
   config: CoordinationConfig,
-  runtimeEnv: JamRuntimeEnv,
 ) {
-  const runtimeExports = Object.entries(
-    buildJamRuntimeEnvVars(config, runtimeEnv),
-  )
-    .map(([key, value]) => `${key}=${shellQuote(value)}`)
-    .join(" ");
   const installDir = shellQuote(config.jamInstallDir);
   const repoUrl = shellQuote(config.jamRepoUrl);
   const gitUserName = shellQuote(config.jamGitUserName);
@@ -78,10 +72,10 @@ export function buildE2bBootstrapScript(
 set -euxo pipefail
 export HOME="\${HOME:-/home/user}"
 export NPM_CONFIG_PREFIX="$HOME/.npm-global"
-export PATH="$NPM_CONFIG_PREFIX/bin:$HOME/.bun/bin:$PATH"
+export PATH="/usr/local/bin:$NPM_CONFIG_PREFIX/bin:$HOME/.bun/bin:/root/.bun/bin:$PATH"
 if ! command -v bun >/dev/null 2>&1; then
   curl -fsSL https://bun.sh/install | bash
-  export PATH="$NPM_CONFIG_PREFIX/bin:$HOME/.bun/bin:$PATH"
+  export PATH="/usr/local/bin:$NPM_CONFIG_PREFIX/bin:$HOME/.bun/bin:/root/.bun/bin:$PATH"
 fi
 if ! command -v claude >/dev/null 2>&1; then
   mkdir -p "$NPM_CONFIG_PREFIX"
@@ -98,7 +92,35 @@ if [ -z "$(git -C ${installDir} status --porcelain)" ]; then
 fi
 cd ${installDir}
 bun install --frozen-lockfile
-export ${runtimeExports}
+exec /bin/bash -c ${startCommand}
+`;
+}
+
+function resolveTemplateRuntimeStartCommand(config: CoordinationConfig) {
+  return config.jamRuntimeStartCommand === DEFAULT_JAM_RUNTIME_START_COMMAND
+    ? DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND
+    : config.jamRuntimeStartCommand;
+}
+
+export function buildE2bTemplateLaunchScript(config: CoordinationConfig) {
+  const installDir = shellQuote(config.jamInstallDir);
+  const gitUserName = shellQuote(config.jamGitUserName);
+  const gitUserEmail = shellQuote(config.jamGitUserEmail);
+  const startCommand = shellQuote(
+    `${resolveTemplateRuntimeStartCommand(config)} > /tmp/jam-runtime.log 2>&1`,
+  );
+
+  return `#!/bin/bash
+set -euxo pipefail
+export HOME="\${HOME:-/home/user}"
+export PATH="/usr/local/bin:$HOME/.bun/bin:/root/.bun/bin:$PATH"
+if [ ! -d ${installDir} ]; then
+  echo "Missing jam runtime template contents at ${config.jamInstallDir}" >&2
+  exit 1
+fi
+git config --global user.name ${gitUserName}
+git config --global user.email ${gitUserEmail}
+cd ${installDir}
 exec /bin/bash -c ${startCommand}
 `;
 }
@@ -127,32 +149,34 @@ export function createE2bComputeClient(
     provider: "e2b",
 
     async launchJamEnvironment(jamId, launchConfig) {
-      const createArgs = [
-        {
-          ...getConnectionOpts(),
-          secure: true,
-          timeoutMs: config.jamE2bTimeoutMs,
-          lifecycle: {
-            onTimeout: "pause" as const,
-            autoResume: true,
-          },
-          metadata: {
-            jamId,
-            provider: "e2b",
-          },
-        },
-      ] as const;
-      const sandbox = config.jamE2bTemplate
-        ? await Sandbox.create(config.jamE2bTemplate, createArgs[0])
-        : await Sandbox.create(createArgs[0]);
       const publicHost = buildJamPublicHost(jamId, config.jamHostSuffix);
-      const runtimeEnv: JamRuntimeEnv = {
+      const runtimeEnv = {
         ...launchConfig,
         publicHost,
       };
+      const launchScript = config.jamE2bTemplate
+        ? buildE2bTemplateLaunchScript(config)
+        : buildE2bBootstrapScript(config);
+      const sandboxOpts = {
+        ...getConnectionOpts(),
+        secure: true,
+        timeoutMs: config.jamE2bTimeoutMs,
+        lifecycle: {
+          onTimeout: "pause" as const,
+          autoResume: true,
+        },
+        metadata: {
+          jamId,
+          provider: "e2b",
+        },
+        envs: buildJamRuntimeEnvVars(config, runtimeEnv),
+      };
+      const sandbox = config.jamE2bTemplate
+        ? await Sandbox.create(config.jamE2bTemplate, sandboxOpts)
+        : await Sandbox.create(sandboxOpts);
 
       await sandbox.commands.run(
-        `/bin/bash -lc ${shellQuote(buildE2bBootstrapScript(config, runtimeEnv))}`,
+        `/bin/bash -lc ${shellQuote(launchScript)}`,
         {
           background: true,
           timeoutMs: config.jamE2bTimeoutMs,

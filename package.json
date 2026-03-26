@@ -19,7 +19,8 @@
     "coordination:web:test": "cd packages/coordination && bun run web:test",
     "jam-proxy:start": "cd packages/jam-proxy && bun run start",
     "jam-proxy:dev": "cd packages/jam-proxy && bun run dev",
-    "jam-proxy:test": "cd packages/jam-proxy && bun run test"
+    "jam-proxy:test": "cd packages/jam-proxy && bun run test",
+    "e2b:template:build": "bun run scripts/build-e2b-template.ts"
   },
   "workspaces": [
     "packages/*"

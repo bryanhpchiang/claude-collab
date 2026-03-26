@@ -4,6 +4,11 @@ import type { JamComputeProvider } from "./services/jam-compute-types";
 
 type CoordinationWebClientEntries = typeof COORDINATION_WEB_CLIENT_ENTRIES;
 
+export const DEFAULT_JAM_RUNTIME_START_COMMAND =
+  "JAM_MODE=instance bun run runtime:start";
+export const DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND =
+  "cd packages/runtime && JAM_MODE=instance bun run src/index.ts";
+
 export type CoordinationConfig = {
   port: number;
   serviceName: string;
@@ -147,6 +152,6 @@ export function loadConfig(): CoordinationConfig {
     jamGitUserEmail: process.env.JAM_GIT_USER_EMAIL || "jam@letsjam.now",
     jamRuntimeStartCommand:
       process.env.JAM_RUNTIME_START_COMMAND ||
-      "JAM_MODE=instance bun run runtime:start",
+      DEFAULT_JAM_RUNTIME_START_COMMAND,
   };
 }

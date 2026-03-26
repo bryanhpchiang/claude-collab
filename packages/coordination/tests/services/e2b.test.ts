@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import type { CoordinationConfig } from "../../src/config";
-import { buildE2bBootstrapScript } from "../../src/services/e2b";
+import {
+  DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND,
+  DEFAULT_JAM_RUNTIME_START_COMMAND,
+  type CoordinationConfig,
+} from "../../src/config";
+import {
+  buildE2bBootstrapScript,
+  buildE2bTemplateLaunchScript,
+} from "../../src/services/e2b";
 
 const config: CoordinationConfig = {
   port: 8080,
@@ -33,21 +40,16 @@ const config: CoordinationConfig = {
   jamInstallDir: "/home/user/jam",
   jamGitUserName: "Jam",
   jamGitUserEmail: "jam@letsjam.now",
-  jamRuntimeStartCommand: "JAM_MODE=instance bun run runtime:start",
+  jamRuntimeStartCommand: DEFAULT_JAM_RUNTIME_START_COMMAND,
 };
 
 describe("buildE2bBootstrapScript", () => {
-  test("installs bun and claude into user-writable locations before starting the runtime", () => {
-    const script = buildE2bBootstrapScript(config, {
-      jamId: "abc123",
-      publicHost: "abc123.jams.letsjam.now",
-      sharedSecret: "shared-secret",
-      deploySecret: "deploy-secret",
-    });
+  test("installs bun and claude before starting the runtime from a generic sandbox", () => {
+    const script = buildE2bBootstrapScript(config);
 
     expect(script).toContain('export NPM_CONFIG_PREFIX="$HOME/.npm-global"');
     expect(script).toContain(
-      'export PATH="$NPM_CONFIG_PREFIX/bin:$HOME/.bun/bin:$PATH"',
+      'export PATH="/usr/local/bin:$NPM_CONFIG_PREFIX/bin:$HOME/.bun/bin:/root/.bun/bin:$PATH"',
     );
     expect(script).toContain("curl -fsSL https://bun.sh/install | bash");
     expect(script).toContain("npm install -g @anthropic-ai/claude-code");
@@ -58,11 +60,41 @@ describe("buildE2bBootstrapScript", () => {
       "git -C '/home/user/jam' pull --ff-only origin main || true",
     );
     expect(script).toContain("bun install --frozen-lockfile");
-    expect(script).toContain(
-      "export JAM_ID='abc123' JAM_PUBLIC_HOST='abc123.jams.letsjam.now'",
-    );
+    expect(script).not.toContain("JAM_SHARED_SECRET");
     expect(script).toContain(
       "exec /bin/bash -c 'JAM_MODE=instance bun run runtime:start > /tmp/jam-runtime.log 2>&1'",
+    );
+  });
+});
+
+describe("buildE2bTemplateLaunchScript", () => {
+  test("starts the runtime from a prebuilt template without reinstalling dependencies", () => {
+    const script = buildE2bTemplateLaunchScript(config);
+
+    expect(script).toContain(
+      'export PATH="/usr/local/bin:$HOME/.bun/bin:/root/.bun/bin:$PATH"',
+    );
+    expect(script).toContain(
+      'echo "Missing jam runtime template contents at /home/user/jam" >&2',
+    );
+    expect(script).toContain("git config --global user.name 'Jam'");
+    expect(script).toContain("git config --global user.email 'jam@letsjam.now'");
+    expect(script).not.toContain("npm install -g @anthropic-ai/claude-code");
+    expect(script).not.toContain("git clone");
+    expect(script).not.toContain("bun install --frozen-lockfile");
+    expect(script).toContain(
+      `exec /bin/bash -c '${DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND} > /tmp/jam-runtime.log 2>&1'`,
+    );
+  });
+
+  test("preserves an explicit runtime start command for template launches", () => {
+    const script = buildE2bTemplateLaunchScript({
+      ...config,
+      jamRuntimeStartCommand: "JAM_MODE=instance bun run custom:start",
+    });
+
+    expect(script).toContain(
+      "exec /bin/bash -c 'JAM_MODE=instance bun run custom:start > /tmp/jam-runtime.log 2>&1'",
     );
   });
 });
