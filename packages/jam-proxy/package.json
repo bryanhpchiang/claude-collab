@@ -1,0 +1,16 @@
+{
+  "name": "@jam/jam-proxy",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun run src/index.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "http-proxy": "^1.18.1",
+    "pg": "^8.20.0",
+    "shared": "workspace:*"
+  }
+}

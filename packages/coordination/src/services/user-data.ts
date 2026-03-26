@@ -1,29 +1,17 @@
 import type { CoordinationConfig } from "../config";
-
-export type JamRuntimeEnv = {
-  jamId: string;
-  jamName?: string;
-  publicHost: string;
-  sharedSecret: string;
-  deploySecret: string;
-};
-
-function shellQuote(value: string) {
-  return `'${value.replaceAll("'", `'\\''`)}'`;
-}
+import {
+  buildJamRuntimeEnvVars,
+  shellQuote,
+  type JamRuntimeEnv,
+} from "./jam-runtime";
 
 export function buildJamInstanceUserDataScript(
   config: CoordinationConfig,
   runtimeEnv: JamRuntimeEnv,
 ) {
-  const exports = [
-    `JAM_ID=${shellQuote(runtimeEnv.jamId)}`,
-    `JAM_PUBLIC_HOST=${shellQuote(runtimeEnv.publicHost)}`,
-    `JAM_SHARED_SECRET=${shellQuote(runtimeEnv.sharedSecret)}`,
-    `JAM_DEPLOY_SECRET=${shellQuote(runtimeEnv.deploySecret)}`,
-    ...(runtimeEnv.jamName ? [`JAM_NAME=${shellQuote(runtimeEnv.jamName)}`] : []),
-    `COORDINATION_BASE_URL=${shellQuote(config.baseUrl)}`,
-  ].join(" ");
+  const exports = Object.entries(buildJamRuntimeEnvVars(config, runtimeEnv))
+    .map(([key, value]) => `${key}=${shellQuote(value)}`)
+    .join(" ");
 
   return `#!/bin/bash
 set -ex
@@ -44,5 +32,7 @@ export function buildJamInstanceUserData(
   config: CoordinationConfig,
   runtimeEnv: JamRuntimeEnv,
 ) {
-  return Buffer.from(buildJamInstanceUserDataScript(config, runtimeEnv)).toString("base64");
+  return Buffer.from(
+    buildJamInstanceUserDataScript(config, runtimeEnv),
+  ).toString("base64");
 }

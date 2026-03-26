@@ -4,10 +4,12 @@ import {
   isGitHubOAuthEnabled,
   type CoordinationAuth,
 } from "../services/auth";
-import type { Ec2Service } from "../services/ec2";
+import type { JamComputeService } from "../services/jam-compute";
 import { mergeHeaders } from "../services/http";
 import type { JamAccessService } from "../services/jam-access";
+import type { JamPreviewsService } from "../services/jam-previews";
 import type { JamRecordsService } from "../services/jam-records";
+import type { JamSecretsService } from "../services/jam-secrets";
 import { renderCoordinationPage } from "../server/web-render";
 import { serveCoordinationAsset } from "../server/web-assets";
 import { listJamsForUser } from "./jams";
@@ -19,7 +21,9 @@ type PageRouteContext = {
   auth: CoordinationAuth;
   jamRecords: JamRecordsService;
   jamAccess: JamAccessService;
-  ec2: Ec2Service;
+  jamSecrets: JamSecretsService;
+  jamPreviews: JamPreviewsService;
+  compute: JamComputeService;
 };
 
 export async function handlePageRoutes(
@@ -42,17 +46,20 @@ export async function handlePageRoutes(
       });
     }
 
-    return new Response(await renderCoordinationPage(context.config, {
-      bootstrap: {
-        page: "landing",
-        signedIn: false,
-        authEnabled: isGitHubOAuthEnabled(context.config),
-      },
-    }), {
-      headers: mergeHeaders(session.headers, {
-        "Content-Type": "text/html; charset=utf-8",
+    return new Response(
+      await renderCoordinationPage(context.config, {
+        bootstrap: {
+          page: "landing",
+          signedIn: false,
+          authEnabled: isGitHubOAuthEnabled(context.config),
+        },
       }),
-    });
+      {
+        headers: mergeHeaders(session.headers, {
+          "Content-Type": "text/html; charset=utf-8",
+        }),
+      },
+    );
   }
 
   if (url.pathname === "/dashboard" && request.method === "GET") {
@@ -68,17 +75,20 @@ export async function handlePageRoutes(
     }
 
     const jams = await listJamsForUser(context, user.id);
-    return new Response(await renderCoordinationPage(context.config, {
-      bootstrap: {
-        page: "dashboard",
-        user,
-        jams,
-      },
-    }), {
-      headers: mergeHeaders(session.headers, {
-        "Content-Type": "text/html; charset=utf-8",
+    return new Response(
+      await renderCoordinationPage(context.config, {
+        bootstrap: {
+          page: "dashboard",
+          user,
+          jams,
+        },
       }),
-    });
+      {
+        headers: mergeHeaders(session.headers, {
+          "Content-Type": "text/html; charset=utf-8",
+        }),
+      },
+    );
   }
 
   if (url.pathname.startsWith("/assets/") && request.method === "GET") {

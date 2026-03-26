@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   CoordinationUser,
   DashboardAccessState,
@@ -55,7 +49,10 @@ async function ensureAuthorized(response: Response) {
   return true;
 }
 
-export function useDashboardController({ initialJams, user }: UseDashboardControllerOptions) {
+export function useDashboardController({
+  initialJams,
+  user,
+}: UseDashboardControllerOptions) {
   const [jams, setJams] = useState(initialJams);
   const [error, setError] = useState("");
   const [creating, setCreating] = useState(false);
@@ -66,7 +63,10 @@ export function useDashboardController({ initialJams, user }: UseDashboardContro
   const [access, setAccess] = useState<DashboardAccessState>(createAccessState);
   const jamsRef = useRef(initialJams);
 
-  const activeJamExists = useMemo(() => hasActiveJam(jams, user.id), [jams, user.id]);
+  const activeJamExists = useMemo(
+    () => hasActiveJam(jams, user.id),
+    [jams, user.id],
+  );
 
   const closeAccessModal = useCallback(() => {
     setAccess(createAccessState());
@@ -88,7 +88,9 @@ export function useDashboardController({ initialJams, user }: UseDashboardContro
       const nextJams = await response.json();
       jamsRef.current = nextJams;
       setJams(nextJams);
-      setError((current) => (current.startsWith("Failed to fetch") ? "" : current));
+      setError((current) =>
+        current.startsWith("Failed to fetch") ? "" : current,
+      );
     } catch (nextError) {
       setError(getErrorMessage(nextError, "Failed to fetch jams"));
     }
@@ -118,11 +120,15 @@ export function useDashboardController({ initialJams, user }: UseDashboardContro
     setAccess((current) => ({ ...current, loading: true, error: "" }));
 
     try {
-      const response = await fetch(`/api/jams/${encodeURIComponent(jamId)}/members`);
+      const response = await fetch(
+        `/api/jams/${encodeURIComponent(jamId)}/members`,
+      );
       if (!(await ensureAuthorized(response))) return;
       if (!response.ok) {
         const body = await safeJson(response);
-        throw new Error(body.error || `Failed to load access (${response.status})`);
+        throw new Error(
+          body.error || `Failed to load access (${response.status})`,
+        );
       }
 
       const payload = await response.json();
@@ -152,13 +158,17 @@ export function useDashboardController({ initialJams, user }: UseDashboardContro
       const response = await fetch("/api/jams", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: (nameOverride ?? createName).trim() || undefined }),
+        body: JSON.stringify({
+          name: (nameOverride ?? createName).trim() || undefined,
+        }),
       });
 
       if (!(await ensureAuthorized(response))) return;
       if (!response.ok) {
         const body = await safeJson(response);
-        throw new Error(body.error || `Failed to create instance (${response.status})`);
+        throw new Error(
+          body.error || `Failed to create environment (${response.status})`,
+        );
       }
 
       setCreateName("");
@@ -167,7 +177,9 @@ export function useDashboardController({ initialJams, user }: UseDashboardContro
       setError("");
       await loadJams();
     } catch (nextError) {
-      setCreateError(getErrorMessage(nextError, "Failed to create instance"));
+      setCreateError(
+        getErrorMessage(nextError, "Failed to create environment"),
+      );
     } finally {
       setCreating(false);
     }
@@ -183,14 +195,18 @@ export function useDashboardController({ initialJams, user }: UseDashboardContro
       if (!(await ensureAuthorized(response))) return;
       if (!response.ok) {
         const body = await safeJson(response);
-        throw new Error(body.error || `Failed to terminate instance (${response.status})`);
+        throw new Error(
+          body.error || `Failed to terminate environment (${response.status})`,
+        );
       }
 
       setError("");
-      setAccess((current) => (current.jamId === jamId ? createAccessState() : current));
+      setAccess((current) =>
+        current.jamId === jamId ? createAccessState() : current,
+      );
       await loadJams();
     } catch (nextError) {
-      setError(getErrorMessage(nextError, "Failed to terminate instance"));
+      setError(getErrorMessage(nextError, "Failed to terminate environment"));
     } finally {
       setDeletingId(null);
     }
@@ -228,7 +244,9 @@ export function useDashboardController({ initialJams, user }: UseDashboardContro
       if (!(await ensureAuthorized(response))) return;
       if (!response.ok) {
         const body = await safeJson(response);
-        throw new Error(body.error || `Failed to create invite link (${response.status})`);
+        throw new Error(
+          body.error || `Failed to create invite link (${response.status})`,
+        );
       }
 
       const payload = await response.json();
@@ -274,14 +292,18 @@ export function useDashboardController({ initialJams, user }: UseDashboardContro
       if (!(await ensureAuthorized(response))) return;
       if (!response.ok) {
         const body = await safeJson(response);
-        throw new Error(body.error || `Failed to revoke invite link (${response.status})`);
+        throw new Error(
+          body.error || `Failed to revoke invite link (${response.status})`,
+        );
       }
 
       setAccess((current) => ({
         ...current,
         revokingInviteId: "",
         inviteLinks: current.inviteLinks.map((link) =>
-          link.id === linkId ? { ...link, revoked_at: new Date().toISOString() } : link,
+          link.id === linkId
+            ? { ...link, revoked_at: new Date().toISOString() }
+            : link,
         ),
       }));
     } catch (nextError) {
@@ -305,7 +327,9 @@ export function useDashboardController({ initialJams, user }: UseDashboardContro
       if (!(await ensureAuthorized(response))) return;
       if (!response.ok) {
         const body = await safeJson(response);
-        throw new Error(body.error || `Failed to remove member (${response.status})`);
+        throw new Error(
+          body.error || `Failed to remove member (${response.status})`,
+        );
       }
 
       setAccess((current) => ({

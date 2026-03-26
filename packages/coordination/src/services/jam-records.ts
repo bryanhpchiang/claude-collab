@@ -1,8 +1,10 @@
 import type { Kysely } from "kysely";
 import type { CoordinationDatabase, JamRecordRow } from "./db";
+import type { JamComputeProvider } from "./jam-compute-types";
 
 export type JamRecord = {
   id: string;
+  provider: JamComputeProvider;
   instance_id: string;
   creator_user_id: string;
   creator_login: string;
@@ -13,6 +15,7 @@ export type JamRecord = {
   secret_arn?: string;
   shared_secret?: string;
   deploy_secret?: string;
+  traffic_access_token?: string;
   target_group_arn?: string;
   listener_rule_arn?: string;
   state: string;
@@ -23,6 +26,7 @@ export type JamRecord = {
 function toJamRecord(row: JamRecordRow): JamRecord {
   return {
     id: row.id,
+    provider: row.provider || "ec2",
     instance_id: row.instance_id,
     creator_user_id: row.creator_user_id,
     creator_login: row.creator_login,
@@ -33,8 +37,13 @@ function toJamRecord(row: JamRecordRow): JamRecord {
     ...(row.secret_arn ? { secret_arn: row.secret_arn } : {}),
     ...(row.shared_secret ? { shared_secret: row.shared_secret } : {}),
     ...(row.deploy_secret ? { deploy_secret: row.deploy_secret } : {}),
+    ...(row.traffic_access_token
+      ? { traffic_access_token: row.traffic_access_token }
+      : {}),
     ...(row.target_group_arn ? { target_group_arn: row.target_group_arn } : {}),
-    ...(row.listener_rule_arn ? { listener_rule_arn: row.listener_rule_arn } : {}),
+    ...(row.listener_rule_arn
+      ? { listener_rule_arn: row.listener_rule_arn }
+      : {}),
     state: row.state,
     created_at: row.created_at,
     ...(row.name ? { name: row.name } : {}),
@@ -56,12 +65,14 @@ export function createJamRecordsService(db: Kysely<CoordinationDatabase>) {
         .insertInto("jam_records")
         .values({
           ...item,
+          provider: item.provider,
           creator_avatar: item.creator_avatar || "",
           ip: item.ip || null,
           public_host: item.public_host || null,
           secret_arn: item.secret_arn || null,
           shared_secret: item.shared_secret || null,
           deploy_secret: item.deploy_secret || null,
+          traffic_access_token: item.traffic_access_token || null,
           target_group_arn: item.target_group_arn || null,
           listener_rule_arn: item.listener_rule_arn || null,
           name: item.name || null,

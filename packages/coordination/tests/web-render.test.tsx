@@ -58,6 +58,6 @@ test("renderCoordinationPage renders dashboard content from bootstrap", async ()
 
   expect(html).toContain('id="jam-coordination-bootstrap"');
   expect(html).not.toContain("window.__JAM_COORDINATION__");
-  expect(html).toContain("Instances");
+  expect(html).toContain("Your Jams");
   expect(html).toContain("My Jam");
 });

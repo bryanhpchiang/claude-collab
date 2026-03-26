@@ -9,12 +9,19 @@ const COORDINATION_ENV_KEYS = [
   "PGSSLROOTCERT",
   "BETTER_AUTH_SECRET",
   "AUTH_SECRET",
+  "JAM_COMPUTE_PROVIDER",
   "AWS_REGION",
   "AWS_DEFAULT_REGION",
   "JAM_AMI_ID",
   "JAM_SECURITY_GROUP_ID",
   "JAM_INSTANCE_TYPE",
+  "E2B_API_KEY",
+  "E2B_DOMAIN",
+  "JAM_E2B_TEMPLATE",
+  "JAM_E2B_TIMEOUT_MS",
   "JAM_TAG_PREFIX",
+  "JAM_HOST_SUFFIX",
+  "JAM_PREVIEW_HOST_SUFFIX",
   "GITHUB_CLIENT_ID",
   "GITHUB_CLIENT_SECRET",
   "GITHUB_WEBHOOK_SECRET",
@@ -84,8 +91,56 @@ describe("loadConfig", () => {
     );
   });
 
+  test("prefers E2B when credentials are configured", () => {
+    withCoordinationEnv(
+      {
+        DATABASE_URL: "postgresql://jam:jam@localhost:5432/jam",
+        BETTER_AUTH_SECRET: "test-secret",
+        BASE_URL: "https://letsjam.now",
+        E2B_API_KEY: "test-e2b-key",
+      },
+      () => {
+        expect(loadConfig().jamComputeProvider).toBe("e2b");
+      },
+    );
+  });
+
+  test("loads the preview host suffix", () => {
+    withCoordinationEnv(
+      {
+        DATABASE_URL: "postgresql://jam:jam@localhost:5432/jam",
+        BETTER_AUTH_SECRET: "test-secret",
+        BASE_URL: "https://letsjam.now",
+        JAM_PREVIEW_HOST_SUFFIX: "previews.letsjam.now",
+      },
+      () => {
+        expect(loadConfig().jamPreviewHostSuffix).toBe(
+          "previews.letsjam.now",
+        );
+      },
+    );
+  });
+
+  test("requires E2B credentials when the provider is forced to e2b", () => {
+    withCoordinationEnv(
+      {
+        DATABASE_URL: "postgresql://jam:jam@localhost:5432/jam",
+        BETTER_AUTH_SECRET: "test-secret",
+        BASE_URL: "https://letsjam.now",
+        JAM_COMPUTE_PROVIDER: "e2b",
+      },
+      () => {
+        expect(() => loadConfig()).toThrow(
+          "E2B_API_KEY is required when JAM_COMPUTE_PROVIDER is 'e2b'",
+        );
+      },
+    );
+  });
+
   test("builds web assets before starting the coordination package", async () => {
-    const pkg = await Bun.file(new URL("../package.json", import.meta.url)).json() as {
+    const pkg = (await Bun.file(
+      new URL("../package.json", import.meta.url),
+    ).json()) as {
       scripts?: Record<string, string>;
     };
 

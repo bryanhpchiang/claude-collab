@@ -2,9 +2,11 @@ import { existsSync, readFileSync } from "fs";
 import { Kysely, PostgresDialect, sql } from "kysely";
 import { Pool, type PoolConfig } from "pg";
 import type { CoordinationConfig } from "../config";
+import type { JamComputeProvider } from "./jam-compute-types";
 
 export type JamRecordRow = {
   id: string;
+  provider: JamComputeProvider | null;
   instance_id: string;
   creator_user_id: string;
   creator_login: string;
@@ -15,11 +17,23 @@ export type JamRecordRow = {
   secret_arn: string | null;
   shared_secret: string | null;
   deploy_secret: string | null;
+  traffic_access_token: string | null;
   target_group_arn: string | null;
   listener_rule_arn: string | null;
   state: string;
   created_at: string;
   name: string | null;
+};
+
+export type JamPreviewRow = {
+  id: string;
+  jam_id: string;
+  host: string;
+  port: number;
+  access_mode: string;
+  created_by_user_id: string | null;
+  created_at: string;
+  label: string | null;
 };
 
 export type JamMemberRow = {
@@ -44,6 +58,7 @@ export type CoordinationDatabase = {
   jam_records: JamRecordRow;
   jam_members: JamMemberRow;
   jam_invite_links: JamInviteLinkRow;
+  jam_previews: JamPreviewRow;
 };
 
 const SSL_QUERY_PARAMS = ["sslmode", "sslcert", "sslkey", "sslrootcert"];
@@ -95,6 +110,9 @@ export async function ensureCoordinationTables(
     .createTable("jam_records")
     .ifNotExists()
     .addColumn("id", "text", (column) => column.primaryKey())
+    .addColumn("provider", "text", (column) =>
+      column.notNull().defaultTo("ec2"),
+    )
     .addColumn("instance_id", "text", (column) => column.notNull().unique())
     .addColumn("creator_user_id", "text", (column) => column.notNull())
     .addColumn("creator_login", "text", (column) => column.notNull())
@@ -122,6 +140,27 @@ export async function ensureCoordinationTables(
 
   await sql`
     alter table jam_records
+    add column if not exists provider text
+  `.execute(db);
+
+  await sql`
+    update jam_records
+    set provider = 'ec2'
+    where provider is null
+  `.execute(db);
+
+  await sql`
+    alter table jam_records
+    alter column provider set default 'ec2'
+  `.execute(db);
+
+  await sql`
+    alter table jam_records
+    alter column provider set not null
+  `.execute(db);
+
+  await sql`
+    alter table jam_records
     add column if not exists public_host text
   `.execute(db);
 
@@ -142,12 +181,28 @@ export async function ensureCoordinationTables(
 
   await sql`
     alter table jam_records
+    add column if not exists traffic_access_token text
+  `.execute(db);
+
+  await sql`
+    alter table jam_records
     add column if not exists target_group_arn text
   `.execute(db);
 
   await sql`
     alter table jam_records
     add column if not exists listener_rule_arn text
+  `.execute(db);
+
+  await sql`
+    alter table jam_records
+    drop constraint if exists jam_records_provider_check
+  `.execute(db);
+
+  await sql`
+    alter table jam_records
+    add constraint jam_records_provider_check
+    check (provider in ('ec2', 'e2b'))
   `.execute(db);
 
   await sql`
@@ -230,4 +285,45 @@ export async function ensureCoordinationTables(
     .column("token_hash")
     .unique()
     .execute();
+
+  await db.schema
+    .createTable("jam_previews")
+    .ifNotExists()
+    .addColumn("id", "text", (column) => column.primaryKey())
+    .addColumn("jam_id", "text", (column) => column.notNull())
+    .addColumn("host", "text", (column) => column.notNull().unique())
+    .addColumn("port", "integer", (column) => column.notNull())
+    .addColumn("access_mode", "text", (column) =>
+      column.notNull().defaultTo("public"),
+    )
+    .addColumn("created_by_user_id", "text")
+    .addColumn("created_at", "text", (column) => column.notNull())
+    .addColumn("label", "text")
+    .execute();
+
+  await db.schema
+    .createIndex("jam_previews_jam_idx")
+    .ifNotExists()
+    .on("jam_previews")
+    .column("jam_id")
+    .execute();
+
+  await db.schema
+    .createIndex("jam_previews_jam_port_idx")
+    .ifNotExists()
+    .on("jam_previews")
+    .columns(["jam_id", "port"])
+    .unique()
+    .execute();
+
+  await sql`
+    alter table jam_previews
+    drop constraint if exists jam_previews_access_mode_check
+  `.execute(db);
+
+  await sql`
+    alter table jam_previews
+    add constraint jam_previews_access_mode_check
+    check (access_mode in ('public'))
+  `.execute(db);
 }
