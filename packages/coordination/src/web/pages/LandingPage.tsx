@@ -62,7 +62,23 @@ export function LandingPage({ authEnabled, signedIn }: LandingPageProps) {
             <span className="dot"></span>
             Multiplayer Claude Code
           </div>
-          <h1 className="hero-logo" style={{ background: 'linear-gradient(135deg, #E8A838 0%, #D4872C 30%, #C06028 50%, #A855F7 80%, #7C3AED 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>Jam</h1>
+          <div className="hero-jar">
+            <svg className="hero-jar-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M25 18h50c2 0 3 1 3 3v6H22v-6c0-2 1-3 3-3z" fill="url(#lp-jar-lid)"/>
+              <path d="M22 27h56v6c0 2-4 4-8 5H30c-4-1-8-3-8-5v-6z" fill="url(#lp-jar-lid)" opacity="0.7"/>
+              <path d="M30 38h40c5 0 9 3 10 8l4 26c1 5-3 10-8 10H24c-5 0-9-5-8-10l4-26c1-5 5-8 10-8z" fill="url(#lp-jar-body)"/>
+              <path d="M34 48c4 8 12 14 16 18 4-4 12-10 16-18" stroke="rgba(255,255,255,0.12)" strokeWidth="2" strokeLinecap="round" fill="none"/>
+              <defs>
+                <linearGradient id="lp-jar-lid" x1="25" y1="18" x2="75" y2="33" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#E8A838"/><stop offset="1" stopColor="#D4872C"/>
+                </linearGradient>
+                <linearGradient id="lp-jar-body" x1="20" y1="38" x2="80" y2="82" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="rgba(232,168,56,0.2)"/><stop offset="1" stopColor="rgba(168,85,247,0.08)"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <h1 className="hero-logo">Jam</h1>
           <p className="hero-tagline">
             Code together with Claude in real time. One link, one room, everyone building at once.
           </p>

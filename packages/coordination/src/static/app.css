@@ -211,6 +211,18 @@ input {
   text-align: center;
 }
 
+.hero-jar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.hero-jar-icon {
+  width: 80px;
+  height: 80px;
+  filter: drop-shadow(0 0 30px rgba(232, 168, 56, 0.2));
+}
+
 .hero-badge {
   display: inline-flex;
   align-items: center;
@@ -234,16 +246,23 @@ input {
 }
 
 .hero-logo {
-  margin: 0 0 16px;
+  margin: 0 0 20px;
+  padding-bottom: 8px;
   font-family: "Fredoka", sans-serif;
   font-size: clamp(72px, 12vw, 120px);
-  line-height: 0.95;
-  letter-spacing: -0.05em;
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong), var(--accent));
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, #E8A838 0%, #D4872C 30%, #C06028 50%, #A855F7 80%, #7C3AED 100%);
   background-size: 200% 200%;
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  animation: shimmer 8s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
 }
 
 .hero-tagline {
