@@ -51,6 +51,31 @@ export function useRuntimeWorkspace({
 
   const showSessionClose = sessionList.length > 1;
 
+  // Fetch sessions via HTTP on mount as a fallback in case the WS is slow or broken
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [sessRes, projRes] = await Promise.all([
+          fetch("/api/sessions"),
+          fetch("/api/projects"),
+        ]);
+        if (cancelled) return;
+        if (sessRes.ok && sessionListRef.current.length === 0) {
+          const sessions: SessionSummary[] = await sessRes.json();
+          if (!cancelled && sessionListRef.current.length === 0) setSessionList(sessions);
+        }
+        if (projRes.ok && !currentProjectIdRef.current) {
+          const projects: ProjectSummary[] = await projRes.json();
+          if (!cancelled && projects.length > 0 && !currentProjectIdRef.current) {
+            currentProjectIdRef.current = projects[0].id;
+          }
+        }
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     currentSessionIdRef.current = currentSessionId;
   }, [currentSessionId]);
@@ -87,7 +112,15 @@ export function useRuntimeWorkspace({
     nextUrl.searchParams.set("s", sessionId);
     history.replaceState(null, "", nextUrl);
 
+    // Always update the selected session and project ref so the tab appears active
+    const targetSession = sessionListRef.current.find((session) => session.id === sessionId);
+    if (targetSession?.projectId) {
+      currentProjectIdRef.current = targetSession.projectId;
+    }
+
     if (!wsConnectedRef.current) {
+      // Set the session as current so the tab highlights, and queue the WS join
+      setCurrentSessionId(sessionId);
       setPendingJoin(sessionId);
       return;
     }
@@ -95,10 +128,6 @@ export function useRuntimeWorkspace({
     if (currentSessionIdRef.current === sessionId) return;
 
     setCurrentSessionId(sessionId);
-    const targetSession = sessionListRef.current.find((session) => session.id === sessionId);
-    if (targetSession?.projectId) {
-      currentProjectIdRef.current = targetSession.projectId;
-    }
 
     if (!sendWsRef.current({ type: "join-session", sessionId })) {
       setPendingJoin(sessionId);
@@ -113,22 +142,44 @@ export function useRuntimeWorkspace({
     startPolling();
   };
 
+  // Resolve pending joins: either pick a default session or join a specific one.
+  // This runs when WS connects (pendingJoin set by handleSocketOpen) or when
+  // sessions arrive via HTTP/WS (sessionList changes).
   useEffect(() => {
-    if (!pendingJoin || !wsConnectedRef.current) return;
+    if (!pendingJoin) return;
+
+    let targetId: string | null = null;
 
     if (pendingJoin === DEFAULT_SESSION_SENTINEL) {
       const fallback = sessionList.find((session) => session.name === "General") || sessionList[0];
-      if (fallback) joinSession(fallback.id);
-      setPendingJoin(null);
-      return;
+      if (!fallback) return; // no sessions yet, wait for them
+      targetId = fallback.id;
+    } else {
+      const target = sessionList.find((session) => session.id === pendingJoin);
+      if (!target) return; // target session not in list yet
+      if (target.projectId) currentProjectIdRef.current = target.projectId;
+      targetId = target.id;
     }
 
-    const target = sessionList.find((session) => session.id === pendingJoin);
-    if (target?.projectId) {
-      currentProjectIdRef.current = target.projectId;
-    }
-    if (target) joinSession(target.id);
     setPendingJoin(null);
+
+    // If WS is ready, do a full join (send the join message, reset terminal, etc.)
+    if (wsConnectedRef.current) {
+      // Force the join even if currentSessionId already matches (e.g. WS reconnected)
+      setCurrentSessionId(targetId);
+      if (sendWsRef.current({ type: "join-session", sessionId: targetId })) {
+        terminalRef.current?.resetForSession();
+        resetSessionRealtimeRef.current();
+        setTimeout(() => { try { terminalRef.current?.fit(); } catch {} }, 50);
+        fetchStateSummary().catch(() => undefined);
+        startPolling();
+      } else {
+        setPendingJoin(targetId);
+      }
+    } else {
+      // WS not ready — select the tab visually, will do full join when WS connects
+      setCurrentSessionId(targetId);
+    }
   }, [pendingJoin, sessionList]);
 
 
@@ -178,6 +229,10 @@ export function useRuntimeWorkspace({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, projectId: currentProjectIdRef.current }),
     });
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(text || `HTTP ${response.status}`);
+    }
     return response.json();
   };
 

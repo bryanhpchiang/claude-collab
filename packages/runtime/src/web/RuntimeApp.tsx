@@ -1,4 +1,3 @@
-import { CatchUpModal } from "./components/CatchUpModal";
 import { ErrorOverlay } from "./components/ErrorOverlay";
 import { ChatPanel } from "./components/ChatPanel";
 import { InviteModal } from "./components/InviteModal";
@@ -31,7 +30,6 @@ export function RuntimeApp({ bootstrap }: RuntimeAppProps) {
 
       <ChatPanel {...runtime.chatPanelProps} />
       <StateSidebar {...runtime.stateSidebarProps} />
-      <CatchUpModal {...runtime.catchUpModalProps} />
       <InviteModal {...runtime.inviteModalProps} />
     </>
   );
