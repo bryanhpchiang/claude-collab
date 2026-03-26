@@ -25,8 +25,8 @@ export function RuntimeHeader({ connectedUsers, onOpenInvite }: RuntimeHeaderPro
           <rect x="30" y="16" width="40" height="8" rx="4" fill="url(#rt-jar-lid)"/>
           <rect x="26" y="24" width="48" height="6" rx="3" fill="url(#rt-jar-lid)" opacity="0.7"/>
           <path d="M28 30c-2 0-4 2-4 4v36c0 8 6 14 14 14h24c8 0 14-6 14-14V34c0-2-2-4-4-4H28z" fill="url(#rt-jar-body)"/>
-          <path d="M28 56c0 0 8-6 22-6s22 6 22 6v14c0 8-6 14-14 14H42c-8 0-14-6-14-14V56z" fill="url(#rt-jar-fill)" opacity="0.6"/>
-          <path d="M34 38v20" stroke="rgba(255,255,255,0.08)" strokeWidth="3" strokeLinecap="round"/>
+          <path d="M28 56c0 0 8-6 22-6s22 6 22 6v14c0 8-6 14-14 14H42c-8 0-14-6-14-14V56z" fill="url(#rt-jar-fill)" opacity="0.7"/>
+          <path d="M34 38v20" stroke="rgba(255,255,255,0.1)" strokeWidth="3" strokeLinecap="round"/>
           <path d="M68 74 C68 71 70.5 69 74 69 C77.5 69 80 71 80 74 C80 75 79 75.5 74 75.5 C69 75.5 68 75 68 74Z" fill="#6D4BA0"/>
           <path d="M17 75 C17 73.5 18.5 72 20.5 72 C22.5 72 24 73.5 24 75 C24 75.5 23.3 76 20.5 76 C17.7 76 17 75.5 17 75Z" fill="#A855F7" opacity="0.45"/>
           <path d="M83 75.5 C83 74.5 83.8 73.5 85 73.5 C86.2 73.5 87 74.5 87 75.5 C87 76 86.5 76.2 85 76.2 C83.5 76.2 83 76 83 75.5Z" fill="#7C3AED" opacity="0.4"/>
@@ -35,10 +35,10 @@ export function RuntimeHeader({ connectedUsers, onOpenInvite }: RuntimeHeaderPro
               <stop stopColor="#E8A838"/><stop offset="1" stopColor="#D4872C"/>
             </linearGradient>
             <linearGradient id="rt-jar-body" x1="24" y1="30" x2="76" y2="84" gradientUnits="userSpaceOnUse">
-              <stop stopColor="rgba(232,168,56,0.12)"/><stop offset="1" stopColor="rgba(168,85,247,0.06)"/>
+              <stop stopColor="rgba(232,168,56,0.18)"/><stop offset="1" stopColor="rgba(168,85,247,0.1)"/>
             </linearGradient>
             <linearGradient id="rt-jar-fill" x1="28" y1="50" x2="72" y2="84" gradientUnits="userSpaceOnUse">
-              <stop stopColor="#A855F7" stopOpacity="0.3"/><stop offset="1" stopColor="#7C3AED" stopOpacity="0.15"/>
+              <stop stopColor="#A855F7" stopOpacity="0.4"/><stop offset="1" stopColor="#7C3AED" stopOpacity="0.2"/>
             </linearGradient>
           </defs>
         </svg>
