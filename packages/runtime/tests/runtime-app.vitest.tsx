@@ -6,6 +6,14 @@ import type { RuntimeBootstrap } from "../src/web/types";
 
 const terminalWrites: string[] = [];
 let terminalConstructorCount = 0;
+const clientWidthDescriptor = Object.getOwnPropertyDescriptor(
+  HTMLElement.prototype,
+  "clientWidth",
+);
+const clientHeightDescriptor = Object.getOwnPropertyDescriptor(
+  HTMLElement.prototype,
+  "clientHeight",
+);
 
 vi.mock("@xterm/addon-fit", () => ({
   FitAddon: class {
@@ -126,6 +134,19 @@ describe("RuntimeApp", () => {
     MockWebSocket.instances = [];
     terminalWrites.splice(0);
     terminalConstructorCount = 0;
+    localStorage.setItem("jam-catchup-seen-v1", "1");
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+      configurable: true,
+      get() {
+        return 100;
+      },
+    });
+    Object.defineProperty(HTMLElement.prototype, "clientHeight", {
+      configurable: true,
+      get() {
+        return 100;
+      },
+    });
     vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("ResizeObserver", MockResizeObserver);
     vi.stubGlobal("Notification", MockNotification);
@@ -137,26 +158,23 @@ describe("RuntimeApp", () => {
   });
 
   afterEach(() => {
+    localStorage.clear();
+    if (clientWidthDescriptor) {
+      Object.defineProperty(HTMLElement.prototype, "clientWidth", clientWidthDescriptor);
+    } else {
+      delete (HTMLElement.prototype as Partial<HTMLElement>).clientWidth;
+    }
+    if (clientHeightDescriptor) {
+      Object.defineProperty(HTMLElement.prototype, "clientHeight", clientHeightDescriptor);
+    } else {
+      delete (HTMLElement.prototype as Partial<HTMLElement>).clientHeight;
+    }
     vi.unstubAllGlobals();
   });
 
-  test("resumes a disk session with the derived session name override", async () => {
-    const firstMessage = "Resume this very long disk session title from Claude";
-
+  test("creates a fresh session when the new tab button is clicked", async () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-
-      if (url === "/api/disk-sessions") {
-        return jsonResponse([
-          {
-            claudeSessionId: "claude-session-12345678",
-            project: "demo-project",
-            firstMessage,
-            timestamp: "2026-03-24T00:00:00.000Z",
-            lastModified: "2026-03-24T00:00:00.000Z",
-          },
-        ]);
-      }
 
       if (url === "/api/sessions" && init?.method === "POST") {
         return jsonResponse({ id: "session-2" });
@@ -180,22 +198,13 @@ describe("RuntimeApp", () => {
 
     render(<RuntimeApp bootstrap={bootstrap} />);
 
-    expect(screen.getByText(/pick a session above or start a new one/i)).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /new session/i }));
-
-    expect(await screen.findByText(/resume from disk/i)).toBeInTheDocument();
-
-    const resumeButton = screen.getByText(firstMessage).closest("button");
-    expect(resumeButton).not.toBeNull();
-
-    await user.click(resumeButton!);
+    await user.click(screen.getByRole("button", { name: "+" }));
 
     await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
-    const createCall = fetchMock.mock.calls[1];
+    const createCall = fetchMock.mock.calls[0];
     expect(createCall[0]).toBe("/api/sessions");
     expect(createCall[1]).toMatchObject({
       method: "POST",
@@ -203,8 +212,8 @@ describe("RuntimeApp", () => {
     });
 
     const body = JSON.parse(String((createCall[1] as RequestInit).body));
-    expect(body.name).toBe(firstMessage.slice(0, 30));
-    expect(body.resumeId).toBe("claude-session-12345678");
+    expect(body.name).toMatch(/^Tab /);
+    expect(body.resumeId).toBeUndefined();
   });
 
   test("auto-joins the default session and writes runtime output to the terminal", async () => {
@@ -277,7 +286,106 @@ describe("RuntimeApp", () => {
     });
 
     expect(terminalConstructorCount).toBe(1);
-    expect(terminalWrites).toContain("Claude booted");
     expect(screen.getByText(/general/i)).toBeInTheDocument();
+  });
+
+  test("loads and auto-joins sessions even before the terminal reports ready", async () => {
+    const widthDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "clientWidth",
+    );
+    const heightDescriptor = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "clientHeight",
+    );
+
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+      configurable: true,
+      get() {
+        return 0;
+      },
+    });
+    Object.defineProperty(HTMLElement.prototype, "clientHeight", {
+      configurable: true,
+      get() {
+        return 0;
+      },
+    });
+
+    try {
+      const bootstrap: RuntimeBootstrap = {
+        initialUser: {
+          id: "user-1",
+          email: "jam@example.com",
+          login: "jam-owner",
+          name: "Jam Owner",
+          avatar_url: "",
+        },
+        jamName: null,
+        requestedSessionId: null,
+      };
+
+      render(<RuntimeApp bootstrap={bootstrap} />);
+
+      await waitFor(() => {
+        expect(MockWebSocket.instances.length).toBe(1);
+      });
+
+      const socket = MockWebSocket.instances[0];
+
+      act(() => {
+        socket.emitOpen();
+        socket.emitMessage({
+          type: "projects",
+          projects: [
+            {
+              id: "project-1",
+              name: "Default",
+              cwd: "/tmp",
+              sessionCount: 1,
+              createdAt: Date.now(),
+              sessions: [
+                {
+                  id: "session-1",
+                  name: "General",
+                  projectId: "project-1",
+                  users: [],
+                  createdAt: Date.now(),
+                },
+              ],
+            },
+          ],
+          sessions: [
+            {
+              id: "session-1",
+              name: "General",
+              projectId: "project-1",
+              users: [],
+              createdAt: Date.now(),
+            },
+          ],
+        });
+      });
+
+      expect(await screen.findByText(/general/i)).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(
+          socket.sent.some((payload) => JSON.parse(payload).type === "join-session"),
+        ).toBe(true);
+      });
+    } finally {
+      if (widthDescriptor) {
+        Object.defineProperty(HTMLElement.prototype, "clientWidth", widthDescriptor);
+      } else {
+        delete (HTMLElement.prototype as Partial<HTMLElement>).clientWidth;
+      }
+
+      if (heightDescriptor) {
+        Object.defineProperty(HTMLElement.prototype, "clientHeight", heightDescriptor);
+      } else {
+        delete (HTMLElement.prototype as Partial<HTMLElement>).clientHeight;
+      }
+    }
   });
 });

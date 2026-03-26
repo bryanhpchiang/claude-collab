@@ -58,6 +58,7 @@ export function useRuntimeRealtime({
   const socketOpenRef = useRef(onSocketOpen);
   const stopPollingRef = useRef(stopPolling);
   const usersUpdateRef = useRef(onUsersUpdate);
+  const pendingOutputRef = useRef<string[]>([]);
 
   const [currentUser, setCurrentUser] = useState<AuthenticatedRuntimeUser | null>(initialUser);
   const [connectedUsers, setConnectedUsers] = useState<string[]>([]);
@@ -115,6 +116,14 @@ export function useRuntimeRealtime({
   useEffect(() => {
     notificationPermissionRef.current = notificationPermission;
   }, [notificationPermission]);
+
+  useEffect(() => {
+    if (!enabled || !terminalRef.current || pendingOutputRef.current.length === 0) return;
+
+    for (const data of pendingOutputRef.current.splice(0)) {
+      terminalRef.current.writeOutput(data);
+    }
+  }, [enabled, terminalRef]);
 
   useEffect(() => {
     if (!myName) return;
@@ -179,8 +188,6 @@ export function useRuntimeRealtime({
   };
 
   useEffect(() => {
-    if (!enabled) return;
-
     let isActive = true;
     let reconnectTimer: number | null = null;
 
@@ -235,7 +242,11 @@ export function useRuntimeRealtime({
             sessionsUpdateRef.current(data.sessions || []);
             break;
           case "output":
-            terminalRef.current?.writeOutput(data.data);
+            if (!enabled || !terminalRef.current) {
+              pendingOutputRef.current.push(data.data);
+              break;
+            }
+            terminalRef.current.writeOutput(data.data);
             break;
           case "chat":
             appendChatEntry({ type: "chat", name: data.name, text: data.text, timestamp: data.timestamp });
@@ -345,7 +356,7 @@ export function useRuntimeRealtime({
       wsRef.current?.close();
       stopPollingRef.current();
     };
-  }, [enabled, terminalRef]);
+  }, []);
 
   return {
     appendSystem,

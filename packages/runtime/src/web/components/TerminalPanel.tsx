@@ -47,6 +47,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
   const awaitingClaudeReadyRef = useRef(false);
   const interactiveRef = useRef(false);
   const oauthOpenedRef = useRef(false);
+  const pendingResetRef = useRef(false);
 
   const [interactive, setInteractive] = useState(false);
   const [termReady, setTermReady] = useState(false);
@@ -126,6 +127,12 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
     term.loadAddon(fitAddon);
     term.open(container);
     try { fitAddon.fit(); } catch {}
+    if (pendingResetRef.current) {
+      term.clear();
+      term.reset();
+      pendingResetRef.current = false;
+      setInteractive(true);
+    }
     onReadyRef.current();
 
     const isNearBottom = () => term.buffer.active.viewportY >= term.buffer.active.baseY - 5;
@@ -281,9 +288,12 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
 
     resetForSession() {
       awaitingClaudeReadyRef.current = true;
+      pendingResetRef.current = true;
       hideOauthModal();
-      termRef.current?.clear();
-      termRef.current?.reset();
+      if (!termRef.current) return;
+      termRef.current.clear();
+      termRef.current.reset();
+      pendingResetRef.current = false;
       setInteractive(true);
     },
 
