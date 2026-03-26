@@ -16,6 +16,7 @@
     "@aws-sdk/client-elastic-load-balancing-v2": "^3.700.0",
     "@aws-sdk/client-secrets-manager": "^3.700.0",
     "better-auth": "^1.5.6",
+    "e2b": "^2.17.0",
     "kysely": "^0.28.14",
     "pg": "^8.20.0",
     "react": "^19.2.4",

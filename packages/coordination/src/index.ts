@@ -4,9 +4,10 @@ import { handleAuthRoutes } from "./routes/auth";
 import { handleJamRoutes } from "./routes/jams";
 import { handlePageRoutes } from "./routes/pages";
 import { createAuth, runAuthMigrations } from "./services/auth";
-import { createJamAccessService } from "./services/jam-access";
 import { createDatabase, ensureCoordinationTables } from "./services/db";
-import { createEc2Service } from "./services/ec2";
+import { createJamComputeService } from "./services/jam-compute";
+import { createJamAccessService } from "./services/jam-access";
+import { createJamPreviewsService } from "./services/jam-previews";
 import { createJamRecordsService } from "./services/jam-records";
 import { createJamSecretsService } from "./services/jam-secrets";
 
@@ -20,14 +21,16 @@ await ensureCoordinationTables(db);
 const context = {
   config,
   auth,
-  ec2: createEc2Service(config),
+  compute: createJamComputeService(config),
   jamAccess: createJamAccessService(db),
+  jamPreviews: createJamPreviewsService(db),
   jamRecords: createJamRecordsService(db),
   jamSecrets: createJamSecretsService(config),
 };
 
 async function migratePlaintextJamSecrets() {
-  const legacyRecords = await context.jamRecords.scanJamRecordsWithPlaintextSecrets();
+  const legacyRecords =
+    await context.jamRecords.scanJamRecordsWithPlaintextSecrets();
 
   for (const record of legacyRecords) {
     if (record.secret_arn) {
@@ -94,4 +97,6 @@ const server = Bun.serve({
   },
 });
 
-console.log(`Jam coordination server running on http://localhost:${server.port}`);
+console.log(
+  `Jam coordination server running on http://localhost:${server.port}`,
+);

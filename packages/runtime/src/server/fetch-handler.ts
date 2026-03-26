@@ -1,5 +1,9 @@
 import { handleAuthRoute } from "./routes/auth";
 import { handleInvitesRoute } from "./routes/invites";
+import {
+  handlePreviewRoute,
+  hasInternalPreviewAccess,
+} from "./routes/previews";
 import { handleProjectsRoute } from "./routes/projects";
 import { handleSecretsRoute } from "./routes/secrets";
 import { handleSessionsRoute } from "./routes/sessions";
@@ -34,6 +38,13 @@ export function createFetchHandler(store: RuntimeStore) {
       if (systemResponse) return systemResponse;
     }
 
+    if (url.pathname === "/api/previews" || url.pathname.startsWith("/api/previews/")) {
+      if (hasInternalPreviewAccess(req)) {
+        const previewResponse = await handlePreviewRoute(req, url, null);
+        if (previewResponse) return previewResponse;
+      }
+    }
+
     const user = await getAuthenticatedUser(req);
     if (!user) {
       return Response.redirect(buildCoordinationGateUrl(req), 302);
@@ -51,6 +62,8 @@ export function createFetchHandler(store: RuntimeStore) {
         handleSessionsRoute(request, nextUrl, nextStore),
       (request: Request, nextUrl: URL, nextStore: RuntimeStore) =>
         handleSecretsRoute(request, nextUrl, nextStore, user),
+      (request: Request, nextUrl: URL) =>
+        handlePreviewRoute(request, nextUrl, user),
       handleSystemRoute,
       (request: Request, nextUrl: URL, nextStore: RuntimeStore) =>
         handleStaticRoute(request, nextUrl, nextStore, user),

@@ -3,7 +3,10 @@ import { mkdtempSync, rmSync, writeFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import type { CoordinationConfig } from "../../src/config";
-import { buildDatabasePoolConfig, stripDatabaseSslParams } from "../../src/services/db";
+import {
+  buildDatabasePoolConfig,
+  stripDatabaseSslParams,
+} from "../../src/services/db";
 
 const baseConfig: CoordinationConfig = {
   port: 8080,
@@ -13,14 +16,21 @@ const baseConfig: CoordinationConfig = {
   databaseSslCaPath: "",
   betterAuthSecret: "test-secret",
   jamRuntimePort: 7681,
+  jamComputeProvider: "ec2",
   awsRegion: "us-east-1",
   jamAmiId: "ami-123",
   jamSecurityGroupId: "sg-123",
   jamInstanceType: "t3.medium",
   jamTagPrefix: "jam-",
   jamHostSuffix: "jams.letsjam.now",
-  jamAlbListenerArn: "arn:aws:elasticloadbalancing:listener/app/jam/123/listener",
+  jamPreviewHostSuffix: "previews.letsjam.now",
+  jamAlbListenerArn:
+    "arn:aws:elasticloadbalancing:listener/app/jam/123/listener",
   jamVpcId: "vpc-123",
+  e2bApiKey: "",
+  e2bDomain: "e2b.letsjam.now",
+  jamE2bTemplate: "",
+  jamE2bTimeoutMs: 60 * 60 * 1000,
   githubClientId: "",
   githubClientSecret: "",
   githubWebhookSecret: "",
@@ -38,9 +48,7 @@ describe("stripDatabaseSslParams", () => {
       stripDatabaseSslParams(
         "postgresql://jam:jam@example.com:5432/jam?sslmode=require&sslrootcert=/tmp/rds.pem&application_name=jam",
       ),
-    ).toBe(
-      "postgresql://jam:jam@example.com:5432/jam?application_name=jam",
-    );
+    ).toBe("postgresql://jam:jam@example.com:5432/jam?application_name=jam");
   });
 });
 

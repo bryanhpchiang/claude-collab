@@ -1,23 +1,36 @@
 import type { CoordinationConfig } from "../config";
 import {
+  JAM_SHARED_SECRET_HEADER,
+  buildPreviewPublicHost,
+  type ServiceTokenPayload,
+  verifyToken,
+} from "shared";
+import {
   getSessionLookup,
   isGitHubOAuthEnabled,
   type CoordinationAuth,
   type SessionLookup,
   type SessionUser,
 } from "../services/auth";
-import type { Ec2Service } from "../services/ec2";
-import { buildJamPath } from "../services/ec2";
-import { clearCookie, getCookie, isSecureRequest, mergeHeaders, serializeCookie } from "../services/http";
+import type { JamComputeService } from "../services/jam-compute";
+import { buildJamPath } from "../services/jam-compute-types";
+import {
+  clearCookie,
+  getCookie,
+  isSecureRequest,
+  mergeHeaders,
+  serializeCookie,
+} from "../services/http";
 import type { JamAccessService } from "../services/jam-access";
+import type { JamPreview, JamPreviewsService } from "../services/jam-previews";
 import type { JamRecord, JamRecordsService } from "../services/jam-records";
 import type { JamSecretsService } from "../services/jam-secrets";
-import { createRandomToken, hashInviteToken, signJamToken } from "../services/jam-tokens";
-import { verifyToken, type ServiceTokenPayload } from "shared";
 import {
-  buildJamInstanceUserData,
-  type JamRuntimeEnv,
-} from "../services/user-data";
+  createRandomToken,
+  hashInviteToken,
+  signJamToken,
+} from "../services/jam-tokens";
+import type { JamLaunchConfig } from "../services/jam-runtime";
 import { renderForbiddenPage } from "../server/web-render";
 
 const INVITE_CLAIM_COOKIE = "jam_invite_claim";
@@ -46,21 +59,41 @@ export type JamRouteContext = {
   jamRecords: JamRecordsService;
   jamAccess: JamAccessService;
   jamSecrets: JamSecretsService;
-  ec2: Ec2Service;
+  jamPreviews: JamPreviewsService;
+  compute: JamComputeService;
 };
 
 function apiHeaders(extra: HeadersInit = {}) {
-  return mergeHeaders({
-    "Access-Control-Allow-Origin": "*",
-  }, extra);
+  return mergeHeaders(
+    {
+      "Access-Control-Allow-Origin": "*",
+    },
+    extra,
+  );
 }
 
 function createJamId() {
   return Math.random().toString(36).slice(2, 8);
 }
 
+function createPreviewId() {
+  return Math.random().toString(36).slice(2, 10);
+}
 
-function buildAuthRedirect(returnTo: string, sessionHeaders: Headers, config: CoordinationConfig) {
+function isValidPort(value: unknown) {
+  return (
+    typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 1 &&
+    value <= 65535
+  );
+}
+
+function buildAuthRedirect(
+  returnTo: string,
+  sessionHeaders: Headers,
+  config: CoordinationConfig,
+) {
   const location = isGitHubOAuthEnabled(config)
     ? `/auth/github?callback=${encodeURIComponent(returnTo)}`
     : "/";
@@ -69,7 +102,6 @@ function buildAuthRedirect(returnTo: string, sessionHeaders: Headers, config: Co
     headers: mergeHeaders(sessionHeaders, { Location: location }),
   });
 }
-
 
 function toJamSummary(record: JamRecord): JamSummary {
   return {
@@ -85,6 +117,30 @@ function toJamSummary(record: JamRecord): JamSummary {
     },
     created_at: record.created_at,
     name: record.name || null,
+  };
+}
+
+function toEnvironmentHandle(record: JamRecord) {
+  return {
+    provider: record.provider,
+    targetId: record.instance_id,
+    ip: record.ip,
+    publicHost: record.public_host,
+    trafficAccessToken: record.traffic_access_token,
+    targetGroupArn: record.target_group_arn,
+    listenerRuleArn: record.listener_rule_arn,
+  };
+}
+
+function toPreviewResponse(preview: JamPreview) {
+  return {
+    id: preview.id,
+    host: preview.host,
+    url: `https://${preview.host}`,
+    port: preview.port,
+    accessMode: preview.access_mode,
+    created_at: preview.created_at,
+    label: preview.label || null,
   };
 }
 
@@ -118,22 +174,43 @@ export async function listJamsForUser(
   userId: string,
 ): Promise<JamSummary[]> {
   const records = await context.jamRecords.listActiveJamsVisibleToUser(userId);
-
-  await Promise.all(
+  const visibleRecords = await Promise.all(
     records.map(async (record) => {
-      if (record.state !== "pending" || !record.target_group_arn) return;
-
       try {
-        const healthy = await context.ec2.probeRuntime(record.target_group_arn);
-        if (healthy) {
-          record.state = "running";
-          await context.jamRecords.updateJamState(record.id, "running", record.ip);
+        const handle = toEnvironmentHandle(record);
+        const status = await context.compute.getRuntimeStatus(handle);
+        const nextIp = handle.ip || record.ip;
+
+        if (status === "terminated") {
+          record.state = "terminated";
+          await context.jamRecords.updateJamState(record.id, "terminated");
+          await context.jamPreviews.deletePreviewsForJam(record.id);
+          return null;
+        }
+
+        const nextState =
+          record.state === "pending" && status === "running"
+            ? "running"
+            : record.state;
+
+        if (nextState !== record.state || nextIp !== record.ip) {
+          record.state = nextState;
+          record.ip = nextIp;
+          await context.jamRecords.updateJamState(
+            record.id,
+            nextState,
+            nextIp,
+          );
         }
       } catch {}
+
+      return record;
     }),
   );
 
-  return records.map(toJamSummary);
+  return visibleRecords
+    .filter((record): record is JamRecord => Boolean(record))
+    .map(toJamSummary);
 }
 
 async function requireUser(
@@ -149,7 +226,7 @@ async function requireUser(
   if (!session.user) {
     if (asApi) {
       return {
-        ok: false,
+        ok: false as const,
         response: Response.json(
           { error: "Unauthorized" },
           { status: 401, headers: apiHeaders(session.headers) },
@@ -158,21 +235,24 @@ async function requireUser(
     }
 
     return {
-      ok: false,
+      ok: false as const,
       response: buildAuthRedirect(returnTo, session.headers, context.config),
     };
   }
 
-  return { ok: true, session, user: session.user };
+  return { ok: true as const, session, user: session.user };
 }
 
 async function requireOwner(
   request: Request,
   context: JamRouteContext,
   jamId: string,
-) {
+): Promise<
+  | { ok: false; response: Response }
+  | { ok: true; session: SessionLookup; user: SessionUser; jam: JamRecord }
+> {
   const authResult = await requireUser(request, context, `/j/${jamId}`, true);
-  if (!authResult.ok) return authResult;
+  if ("response" in authResult) return authResult;
 
   const jam = await context.jamRecords.getJamRecord(jamId);
   if (!jam) {
@@ -214,7 +294,7 @@ async function handleInviteClaim(
   token: string,
 ) {
   const authResult = await requireUser(request, context, "/invite/claim");
-  if (!authResult.ok) {
+  if ("response" in authResult) {
     const secure = isSecureRequest(request, context.config.baseUrl);
     return new Response(null, {
       status: 302,
@@ -262,13 +342,45 @@ async function resolveJamSecrets(
   };
 }
 
+async function requireJamSharedSecret(
+  request: Request,
+  context: JamRouteContext,
+  jamId: string,
+): Promise<
+  | { ok: false; response: Response }
+  | { ok: true; jam: JamRecord }
+> {
+  const jam = await context.jamRecords.getJamRecord(jamId);
+  if (!jam) {
+    return {
+      ok: false as const,
+      response: Response.json({ error: "Jam not found" }, { status: 404 }),
+    };
+  }
+
+  const provided = request.headers.get(JAM_SHARED_SECRET_HEADER) || "";
+  const secrets = await resolveJamSecrets(jam, context.jamSecrets);
+  if (!provided || !secrets.sharedSecret || provided !== secrets.sharedSecret) {
+    return {
+      ok: false as const,
+      response: Response.json({ error: "Unauthorized" }, { status: 401 }),
+    };
+  }
+
+  return { ok: true as const, jam };
+}
 
 async function resolveInviteAuth(
   request: Request,
   context: JamRouteContext,
   routeJamId: string,
 ): Promise<
-  | { ok: true; jam: { id: string }; user: { id: string }; session: { headers: Headers } }
+  | {
+      ok: true;
+      jam: { id: string };
+      user: { id: string };
+      session: { headers: Headers };
+    }
   | { ok: false; response: Response }
 > {
   const authHeader = request.headers.get("Authorization");
@@ -277,49 +389,70 @@ async function resolveInviteAuth(
     const jam = await context.jamRecords.getJamRecord(routeJamId);
     if (!jam) {
       return {
-        ok: false,
-        response: Response.json({ error: "Jam not found" }, { status: 404, headers: apiHeaders() }),
+        ok: false as const,
+        response: Response.json(
+          { error: "Jam not found" },
+          { status: 404, headers: apiHeaders() },
+        ),
       };
     }
+
     const { sharedSecret } = await resolveJamSecrets(jam, context.jamSecrets);
     if (!sharedSecret) {
       return {
-        ok: false,
-        response: Response.json({ error: "Service auth not configured" }, { status: 500, headers: apiHeaders() }),
+        ok: false as const,
+        response: Response.json(
+          { error: "Service auth not configured" },
+          { status: 500, headers: apiHeaders() },
+        ),
       };
     }
+
     const payload = await verifyToken<ServiceTokenPayload>(sharedSecret, token);
-    if (!payload || payload.kind !== "service" || typeof payload.exp !== "number" || payload.exp <= Date.now()) {
+    if (
+      !payload ||
+      payload.kind !== "service" ||
+      typeof payload.exp !== "number" ||
+      payload.exp <= Date.now()
+    ) {
       return {
-        ok: false,
-        response: Response.json({ error: "Invalid or expired service token" }, { status: 401, headers: apiHeaders() }),
+        ok: false as const,
+        response: Response.json(
+          { error: "Invalid or expired service token" },
+          { status: 401, headers: apiHeaders() },
+        ),
       };
     }
+
     if (payload.jamId !== routeJamId) {
       return {
-        ok: false,
-        response: Response.json({ error: "Token jamId mismatch" }, { status: 403, headers: apiHeaders() }),
+        ok: false as const,
+        response: Response.json(
+          { error: "Token jamId mismatch" },
+          { status: 403, headers: apiHeaders() },
+        ),
       };
     }
+
     return {
-      ok: true,
+      ok: true as const,
       jam: { id: routeJamId },
       user: { id: payload.userId },
       session: { headers: new Headers() },
     };
-  } else {
-    const ownerResult = await requireOwner(request, context, routeJamId);
-    if (!ownerResult.ok) {
-      return { ok: false as const, response: (ownerResult as any).response as Response };
-    }
-    const ok = ownerResult as { ok: true; jam: JamRecord; session: SessionLookup; user: SessionUser };
-    return {
-      ok: true as const,
-      jam: { id: ok.jam.id },
-      user: { id: ok.user.id },
-      session: { headers: ok.session.headers },
-    };
   }
+
+  const ownerResult = await requireOwner(request, context, routeJamId);
+  if ("response" in ownerResult) {
+    return { ok: false as const, response: ownerResult.response };
+  }
+
+  return {
+    ok: true as const,
+    jam: { id: ownerResult.jam.id },
+    user: { id: ownerResult.user.id },
+    session: { headers: ownerResult.session.headers },
+  };
 }
 
 export async function handleJamRoutes(
@@ -330,60 +463,76 @@ export async function handleJamRoutes(
 
   if (url.pathname === "/api/jams" && request.method === "POST") {
     const authResult = await requireUser(request, context, "/dashboard", true);
-    if (!authResult.ok) return authResult.response;
+    if ("response" in authResult) return authResult.response;
 
     try {
-      const body = (await request.json().catch(() => ({}))) as { name?: string };
+      const body = (await request.json().catch(() => ({}))) as {
+        name?: string;
+      };
       const jamName =
-        typeof body.name === "string" ? body.name.trim().slice(0, 64) : undefined;
+        typeof body.name === "string"
+          ? body.name.trim().slice(0, 64)
+          : undefined;
 
-      const active = await context.jamRecords.getActiveJamsByCreator(authResult.user.id);
+      const active = await context.jamRecords.getActiveJamsByCreator(
+        authResult.user.id,
+      );
       if (active.length > 0) {
         return Response.json(
-          { error: "You already have a running instance" },
+          { error: "You already have a running environment" },
           { status: 409, headers: apiHeaders(authResult.session.headers) },
         );
       }
 
       const jamId = createJamId();
-      const runtimeEnv: JamRuntimeEnv = {
+      const launchConfig: JamLaunchConfig = {
         jamId,
-        jamName: jamName || undefined,
-        publicHost: context.ec2.buildJamHost(jamId),
+        jamName,
         sharedSecret: createRandomToken(48),
         deploySecret: createRandomToken(48),
       };
 
       let instanceId = "";
+      let provider = context.compute.provider;
       let listenerRuleArn = "";
       let secretArn = "";
       let targetGroupArn = "";
+      let publicHost = "";
+      let trafficAccessToken = "";
+      let ip: string | undefined;
 
       try {
         const secret = await context.jamSecrets.createJamSecrets(jamId, {
-          sharedSecret: runtimeEnv.sharedSecret,
-          deploySecret: runtimeEnv.deploySecret,
+          sharedSecret: launchConfig.sharedSecret,
+          deploySecret: launchConfig.deploySecret,
         });
         secretArn = secret.secretArn;
 
-        instanceId = await context.ec2.launchJamInstance(
+        const environment = await context.compute.launchJamEnvironment(
           jamId,
-          buildJamInstanceUserData(context.config, runtimeEnv),
+          launchConfig,
         );
-        const target = await context.ec2.attachJamTarget(jamId, instanceId);
-        listenerRuleArn = target.listenerRuleArn;
-        targetGroupArn = target.targetGroupArn;
+        instanceId = environment.targetId;
+        provider = environment.provider;
+        ip = environment.ip;
+        publicHost = environment.publicHost;
+        trafficAccessToken = environment.trafficAccessToken || "";
+        listenerRuleArn = environment.listenerRuleArn || "";
+        targetGroupArn = environment.targetGroupArn || "";
 
         const createdAt = new Date().toISOString();
         await context.jamRecords.putJamRecord({
           id: jamId,
+          provider,
           instance_id: instanceId,
           creator_user_id: authResult.user.id,
           creator_login: authResult.user.login,
           creator_name: authResult.user.name,
           creator_avatar: authResult.user.avatar_url,
-          public_host: target.publicHost,
+          ...(ip ? { ip } : {}),
+          public_host: publicHost,
           secret_arn: secretArn,
+          traffic_access_token: trafficAccessToken,
           target_group_arn: targetGroupArn,
           listener_rule_arn: listenerRuleArn,
           state: "pending",
@@ -410,14 +559,22 @@ export async function handleJamRoutes(
           { headers: apiHeaders(authResult.session.headers) },
         );
       } catch (error) {
-        if (listenerRuleArn || targetGroupArn) {
-          await context.ec2.removeJamTarget(listenerRuleArn, targetGroupArn);
-        }
         if (instanceId) {
-          await context.ec2.terminateInstance(instanceId).catch(() => undefined);
+          await context.compute
+            .destroyJamEnvironment({
+              provider,
+              targetId: instanceId,
+              publicHost,
+              trafficAccessToken,
+              targetGroupArn,
+              listenerRuleArn,
+            })
+            .catch(() => undefined);
         }
         if (secretArn) {
-          await context.jamSecrets.deleteJamSecrets(secretArn).catch(() => undefined);
+          await context.jamSecrets
+            .deleteJamSecrets(secretArn)
+            .catch(() => undefined);
         }
         throw error;
       }
@@ -432,13 +589,12 @@ export async function handleJamRoutes(
 
   if (url.pathname === "/api/jams" && request.method === "GET") {
     const authResult = await requireUser(request, context, "/dashboard", true);
-    if (!authResult.ok) return authResult.response;
+    if ("response" in authResult) return authResult.response;
 
     try {
-      return Response.json(
-        await listJamsForUser(context, authResult.user.id),
-        { headers: apiHeaders(authResult.session.headers) },
-      );
+      return Response.json(await listJamsForUser(context, authResult.user.id), {
+        headers: apiHeaders(authResult.session.headers),
+      });
     } catch (error: any) {
       console.error("GET /api/jams error:", error);
       return Response.json(
@@ -488,14 +644,20 @@ export async function handleJamRoutes(
         .then((records) =>
           Promise.all(
             records.map(async (record) => {
-              const secrets = await resolveJamSecrets(record, context.jamSecrets);
+              const secrets = await resolveJamSecrets(
+                record,
+                context.jamSecrets,
+              );
               if (!secrets.deploySecret) return undefined;
 
-              return fetch(context.ec2.buildDeployUrl(record.public_host!), {
-                method: "POST",
-                headers: { [DEPLOY_HEADER]: secrets.deploySecret },
-                signal: AbortSignal.timeout(30000),
-              }).catch(() => undefined);
+              return fetch(
+                context.compute.buildDeployUrl(record.public_host!),
+                {
+                  method: "POST",
+                  headers: { [DEPLOY_HEADER]: secrets.deploySecret },
+                  signal: AbortSignal.timeout(30000),
+                },
+              ).catch(() => undefined);
             }),
           ),
         )
@@ -514,25 +676,34 @@ export async function handleJamRoutes(
     }
   }
 
-  const memberListMatch = url.pathname.match(/^\/api\/jams\/([a-z0-9]+)\/members$/);
+  const memberListMatch = url.pathname.match(
+    /^\/api\/jams\/([a-z0-9]+)\/members$/,
+  );
   if (memberListMatch && request.method === "GET") {
     const ownerResult = await resolveInviteAuth(request, context, memberListMatch[1]);
-    if (!ownerResult.ok) return (ownerResult as { ok: false; response: Response }).response;
+    if (!ownerResult.ok) return ownerResult.response;
 
     return Response.json(
       {
         members: await context.jamAccess.listMembers(ownerResult.jam.id),
-        inviteLinks: await context.jamAccess.listInviteLinks(ownerResult.jam.id),
+        inviteLinks: await context.jamAccess.listInviteLinks(
+          ownerResult.jam.id,
+        ),
       },
       { headers: apiHeaders(ownerResult.session.headers) },
     );
   }
 
-  const inviteCreateMatch = url.pathname.match(/^\/api\/jams\/([a-z0-9]+)\/invite-links$/);
+  const inviteCreateMatch = url.pathname.match(
+    /^\/api\/jams\/([a-z0-9]+)\/invite-links$/,
+  );
   if (inviteCreateMatch && request.method === "POST") {
-    const jamId = inviteCreateMatch[1];
-    const ownerResult = await resolveInviteAuth(request, context, jamId);
-    if (!ownerResult.ok) return (ownerResult as { ok: false; response: Response }).response;
+    const ownerResult = await resolveInviteAuth(
+      request,
+      context,
+      inviteCreateMatch[1],
+    );
+    if (!ownerResult.ok) return ownerResult.response;
 
     const inviteId = createRandomToken(12);
     const rawToken = createRandomToken(32);
@@ -560,20 +731,33 @@ export async function handleJamRoutes(
     /^\/api\/jams\/([a-z0-9]+)\/invite-links\/([^/]+)$/,
   );
   if (inviteDeleteMatch && request.method === "DELETE") {
-    const ownerResult = await resolveInviteAuth(request, context, inviteDeleteMatch[1]);
-    if (!ownerResult.ok) return (ownerResult as { ok: false; response: Response }).response;
+    const ownerResult = await resolveInviteAuth(
+      request,
+      context,
+      inviteDeleteMatch[1],
+    );
+    if (!ownerResult.ok) return ownerResult.response;
 
-    await context.jamAccess.revokeInviteLink(ownerResult.jam.id, inviteDeleteMatch[2]);
+    await context.jamAccess.revokeInviteLink(
+      ownerResult.jam.id,
+      inviteDeleteMatch[2],
+    );
     return Response.json(
       { ok: true },
       { headers: apiHeaders(ownerResult.session.headers) },
     );
   }
 
-  const memberDeleteMatch = url.pathname.match(/^\/api\/jams\/([a-z0-9]+)\/members\/([^/]+)$/);
+  const memberDeleteMatch = url.pathname.match(
+    /^\/api\/jams\/([a-z0-9]+)\/members\/([^/]+)$/,
+  );
   if (memberDeleteMatch && request.method === "DELETE") {
-    const ownerResult = await requireOwner(request, context, memberDeleteMatch[1]);
-    if (!ownerResult.ok) return ownerResult.response;
+    const ownerResult = await requireOwner(
+      request,
+      context,
+      memberDeleteMatch[1],
+    );
+    if ("response" in ownerResult) return ownerResult.response;
 
     const userId = decodeURIComponent(memberDeleteMatch[2]);
     if (userId === ownerResult.jam.creator_user_id) {
@@ -593,15 +777,14 @@ export async function handleJamRoutes(
   const deleteMatch = url.pathname.match(/^\/api\/jams\/([a-z0-9]+)$/);
   if (deleteMatch && request.method === "DELETE") {
     const ownerResult = await requireOwner(request, context, deleteMatch[1]);
-    if (!ownerResult.ok) return ownerResult.response;
+    if ("response" in ownerResult) return ownerResult.response;
 
     try {
-      await context.ec2.removeJamTarget(
-        ownerResult.jam.listener_rule_arn,
-        ownerResult.jam.target_group_arn,
+      await context.compute.destroyJamEnvironment(
+        toEnvironmentHandle(ownerResult.jam),
       );
-      await context.ec2.terminateInstance(ownerResult.jam.instance_id);
       await context.jamRecords.updateJamState(ownerResult.jam.id, "terminated");
+      await context.jamPreviews.deletePreviewsForJam(ownerResult.jam.id);
       if (ownerResult.jam.secret_arn) {
         await context.jamSecrets.deleteJamSecrets(ownerResult.jam.secret_arn);
       }
@@ -617,6 +800,86 @@ export async function handleJamRoutes(
         { status: 500, headers: apiHeaders(ownerResult.session.headers) },
       );
     }
+  }
+
+  const internalPreviewListMatch = url.pathname.match(
+    /^\/api\/internal\/jams\/([a-z0-9]+)\/previews$/,
+  );
+  if (internalPreviewListMatch) {
+    const internalResult = await requireJamSharedSecret(
+      request,
+      context,
+      internalPreviewListMatch[1],
+    );
+    if ("response" in internalResult) return internalResult.response;
+
+    if (request.method === "GET") {
+      const previews = await context.jamPreviews.listPreviewsForJam(
+        internalResult.jam.id,
+      );
+      return Response.json({ previews: previews.map(toPreviewResponse) });
+    }
+
+    if (request.method === "POST") {
+      if (internalResult.jam.state !== "running") {
+        return Response.json({ error: "Jam not ready" }, { status: 409 });
+      }
+
+      const body = (await request.json().catch(() => ({}))) as {
+        port?: number;
+        label?: string;
+      };
+      if (!isValidPort(body.port) || body.port === context.config.jamRuntimePort) {
+        return Response.json({ error: "Invalid preview port" }, { status: 400 });
+      }
+
+      let preview: JamPreview | undefined;
+      for (let attempt = 0; attempt < 3 && !preview; attempt += 1) {
+        const previewId = createPreviewId();
+        try {
+          preview = await context.jamPreviews.createPreview({
+            id: previewId,
+            jam_id: internalResult.jam.id,
+            host: buildPreviewPublicHost(
+              previewId,
+              context.config.jamPreviewHostSuffix,
+            ),
+            port: body.port,
+            access_mode: "public",
+            created_at: new Date().toISOString(),
+            ...(typeof body.label === "string" && body.label.trim()
+              ? { label: body.label.trim().slice(0, 64) }
+              : {}),
+          });
+        } catch (error) {
+          if (attempt === 2) throw error;
+        }
+      }
+
+      if (!preview) {
+        return Response.json({ error: "Failed to create preview" }, { status: 500 });
+      }
+
+      return Response.json(toPreviewResponse(preview));
+    }
+  }
+
+  const internalPreviewDeleteMatch = url.pathname.match(
+    /^\/api\/internal\/jams\/([a-z0-9]+)\/previews\/([a-z0-9]+)$/,
+  );
+  if (internalPreviewDeleteMatch && request.method === "DELETE") {
+    const internalResult = await requireJamSharedSecret(
+      request,
+      context,
+      internalPreviewDeleteMatch[1],
+    );
+    if ("response" in internalResult) return internalResult.response;
+
+    await context.jamPreviews.deletePreview(
+      internalResult.jam.id,
+      internalPreviewDeleteMatch[2],
+    );
+    return Response.json({ ok: true });
   }
 
   if (url.pathname === "/invite/claim" && request.method === "GET") {
@@ -645,13 +908,19 @@ export async function handleJamRoutes(
       context,
       `${buildJamPath(jam.id)}${url.search}`,
     );
-    if (!authResult.ok) return authResult.response;
+    if ("response" in authResult) return authResult.response;
 
-    const allowed = await userCanAccessJam(jam, authResult.user.id, context.jamAccess);
+    const allowed = await userCanAccessJam(
+      jam,
+      authResult.user.id,
+      context.jamAccess,
+    );
     if (!allowed) {
       return new Response(await renderForbiddenPage(context.config), {
         status: 403,
-        headers: mergeHeaders(authResult.session.headers, { "Content-Type": "text/html; charset=utf-8" }),
+        headers: mergeHeaders(authResult.session.headers, {
+          "Content-Type": "text/html; charset=utf-8",
+        }),
       });
     }
 
