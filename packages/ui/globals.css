@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+:root {
+  --background: #0C0A14;
+  --foreground: #E8E2F4;
+  --card: #110E1A;
+  --card-foreground: #E8E2F4;
+  --muted: #110E1A;
+  --muted-foreground: #9B8FC2;
+  --border: rgba(168, 85, 247, 0.12);
+  --ring: #E8A838;
+  --primary: #E8A838;
+  --primary-foreground: #ffffff;
+  --secondary: rgba(168, 85, 247, 0.08);
+  --secondary-foreground: #E8E2F4;
+  --accent: rgba(168, 85, 247, 0.08);
+  --accent-foreground: #E8E2F4;
+  --destructive: #f87171;
+  --destructive-foreground: #ffffff;
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: #0C0A14;
+  --foreground: #E8E2F4;
+  --card: #110E1A;
+  --card-foreground: #E8E2F4;
+  --muted: #110E1A;
+  --muted-foreground: #9B8FC2;
+  --border: rgba(168, 85, 247, 0.12);
+  --ring: #E8A838;
+  --primary: #E8A838;
+  --primary-foreground: #ffffff;
+  --secondary: rgba(168, 85, 247, 0.08);
+  --secondary-foreground: #E8E2F4;
+  --accent: rgba(168, 85, 247, 0.08);
+  --accent-foreground: #E8E2F4;
+  --destructive: #f87171;
+  --destructive-foreground: #ffffff;
+  --radius: 0.75rem;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}

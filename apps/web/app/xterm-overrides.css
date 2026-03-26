@@ -1,0 +1,25 @@
+.terminal-shell .xterm {
+  height: 100%;
+}
+
+.terminal-shell .xterm-screen {
+  cursor: text;
+}
+
+.terminal-shell .xterm-viewport {
+  border-radius: 0.75rem;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(168, 85, 247, 0.18) transparent;
+}
+
+.terminal-shell .xterm-screen canvas {
+  border-radius: 0.75rem;
+}
+
+.terminal-shell .xterm-helpers textarea {
+  opacity: 0;
+}
+
+.terminal-shell .xterm .xterm-selection div {
+  background-color: rgba(168, 85, 247, 0.2);
+}

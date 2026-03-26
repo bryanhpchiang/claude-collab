@@ -6,6 +6,12 @@
       "runtimeExecutable": "/Users/liamkronman/.bun/bin/bun",
       "runtimeArgs": ["run", "runtime:start"],
       "port": 7681
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "/Users/liamkronman/.bun/bin/bun",
+      "runtimeArgs": ["run", "--cwd", "apps/web", "dev"],
+      "port": 3000
     }
   ]
 }

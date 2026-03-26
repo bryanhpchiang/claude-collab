@@ -3,3 +3,5 @@ packages/*/dist/
 .playwright-cli/
 STATE.md
 docs/superpowers/plans/
+.next/
+.env.local
