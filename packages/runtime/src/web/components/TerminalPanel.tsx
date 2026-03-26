@@ -103,7 +103,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
 
     term.loadAddon(fitAddon);
     term.open(container);
-    fitAddon.fit();
+    try { fitAddon.fit(); } catch {}
     onReadyRef.current();
 
     const isNearBottom = () => term.buffer.active.viewportY >= term.buffer.active.baseY - 5;
@@ -111,10 +111,10 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
     const handleResize = () => {
       const nextFontSize = window.innerWidth <= 600 ? 10 : 14;
       if (term.options.fontSize !== nextFontSize) term.options.fontSize = nextFontSize;
-      fitAddon.fit();
+      try { fitAddon.fit(); } catch {}
     };
 
-    const resizeObserver = new ResizeObserver(() => fitAddon.fit());
+    const resizeObserver = new ResizeObserver(() => { try { fitAddon.fit(); } catch {} });
 
     term.element?.addEventListener("wheel", () => {
       userScrolledUpRef.current = !isNearBottom();
@@ -241,7 +241,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
 
   useImperativeHandle(ref, () => ({
     fit() {
-      fitAddonRef.current?.fit();
+      try { fitAddonRef.current?.fit(); } catch {}
     },
 
     handleDisconnect() {

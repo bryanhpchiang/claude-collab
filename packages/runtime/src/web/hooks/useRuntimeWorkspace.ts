@@ -130,7 +130,7 @@ export function useRuntimeWorkspace({
     terminalRef.current?.resetForSession();
     resetSessionRealtimeRef.current();
 
-    setTimeout(() => terminalRef.current?.fit(), 50);
+    setTimeout(() => { try { terminalRef.current?.fit(); } catch {} }, 50);
     fetchStateSummary().catch(() => undefined);
     startPolling();
   };

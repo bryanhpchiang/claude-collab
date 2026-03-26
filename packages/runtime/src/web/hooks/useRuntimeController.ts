@@ -207,7 +207,7 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
   useEffect(() => {
     if (!chatCollapsed) {
       resetChatUnread();
-      setTimeout(() => terminalRef.current?.fit(), 50);
+      setTimeout(() => { try { terminalRef.current?.fit(); } catch {} }, 50);
       messageInputRef.current?.focus();
     }
   }, [chatCollapsed, messageInputRef, resetChatUnread]);
