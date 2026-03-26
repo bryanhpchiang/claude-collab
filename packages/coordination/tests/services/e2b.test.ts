@@ -68,7 +68,7 @@ describe("buildE2bBootstrapScript", () => {
 });
 
 describe("buildE2bTemplateLaunchScript", () => {
-  test("refreshes template code and only reinstalls deps when manifests change", () => {
+  test("starts the runtime directly from a pre-built template", () => {
     const script = buildE2bTemplateLaunchScript(config);
 
     expect(script).toContain(
@@ -77,16 +77,12 @@ describe("buildE2bTemplateLaunchScript", () => {
     expect(script).toContain(
       'echo "Missing jam runtime template contents at /home/user/jam" >&2',
     );
-    expect(script).toContain("git -C '/home/user/jam' config user.name 'Jam'");
-    expect(script).toContain("git -C '/home/user/jam' config user.email 'jam@letsjam.now'");
-    expect(script).toContain('PREVIOUS_HEAD="$(git -C \'/home/user/jam\' rev-parse HEAD)"');
-    expect(script).toContain(
-      "git -C '/home/user/jam' pull --ff-only origin main || true",
-    );
+    // Template launch should NOT git pull or bun install — everything is pre-built
+    expect(script).not.toContain("git pull");
+    expect(script).not.toContain("git config");
+    expect(script).not.toContain("bun install");
     expect(script).not.toContain("npm install -g @anthropic-ai/claude-code");
     expect(script).not.toContain("git clone");
-    expect(script).toContain("git diff --name-only \"$PREVIOUS_HEAD\"..HEAD -- bun.lock package.json packages/runtime/package.json packages/shared/package.json");
-    expect(script).toContain("bun install --frozen-lockfile --production --filter @jam/runtime");
     expect(DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND).toContain("bun run runtime:start");
     expect(script).toContain(
       `exec /bin/bash -c '${DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND} > /tmp/jam-runtime.log 2>&1'`,

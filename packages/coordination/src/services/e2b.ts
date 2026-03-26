@@ -104,8 +104,6 @@ function resolveTemplateRuntimeStartCommand(config: CoordinationConfig) {
 
 export function buildE2bTemplateLaunchScript(config: CoordinationConfig) {
   const installDir = shellQuote(config.jamInstallDir);
-  const gitUserName = shellQuote(config.jamGitUserName);
-  const gitUserEmail = shellQuote(config.jamGitUserEmail);
   const startCommand = shellQuote(
     `${resolveTemplateRuntimeStartCommand(config)} > /tmp/jam-runtime.log 2>&1`,
   );
@@ -118,16 +116,7 @@ if [ ! -d ${installDir} ]; then
   echo "Missing jam runtime template contents at ${config.jamInstallDir}" >&2
   exit 1
 fi
-git -C ${installDir} config user.name ${gitUserName}
-git -C ${installDir} config user.email ${gitUserEmail}
-PREVIOUS_HEAD="$(git -C ${installDir} rev-parse HEAD)"
-if [ -z "$(git -C ${installDir} status --porcelain)" ]; then
-  git -C ${installDir} pull --ff-only origin main || true
-fi
 cd ${installDir}
-if [ "$PREVIOUS_HEAD" != "$(git rev-parse HEAD)" ] && [ -n "$(git diff --name-only "$PREVIOUS_HEAD"..HEAD -- bun.lock package.json packages/runtime/package.json packages/shared/package.json)" ]; then
-  bun install --frozen-lockfile --production --filter @jam/runtime
-fi
 exec /bin/bash -c ${startCommand}
 `;
 }
