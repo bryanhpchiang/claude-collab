@@ -8,7 +8,7 @@
     "dev": "bun run web:build && bun run src/index.ts",
     "test": "bun test",
     "web:dev": "bun ../../node_modules/vite/bin/vite.js",
-    "web:build": "bun ../../node_modules/vite/bin/vite.js build",
+    "web:build": "bun run ./scripts/build-web.ts",
     "web:test": "bun x vitest run -c vitest.config.ts"
   },
   "dependencies": {
