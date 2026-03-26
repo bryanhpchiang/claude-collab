@@ -68,7 +68,7 @@ describe("buildE2bBootstrapScript", () => {
 });
 
 describe("buildE2bTemplateLaunchScript", () => {
-  test("starts the runtime from a prebuilt template without reinstalling dependencies", () => {
+  test("refreshes template code before starting the runtime", () => {
     const script = buildE2bTemplateLaunchScript(config);
 
     expect(script).toContain(
@@ -77,11 +77,14 @@ describe("buildE2bTemplateLaunchScript", () => {
     expect(script).toContain(
       'echo "Missing jam runtime template contents at /home/user/jam" >&2',
     );
-    expect(script).toContain("git config --global user.name 'Jam'");
-    expect(script).toContain("git config --global user.email 'jam@letsjam.now'");
+    expect(script).toContain("git -C '/home/user/jam' config user.name 'Jam'");
+    expect(script).toContain("git -C '/home/user/jam' config user.email 'jam@letsjam.now'");
+    expect(script).toContain(
+      "git -C '/home/user/jam' pull --ff-only origin main || true",
+    );
     expect(script).not.toContain("npm install -g @anthropic-ai/claude-code");
     expect(script).not.toContain("git clone");
-    expect(script).not.toContain("bun install --frozen-lockfile");
+    expect(script).toContain("bun install --frozen-lockfile --filter @jam/runtime");
     expect(DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND).toContain("bun run runtime:start");
     expect(script).toContain(
       `exec /bin/bash -c '${DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND} > /tmp/jam-runtime.log 2>&1'`,

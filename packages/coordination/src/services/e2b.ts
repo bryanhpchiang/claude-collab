@@ -118,9 +118,13 @@ if [ ! -d ${installDir} ]; then
   echo "Missing jam runtime template contents at ${config.jamInstallDir}" >&2
   exit 1
 fi
-git config --global user.name ${gitUserName}
-git config --global user.email ${gitUserEmail}
+git -C ${installDir} config user.name ${gitUserName}
+git -C ${installDir} config user.email ${gitUserEmail}
+if [ -z "$(git -C ${installDir} status --porcelain)" ]; then
+  git -C ${installDir} pull --ff-only origin main || true
+fi
 cd ${installDir}
+bun install --frozen-lockfile --filter @jam/runtime
 exec /bin/bash -c ${startCommand}
 `;
 }
