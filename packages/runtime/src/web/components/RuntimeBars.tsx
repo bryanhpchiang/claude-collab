@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { nameColor } from "../lib/colors.js";
-import type { ProjectSummary, SessionSummary } from "../types";
+import type { SessionSummary } from "../types";
 
 type RuntimeHeaderProps = {
   connectedUsers: string[];
@@ -108,55 +108,6 @@ export function RuntimeHeader({ connectedUsers, onOpenInvite }: RuntimeHeaderPro
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-type ProjectBarProps = {
-  currentProjectId: string | null;
-  projectList: ProjectSummary[];
-  showProjectClose: boolean;
-  onDeleteProject(projectId: string): void;
-  onOpenNewProject(): void;
-  onSwitchProject(projectId: string): void;
-};
-
-export function ProjectBar({
-  currentProjectId,
-  projectList,
-  showProjectClose,
-  onDeleteProject,
-  onOpenNewProject,
-  onSwitchProject,
-}: ProjectBarProps) {
-  return (
-    <div id="project-bar">
-      {projectList.map((project) => (
-        <div
-          className={`project-tab${project.id === currentProjectId ? " active" : ""}`}
-          data-id={project.id}
-          key={project.id}
-          title={project.cwd}
-          onClick={() => onSwitchProject(project.id)}
-        >
-          <span className="proj-name">{project.name}</span>
-          <span className="proj-count">{project.sessionCount}</span>
-          <button
-            className={`proj-close${showProjectClose ? " visible" : ""}`}
-            title="Delete project"
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDeleteProject(project.id);
-            }}
-          >
-            &times;
-          </button>
-        </div>
-      ))}
-      <button id="new-project-btn" type="button" onClick={onOpenNewProject}>
-        + Project
-      </button>
     </div>
   );
 }

@@ -54,16 +54,12 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
   const {
     beginSessionRename,
     createFreshSession,
-    createProject,
     createSession,
-    currentProjectId,
     currentSessionId,
-    deleteProject,
     deleteSession,
     diskSessions,
     editingSessionId,
     editingSessionName,
-    filteredSessions,
     handleProjectsUpdate,
     handleSessionsUpdate,
     handleSocketDisconnect,
@@ -71,23 +67,15 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
     handleUsersUpdate,
     joinSession,
     loadingDiskSessions,
-    newProjectCwd,
-    newProjectModalOpen,
-    newProjectName,
     newSessionModalOpen,
     newSessionName,
-    projectList,
     resumeDiskSession,
     saveSessionRename,
+    sessionList,
     setEditingSessionName,
-    setNewProjectCwd,
-    setNewProjectModalOpen,
-    setNewProjectName,
     setNewSessionModalOpen,
     setNewSessionName,
-    showProjectClose,
     showSessionClose,
-    switchProject,
   } = useRuntimeWorkspace({
     appendSystemRef,
     fetchStateSummary,
@@ -177,7 +165,7 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
 
   useEffect(() => {
     const jamName = bootstrap.jamName;
-    const session = filteredSessions.find((s) => s.id === currentSessionId);
+    const session = sessionList.find((s) => s.id === currentSessionId);
     if (jamName && session) {
       document.title = `${session.name} — ${jamName} — Jam`;
     } else if (jamName) {
@@ -187,7 +175,7 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
     } else {
       document.title = "Jam — Multiplayer Claude";
     }
-  }, [bootstrap.jamName, currentSessionId, filteredSessions]);
+  }, [bootstrap.jamName, currentSessionId, sessionList]);
 
   useEffect(() => {
     if (!myName) return;
@@ -234,23 +222,11 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
         setInviteOpen(true);
       },
     },
-    projectBarProps: {
-      currentProjectId,
-      projectList,
-      showProjectClose,
-      onDeleteProject(projectId: string) {
-        deleteProject(projectId).catch(() => undefined);
-      },
-      onOpenNewProject() {
-        setNewProjectModalOpen(true);
-      },
-      onSwitchProject: switchProject,
-    },
     sessionBarProps: {
       currentSessionId,
       editingSessionId,
       editingSessionName,
-      filteredSessions,
+      filteredSessions: sessionList,
       showSessionClose,
       onDeleteSession(sessionId: string, userCount: number) {
         deleteSession(sessionId, userCount).catch(() => undefined);
@@ -363,19 +339,6 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
       },
       onResumeSession: resumeDiskSession,
       onSessionNameChange: setNewSessionName,
-    },
-    newProjectModalProps: {
-      newProjectCwd,
-      newProjectName,
-      open: newProjectModalOpen,
-      onClose() {
-        setNewProjectModalOpen(false);
-      },
-      onCreate() {
-        createProject().catch(() => undefined);
-      },
-      onProjectCwdChange: setNewProjectCwd,
-      onProjectNameChange: setNewProjectName,
     },
     catchUpModalProps: {
       open: catchUpOpen,
