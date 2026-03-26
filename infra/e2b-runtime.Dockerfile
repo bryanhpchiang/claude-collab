@@ -25,11 +25,16 @@ COPY packages/runtime/package.json ./packages/runtime/package.json
 COPY packages/shared/package.json ./packages/shared/package.json
 
 RUN bun install --frozen-lockfile --production --filter @jam/runtime \
-  && npm install --prefix /home/user/jam --no-save vite@5.4.14 @vitejs/plugin-react@4.3.4 typescript@6.0.2
+  && npm install --prefix /tmp/jam-runtime-build-tools --no-save vite@5.4.14 @vitejs/plugin-react@4.3.4 typescript@6.0.2 \
+  && mkdir -p /home/user/jam/node_modules /home/user/jam/node_modules/@vitejs \
+  && ln -s /tmp/jam-runtime-build-tools/node_modules/vite /home/user/jam/node_modules/vite \
+  && ln -s /tmp/jam-runtime-build-tools/node_modules/@vitejs/plugin-react /home/user/jam/node_modules/@vitejs/plugin-react \
+  && ln -s /tmp/jam-runtime-build-tools/node_modules/typescript /home/user/jam/node_modules/typescript
 
 COPY packages/runtime ./packages/runtime
 COPY packages/shared ./packages/shared
 
 RUN bun run runtime:web:build \
+  && rm -rf /home/user/jam/node_modules/vite /home/user/jam/node_modules/typescript /home/user/jam/node_modules/@vitejs /tmp/jam-runtime-build-tools \
   && git config --global user.name "Jam" \
   && git config --global user.email "jam@letsjam.now"

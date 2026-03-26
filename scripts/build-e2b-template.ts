@@ -14,6 +14,7 @@ const repoRef = process.env.JAM_E2B_TEMPLATE_REF || "main";
 const installDir = process.env.JAM_INSTALL_DIR || "/home/user/jam";
 const gitUserName = process.env.JAM_GIT_USER_NAME || "Jam";
 const gitUserEmail = process.env.JAM_GIT_USER_EMAIL || "jam@letsjam.now";
+const buildToolsDir = "/tmp/jam-runtime-build-tools";
 
 if (!apiKey) {
   throw new Error("E2B_API_KEY is required to build the E2B runtime template");
@@ -40,8 +41,14 @@ const template = Template()
     "npm install -g @anthropic-ai/claude-code",
     `git clone --branch ${shellQuote(repoRef)} --depth 1 ${shellQuote(repoUrl)} ${shellQuote(installDir)}`,
     `cd ${shellQuote(installDir)} && bun install --frozen-lockfile --production --filter @jam/runtime`,
-    `npm install --prefix ${shellQuote(installDir)} --no-save vite@5.4.14 @vitejs/plugin-react@4.3.4 typescript@6.0.2`,
+    `rm -rf ${shellQuote(buildToolsDir)}`,
+    `npm install --prefix ${shellQuote(buildToolsDir)} --no-save vite@5.4.14 @vitejs/plugin-react@4.3.4 typescript@6.0.2`,
+    `mkdir -p ${shellQuote(`${installDir}/node_modules`)} ${shellQuote(`${installDir}/node_modules/@vitejs`)}`,
+    `ln -sfn ${shellQuote(`${buildToolsDir}/node_modules/vite`)} ${shellQuote(`${installDir}/node_modules/vite`)}`,
+    `ln -sfn ${shellQuote(`${buildToolsDir}/node_modules/@vitejs/plugin-react`)} ${shellQuote(`${installDir}/node_modules/@vitejs/plugin-react`)}`,
+    `ln -sfn ${shellQuote(`${buildToolsDir}/node_modules/typescript`)} ${shellQuote(`${installDir}/node_modules/typescript`)}`,
     `cd ${shellQuote(installDir)} && bun run runtime:web:build`,
+    `rm -rf ${shellQuote(`${installDir}/node_modules/vite`)} ${shellQuote(`${installDir}/node_modules/typescript`)} ${shellQuote(`${installDir}/node_modules/@vitejs`)} ${shellQuote(buildToolsDir)}`,
     `git config --global user.name ${shellQuote(gitUserName)}`,
     `git config --global user.email ${shellQuote(gitUserEmail)}`,
   ])
