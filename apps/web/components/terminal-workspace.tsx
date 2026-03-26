@@ -95,76 +95,94 @@ async function postJson<T>(url: string, init: RequestInit) {
 
 function JamJarAnimation() {
   return (
-    <div className="relative mx-auto mb-6 size-32">
-      {/* Based on the actual Jam favicon SVG from the landing page */}
-      <svg viewBox="0 0 64 64" className="size-full" xmlns="http://www.w3.org/2000/svg">
+    <div className="relative mx-auto mb-6 h-36 w-40">
+      <svg viewBox="0 0 100 80" className="size-full overflow-visible" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="lid-g" x1="20" y1="8" x2="44" y2="18" gradientUnits="userSpaceOnUse">
+          <linearGradient id="lid-g" x1="30" y1="8" x2="70" y2="20" gradientUnits="userSpaceOnUse">
             <stop stopColor="#E8A838" />
             <stop offset="1" stopColor="#D4872C" />
           </linearGradient>
+          <linearGradient id="jam-g" x1="50" y1="35" x2="50" y2="65" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#A855F7" />
+            <stop offset="1" stopColor="#7C3AED" />
+          </linearGradient>
         </defs>
 
-        {/* Lid knob */}
-        <rect x="20" y="8" width="24" height="6" rx="3" fill="url(#lid-g)" />
-        {/* Lid rim */}
-        <path d="M18 14h28v3c0 1-3 3-6 3H24c-3 0-6-2-6-3v-3z" fill="url(#lid-g)" opacity="0.8" />
+        {/* Spill puddle — appears when jar tips, fades when it returns */}
+        <ellipse cx="72" cy="72" rx="0" ry="0" fill="#A855F7" opacity="0" className="jam-puddle" />
 
-        {/* Jar body */}
-        <path d="M16 20c-2 0-4 2-4 4v20c0 8 6 14 14 14h12c8 0 14-6 14-14V24c0-2-2-4-4-4H16z" fill="#1E1832" />
+        {/* Jar group — tips over and back */}
+        <g className="jam-jar-group">
+          {/* Lid */}
+          <rect x="33" y="8" width="34" height="7" rx="3.5" fill="url(#lid-g)" />
+          <path d="M30 15h40v3.5c0 1.2-4 3.5-8 3.5H38c-4 0-8-2.3-8-3.5V15z" fill="url(#lid-g)" opacity="0.8" />
 
-        {/* Jam fill — animated wave */}
-        <g className="jam-wave">
-          <path d="M12 38c2-2 8-4 14-3s11 3 14 2 9-3 14-2v10c0 8-6 14-14 14H26c-8 0-14-6-14-14V38z" fill="#A855F7" opacity="0.55" />
+          {/* Jar body */}
+          <path d="M28 22c-2.5 0-5 2.5-5 5v25c0 10 7.5 17.5 17.5 17.5h19c10 0 17.5-7.5 17.5-17.5V27c0-2.5-2.5-5-5-5H28z" fill="#1E1832" />
+
+          {/* Jam inside */}
+          <path d="M23 44c2.5-2.5 10-5 17.5-3.5s13.5 4 17.5 2.5 11-3.5 17.5-2.5v12c0 10-7.5 17.5-17.5 17.5H40.5C30.5 70 23 62.5 23 52.5V44z" fill="url(#jam-g)" opacity="0.6" className="jam-fill" />
+
+          {/* Drip on jar */}
+          <path d="M66 52c0-2 2-4 5-4s6 2 6 4c0 1.2-1.2 1.8-5 1.8S66 53.2 66 52z" fill="#6D4BA0" />
         </g>
 
-        {/* Spill blob — slides over rim and back */}
-        <g className="jam-spill">
-          <path d="M44 52 C44 50 45.5 48.5 48 48.5 C50.5 48.5 52 50 52 52 C52 53 51 53.5 48 53.5 C45 53.5 44 53 44 52Z" fill="#6D4BA0" />
-        </g>
-
-        {/* Drip drops */}
-        <circle cx="11" cy="53" r="2" fill="#A855F7" opacity="0.45" className="jam-drip-l" />
-        <circle cx="55" cy="53.5" r="1.5" fill="#7C3AED" opacity="0.4" className="jam-drip-r" />
-
-        {/* Spill over rim — animated */}
-        <g className="jam-overflow">
-          <ellipse cx="50" cy="22" rx="4" ry="6" fill="#A855F7" opacity="0" />
-        </g>
+        {/* Spill stream — flows from jar mouth when tipped */}
+        <path d="M68 28 Q74 35 76 50 Q77 58 74 65" stroke="#A855F7" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0" className="jam-stream" />
       </svg>
 
       <style>{`
-        @keyframes wave {
-          0%, 100% { transform: translateY(0) scaleX(1); }
-          25% { transform: translateY(-1.5px) scaleX(1.02); }
-          50% { transform: translateY(0.5px) scaleX(0.98); }
-          75% { transform: translateY(-0.5px) scaleX(1.01); }
+        /* 6s cycle: upright → tip → spill pause → return → rest */
+        @keyframes jar-tip {
+          0%, 8%   { transform: rotate(0deg) translateY(0); }
+          20%      { transform: rotate(75deg) translateX(8px) translateY(4px); }
+          45%      { transform: rotate(75deg) translateX(8px) translateY(4px); }
+          65%, 72% { transform: rotate(-5deg) translateY(-2px); }
+          80%      { transform: rotate(3deg); }
+          88%, 100% { transform: rotate(0deg) translateY(0); }
         }
-        @keyframes overflow {
-          0%, 100% { transform: translateY(0); opacity: 0; }
-          15% { transform: translateY(-6px); opacity: 0.5; }
-          30% { transform: translateY(-3px) scaleY(1.4); opacity: 0.45; }
-          50% { transform: translateY(2px) scaleY(0.6); opacity: 0.3; }
-          70% { transform: translateY(-1px); opacity: 0.15; }
-          85% { transform: translateY(0); opacity: 0; }
+
+        @keyframes puddle-grow {
+          0%, 15%   { rx: 0; ry: 0; opacity: 0; }
+          30%       { rx: 14; ry: 4; opacity: 0.4; }
+          45%       { rx: 18; ry: 5; opacity: 0.45; }
+          65%       { rx: 16; ry: 4.5; opacity: 0.35; }
+          80%       { rx: 6; ry: 2; opacity: 0.15; }
+          92%, 100% { rx: 0; ry: 0; opacity: 0; }
         }
-        @keyframes drip-l {
-          0%, 100% { transform: translateY(0); opacity: 0.45; }
-          40% { transform: translateY(4px); opacity: 0.2; }
-          60% { transform: translateY(5px); opacity: 0.1; }
-          80% { transform: translateY(2px); opacity: 0.35; }
+
+        @keyframes stream-flow {
+          0%, 15%  { opacity: 0; stroke-dashoffset: 60; }
+          25%      { opacity: 0.5; stroke-dashoffset: 0; }
+          45%      { opacity: 0.4; stroke-dashoffset: 0; }
+          60%      { opacity: 0; stroke-dashoffset: -60; }
+          100%     { opacity: 0; stroke-dashoffset: -60; }
         }
-        @keyframes drip-r {
-          0%, 100% { transform: translateY(0); opacity: 0.4; }
-          30% { transform: translateY(3px); opacity: 0.15; }
-          70% { transform: translateY(4px); opacity: 0.1; }
-          90% { transform: translateY(1px); opacity: 0.3; }
+
+        @keyframes fill-slosh {
+          0%, 8%   { transform: translateX(0); }
+          20%      { transform: translateX(6px) translateY(-2px); }
+          45%      { transform: translateX(6px) translateY(-2px); }
+          65%      { transform: translateX(-3px) translateY(1px); }
+          80%      { transform: translateX(1px); }
+          88%, 100% { transform: translateX(0); }
         }
-        .jam-wave { animation: wave 3s ease-in-out infinite; transform-origin: 32px 45px; }
-        .jam-overflow { animation: overflow 4.5s ease-in-out infinite; transform-origin: 50px 22px; }
-        .jam-drip-l { animation: drip-l 3.5s ease-in-out infinite; }
-        .jam-drip-r { animation: drip-r 3.5s ease-in-out infinite 0.8s; }
-        .jam-spill { animation: overflow 4.5s ease-in-out infinite 0.5s; transform-origin: 48px 52px; }
+
+        .jam-jar-group {
+          animation: jar-tip 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          transform-origin: 60px 70px;
+        }
+        .jam-puddle {
+          animation: puddle-grow 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        .jam-stream {
+          stroke-dasharray: 60;
+          animation: stream-flow 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        .jam-fill {
+          animation: fill-slosh 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+          transform-origin: 50px 55px;
+        }
       `}</style>
     </div>
   )
