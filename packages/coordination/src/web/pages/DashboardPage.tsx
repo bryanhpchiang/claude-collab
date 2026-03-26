@@ -23,18 +23,23 @@ export function DashboardPage({ initialJams, user }: DashboardPageProps) {
         <div className="container dash-header-inner">
           <a href="/" className="dash-brand">
             <svg className="dash-brand-logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M25 18h50c2 0 3 1 3 3v6H22v-6c0-2 1-3 3-3z" fill="url(#jar-lid)"/>
-              <path d="M22 27h56v6c0 2-4 4-8 5H30c-4-1-8-3-8-5v-6z" fill="url(#jar-lid)" opacity="0.7"/>
-              <path d="M30 38h40c5 0 9 3 10 8l4 26c1 5-3 10-8 10H24c-5 0-9-5-8-10l4-26c1-5 5-8 10-8z" fill="url(#jar-body)"/>
-              <path d="M34 48c4 8 12 14 16 18 4-4 12-10 16-18" stroke="rgba(255,255,255,0.15)" strokeWidth="2" strokeLinecap="round" fill="none"/>
+              <rect x="30" y="16" width="40" height="8" rx="4" fill="url(#db-jar-lid)"/>
+              <rect x="26" y="24" width="48" height="6" rx="3" fill="url(#db-jar-lid)" opacity="0.7"/>
+              <path d="M28 30c-2 0-4 2-4 4v36c0 8 6 14 14 14h24c8 0 14-6 14-14V34c0-2-2-4-4-4H28z" fill="url(#db-jar-body)"/>
+              <path d="M28 56c0 0 8-6 22-6s22 6 22 6v14c0 8-6 14-14 14H42c-8 0-14-6-14-14V56z" fill="url(#db-jar-fill)" opacity="0.6"/>
+              <path d="M34 38v20" stroke="rgba(255,255,255,0.08)" strokeWidth="3" strokeLinecap="round"/>
               <defs>
-                <linearGradient id="jar-lid" x1="25" y1="18" x2="75" y2="33" gradientUnits="userSpaceOnUse">
+                <linearGradient id="db-jar-lid" x1="30" y1="16" x2="70" y2="30" gradientUnits="userSpaceOnUse">
                   <stop stopColor="#E8A838"/>
                   <stop offset="1" stopColor="#D4872C"/>
                 </linearGradient>
-                <linearGradient id="jar-body" x1="20" y1="38" x2="80" y2="82" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="rgba(232,168,56,0.18)"/>
-                  <stop offset="1" stopColor="rgba(212,135,44,0.08)"/>
+                <linearGradient id="db-jar-body" x1="24" y1="30" x2="76" y2="84" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="rgba(232,168,56,0.12)"/>
+                  <stop offset="1" stopColor="rgba(168,85,247,0.06)"/>
+                </linearGradient>
+                <linearGradient id="db-jar-fill" x1="28" y1="50" x2="72" y2="84" gradientUnits="userSpaceOnUse">
+                  <stop stopColor="#A855F7" stopOpacity="0.3"/>
+                  <stop offset="1" stopColor="#7C3AED" stopOpacity="0.15"/>
                 </linearGradient>
               </defs>
             </svg>
