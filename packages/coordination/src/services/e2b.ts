@@ -120,11 +120,14 @@ if [ ! -d ${installDir} ]; then
 fi
 git -C ${installDir} config user.name ${gitUserName}
 git -C ${installDir} config user.email ${gitUserEmail}
+PREVIOUS_HEAD="$(git -C ${installDir} rev-parse HEAD)"
 if [ -z "$(git -C ${installDir} status --porcelain)" ]; then
   git -C ${installDir} pull --ff-only origin main || true
 fi
 cd ${installDir}
-bun install --frozen-lockfile --filter @jam/runtime
+if [ "$PREVIOUS_HEAD" != "$(git rev-parse HEAD)" ] && [ -n "$(git diff --name-only "$PREVIOUS_HEAD"..HEAD -- bun.lock package.json packages/runtime/package.json packages/shared/package.json)" ]; then
+  bun install --frozen-lockfile --production --filter @jam/runtime
+fi
 exec /bin/bash -c ${startCommand}
 `;
 }
