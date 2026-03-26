@@ -21,20 +21,19 @@ export function RuntimeHeader({ connectedUsers, onOpenInvite }: RuntimeHeaderPro
   return (
     <div id="header">
       <a href="https://letsjam.now" rel="noopener" className="brand-link" title="Back to Jam lobby">
-        <svg className="logo-icon" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+        <svg className="logo-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M25 18h50c2 0 3 1 3 3v6H22v-6c0-2 1-3 3-3z" fill="url(#rt-jar-lid)"/>
+          <path d="M22 27h56v6c0 2-4 4-8 5H30c-4-1-8-3-8-5v-6z" fill="url(#rt-jar-lid)" opacity="0.7"/>
+          <path d="M30 38h40c5 0 9 3 10 8l4 26c1 5-3 10-8 10H24c-5 0-9-5-8-10l4-26c1-5 5-8 10-8z" fill="url(#rt-jar-body)"/>
+          <path d="M34 48c4 8 12 14 16 18 4-4 12-10 16-18" stroke="rgba(255,255,255,0.15)" strokeWidth="2" strokeLinecap="round" fill="none"/>
           <defs>
-            <linearGradient id="hg" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#E8A838" />
-              <stop offset="100%" stopColor="#D4872C" />
+            <linearGradient id="rt-jar-lid" x1="25" y1="18" x2="75" y2="33" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#E8A838"/><stop offset="1" stopColor="#D4872C"/>
+            </linearGradient>
+            <linearGradient id="rt-jar-body" x1="20" y1="38" x2="80" y2="82" gradientUnits="userSpaceOnUse">
+              <stop stopColor="rgba(232,168,56,0.18)"/><stop offset="1" stopColor="rgba(212,135,44,0.08)"/>
             </linearGradient>
           </defs>
-          <g transform="translate(32,34)">
-            <rect x="-12" y="-18" width="24" height="28" rx="4" fill="none" stroke="url(#hg)" strokeWidth="3" />
-            <rect x="-14" y="-20" width="28" height="8" rx="3" fill="url(#hg)" opacity="0.9" />
-            <circle cx="-4" cy="0" r="2.5" fill="#E8A838" opacity="0.8" />
-            <circle cx="4" cy="4" r="2" fill="#F5D78E" opacity="0.7" />
-            <circle cx="-2" cy="6" r="1.5" fill="#D4872C" opacity="0.6" />
-          </g>
         </svg>
         <span className="brand-jam">Jam</span>
       </a>
