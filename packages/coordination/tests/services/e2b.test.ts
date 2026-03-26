@@ -68,7 +68,7 @@ describe("buildE2bBootstrapScript", () => {
 });
 
 describe("buildE2bTemplateLaunchScript", () => {
-  test("starts the runtime directly from a pre-built template", () => {
+  test("starts the runtime from the prebuilt template without live deploy steps", () => {
     const script = buildE2bTemplateLaunchScript(config);
 
     expect(script).toContain(
@@ -77,13 +77,11 @@ describe("buildE2bTemplateLaunchScript", () => {
     expect(script).toContain(
       'echo "Missing jam runtime template contents at /home/user/jam" >&2',
     );
-    // Template launch should NOT git pull or bun install — everything is pre-built
-    expect(script).not.toContain("git pull");
-    expect(script).not.toContain("git config");
-    expect(script).not.toContain("bun install");
     expect(script).not.toContain("npm install -g @anthropic-ai/claude-code");
     expect(script).not.toContain("git clone");
-    expect(DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND).toContain("bun run runtime:start");
+    expect(script).not.toContain("git pull");
+    expect(script).not.toContain("bun install");
+    expect(DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND).toContain("bun run runtime:serve");
     expect(script).toContain(
       `exec /bin/bash -c '${DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND} > /tmp/jam-runtime.log 2>&1'`,
     );

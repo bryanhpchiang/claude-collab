@@ -8,8 +8,9 @@ on:
       - package.json
       - bun.lock
       - packages/coordination/**
-      - packages/runtime/package.json
+      - packages/runtime/**
       - packages/shared/**
+      - scripts/build-e2b-template.ts
       - .github/workflows/deploy-coordination-server.yml
   workflow_dispatch:
 
@@ -31,9 +32,32 @@ jobs:
       IMAGE_REPO_NAME: jam/coordination-server
       DEPLOY_TAG: main
       DOCKER_BUILDKIT: "1"
+      E2B_DOMAIN: e2b.letsjam.now
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.17
+
+      - name: Resolve E2B template name
+        shell: bash
+        run: echo "E2B_TEMPLATE_NAME=jam-runtime-${GITHUB_SHA::12}" >> "$GITHUB_ENV"
+
+      - name: Install template build dependencies
+        shell: bash
+        run: bun install --frozen-lockfile --production --filter @jam/coordination
+
+      - name: Build versioned E2B runtime template
+        shell: bash
+        env:
+          E2B_API_KEY: ${{ secrets.E2B_API_KEY }}
+          JAM_E2B_TEMPLATE: ${{ env.E2B_TEMPLATE_NAME }}
+          JAM_E2B_TEMPLATE_REF: ${{ github.sha }}
+          E2B_DOMAIN: ${{ env.E2B_DOMAIN }}
+        run: bun run e2b:template:build
 
       - name: Resolve AWS account ID
         id: aws-account
@@ -56,6 +80,7 @@ jobs:
           ECR_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME"
           docker build \
             --file packages/coordination/Dockerfile \
+            --build-arg "JAM_E2B_TEMPLATE=$E2B_TEMPLATE_NAME" \
             --tag "$ECR_URI:$GITHUB_SHA" \
             --tag "$ECR_URI:$DEPLOY_TAG" \
             .

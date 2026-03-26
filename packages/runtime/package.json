@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "serve": "bun run src/index.ts",
     "start": "bun run web:build && bun run src/index.ts",
     "dev": "bun run web:build && bun run src/index.ts",
     "test": "bun test",

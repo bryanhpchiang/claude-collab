@@ -8,7 +8,7 @@ export const DEFAULT_JAM_RUNTIME_START_COMMAND =
   "JAM_MODE=instance bun run runtime:start";
 export const DEFAULT_JAM_E2B_TEMPLATE = "jam-runtime-v1";
 export const DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND =
-  "JAM_MODE=instance bun run runtime:start";
+  "JAM_MODE=instance bun run runtime:serve";
 
 export type CoordinationConfig = {
   port: number;

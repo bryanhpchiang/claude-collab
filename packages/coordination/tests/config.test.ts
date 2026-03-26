@@ -123,6 +123,21 @@ describe("loadConfig", () => {
     );
   });
 
+  test("prefers an explicit jam E2B template from the environment", () => {
+    withCoordinationEnv(
+      {
+        DATABASE_URL: "postgresql://jam:jam@localhost:5432/jam",
+        BETTER_AUTH_SECRET: "test-secret",
+        BASE_URL: "https://letsjam.now",
+        E2B_API_KEY: "test-e2b-key",
+        JAM_E2B_TEMPLATE: "jam-runtime-abcdef123456",
+      },
+      () => {
+        expect(loadConfig().jamE2bTemplate).toBe("jam-runtime-abcdef123456");
+      },
+    );
+  });
+
   test("does not force the production template for non-production base urls", () => {
     withCoordinationEnv(
       {
@@ -181,7 +196,7 @@ describe("loadConfig", () => {
   });
 
   test("uses the runtime start script for E2B template launches", () => {
-    expect(DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND).toContain("bun run runtime:start");
+    expect(DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND).toContain("bun run runtime:serve");
     expect(DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND).not.toContain("src/index.ts");
   });
 });

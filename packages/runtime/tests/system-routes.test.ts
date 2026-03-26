@@ -36,5 +36,6 @@ describe("runtime deploy workflow", () => {
 
     expect(pkg.scripts?.start).toContain("web:build");
     expect(pkg.scripts?.dev).toContain("web:build");
+    expect(pkg.scripts?.serve).toBe("bun run src/index.ts");
   });
 });

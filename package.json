@@ -5,6 +5,7 @@
   "scripts": {
     "start": "bun run runtime:start",
     "dev": "bun run runtime:dev",
+    "runtime:serve": "cd packages/runtime && bun run serve",
     "runtime:start": "cd packages/runtime && bun run start",
     "runtime:dev": "cd packages/runtime && bun run dev",
     "runtime:test": "cd packages/runtime && bun test",

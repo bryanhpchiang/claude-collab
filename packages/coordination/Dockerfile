@@ -2,6 +2,8 @@ FROM public.ecr.aws/docker/library/debian:bookworm-slim
 
 WORKDIR /app
 
+ARG JAM_E2B_TEMPLATE=""
+
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates curl unzip \
   && curl -fsSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem -o /etc/ssl/certs/rds-global-bundle.pem \
@@ -27,5 +29,6 @@ WORKDIR /app/packages/coordination
 EXPOSE 8080
 
 ENV PORT=8080
+ENV JAM_E2B_TEMPLATE="${JAM_E2B_TEMPLATE}"
 
 CMD ["bun", "run", "start"]
