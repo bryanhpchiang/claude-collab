@@ -35,6 +35,7 @@ export type CoordinationConfig = {
   e2bDomain: string;
   jamE2bTemplate: string;
   jamE2bTimeoutMs: number;
+  anthropicApiKey: string;
   githubClientId: string;
   githubClientSecret: string;
   githubWebhookSecret: string;
@@ -149,6 +150,7 @@ export function loadConfig(): CoordinationConfig {
     jamE2bTimeoutMs: Number.isFinite(jamE2bTimeoutMs)
       ? jamE2bTimeoutMs
       : 60 * 60 * 1000,
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
     githubClientId: process.env.GITHUB_CLIENT_ID || "",
     githubClientSecret: process.env.GITHUB_CLIENT_SECRET || "",
     githubWebhookSecret: process.env.GITHUB_WEBHOOK_SECRET || "",

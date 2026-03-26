@@ -31,6 +31,7 @@ const baseConfig: CoordinationConfig = {
   e2bDomain: "e2b.letsjam.now",
   jamE2bTemplate: "",
   jamE2bTimeoutMs: 60 * 60 * 1000,
+  anthropicApiKey: "",
   githubClientId: "",
   githubClientSecret: "",
   githubWebhookSecret: "",

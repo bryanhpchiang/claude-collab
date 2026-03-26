@@ -26,5 +26,8 @@ export function buildJamRuntimeEnvVars(
     JAM_SHARED_SECRET: runtimeEnv.sharedSecret,
     JAM_DEPLOY_SECRET: runtimeEnv.deploySecret,
     COORDINATION_BASE_URL: config.baseUrl,
+    ...(config.anthropicApiKey
+      ? { ANTHROPIC_API_KEY: config.anthropicApiKey }
+      : {}),
   };
 }

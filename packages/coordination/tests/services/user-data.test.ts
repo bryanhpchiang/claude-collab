@@ -28,6 +28,7 @@ const config: CoordinationConfig = {
   e2bDomain: "e2b.letsjam.now",
   jamE2bTemplate: "",
   jamE2bTimeoutMs: 60 * 60 * 1000,
+  anthropicApiKey: "",
   githubClientId: "",
   githubClientSecret: "",
   githubWebhookSecret: "",
@@ -72,5 +73,22 @@ describe("buildJamInstanceUserDataScript", () => {
     const decoded = Buffer.from(encoded, "base64").toString("utf8");
 
     expect(decoded).toBe(buildJamInstanceUserDataScript(config, runtimeEnv));
+  });
+
+  test("passes a service Anthropic API key into the runtime environment", () => {
+    const script = buildJamInstanceUserDataScript(
+      {
+        ...config,
+        anthropicApiKey: "anthropic-test-key",
+      },
+      {
+        jamId: "abc123",
+        publicHost: "abc123.jams.letsjam.now",
+        sharedSecret: "shared-secret",
+        deploySecret: "deploy-secret",
+      },
+    );
+
+    expect(script).toContain("ANTHROPIC_API_KEY='anthropic-test-key'");
   });
 });

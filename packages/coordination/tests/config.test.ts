@@ -23,6 +23,7 @@ const COORDINATION_ENV_KEYS = [
   "E2B_DOMAIN",
   "JAM_E2B_TEMPLATE",
   "JAM_E2B_TIMEOUT_MS",
+  "ANTHROPIC_API_KEY",
   "JAM_TAG_PREFIX",
   "JAM_HOST_SUFFIX",
   "JAM_PREVIEW_HOST_SUFFIX",
@@ -164,6 +165,20 @@ describe("loadConfig", () => {
         expect(loadConfig().jamPreviewHostSuffix).toBe(
           "previews.letsjam.now",
         );
+      },
+    );
+  });
+
+  test("passes through a service-level Anthropic API key for jam runtimes", () => {
+    withCoordinationEnv(
+      {
+        DATABASE_URL: "postgresql://jam:jam@localhost:5432/jam",
+        BETTER_AUTH_SECRET: "test-secret",
+        BASE_URL: "https://letsjam.now",
+        ANTHROPIC_API_KEY: "anthropic-test-key",
+      },
+      () => {
+        expect(loadConfig().anthropicApiKey).toBe("anthropic-test-key");
       },
     );
   });
