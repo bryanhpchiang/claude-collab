@@ -451,16 +451,27 @@ input {
 
 /* ── How it works ── */
 
+.section-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 2.5px;
+  font-weight: 700;
+  color: #7C3AED;
+  margin-bottom: 12px;
+}
+
 .how-it-works {
-  padding: 0 0 64px;
+  padding: 40px 0 64px;
   text-align: center;
 }
 
 .how-it-works-title {
-  margin: 0 0 40px;
-  font-size: clamp(24px, 3vw, 32px);
-  font-weight: 700;
-  letter-spacing: -0.03em;
+  margin: 0 0 48px;
+  font-family: "Fredoka", sans-serif;
+  font-size: clamp(26px, 3vw, 36px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
 }
 
 .how-it-works-steps {
@@ -531,12 +542,34 @@ input {
 }
 
 .feature-card {
-  padding: 26px;
+  padding: 28px 24px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.feature-card:hover {
+  border-color: rgba(168, 85, 247, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.feature-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, rgba(232, 168, 56, 0.1), rgba(168, 85, 247, 0.08));
+  border: 1px solid rgba(232, 168, 56, 0.12);
 }
 
 .feature-card h2 {
-  margin: 0 0 12px;
-  font-size: 20px;
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 600;
 }
 
 .feature-card p,
@@ -546,6 +579,48 @@ input {
   margin: 0;
   color: var(--text-muted);
   line-height: 1.6;
+}
+
+/* ── Footer ── */
+
+.site-footer {
+  padding: 32px 0;
+  border-top: 1px solid rgba(168, 85, 247, 0.08);
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  font-size: 13px;
+  color: #5B4F7A;
+}
+
+.footer-inner a {
+  color: #7B6FA0;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.footer-inner a:hover {
+  color: #E8A838;
+}
+
+.footer-brand {
+  font-family: "Fredoka", sans-serif;
+  font-weight: 600;
+  background: linear-gradient(135deg, #E8A838, #D4872C);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.footer-sep {
+  color: rgba(168, 85, 247, 0.2);
 }
 
 /* ── Dashboard shell ── */

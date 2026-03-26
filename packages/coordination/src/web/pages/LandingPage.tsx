@@ -132,41 +132,61 @@ export function LandingPage({ authEnabled, signedIn }: LandingPageProps) {
         </main>
 
         <section className="how-it-works">
-          <h2 className="how-it-works-title">How it works</h2>
+          <div className="section-label">How it works</div>
+          <h2 className="how-it-works-title">Start jamming in seconds</h2>
           <div className="how-it-works-steps">
             <div className="how-it-works-step">
               <span className="how-it-works-number">1</span>
               <h3>Start a Jam</h3>
-              <p>Create a new shared session in one click. You get a fresh environment with Claude ready to go.</p>
+              <p>One click launches a fresh Claude Code session in the cloud.</p>
             </div>
             <div className="how-it-works-step">
               <span className="how-it-works-number">2</span>
               <h3>Share the link</h3>
-              <p>Send the invite link to your team. Anyone with the link can join instantly.</p>
+              <p>Send the URL to your team. No accounts, no installs needed.</p>
             </div>
             <div className="how-it-works-step">
               <span className="how-it-works-number">3</span>
               <h3>Build together</h3>
-              <p>Everyone codes in the same room with Claude. Real-time collaboration, zero setup.</p>
+              <p>Everyone sees the same terminal. Talk to Claude, ship code, in real time.</p>
             </div>
           </div>
         </section>
 
         <section className="feature-grid">
           <article className="feature-card">
+            <div className="feature-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E8A838" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
             <h2>Same room, same context</h2>
-            <p>Everyone sees the same terminal and conversation. No syncing, no conflicts.</p>
+            <p>Everyone sees the same terminal and conversation. No syncing, no conflicts. Just open a link and you're in.</p>
           </article>
           <article className="feature-card">
+            <div className="feature-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A855F7" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </div>
             <h2>Clean slate every time</h2>
-            <p>Each Jam gets its own environment. Experiment freely without stepping on anyone's work.</p>
+            <p>Each Jam gets its own environment and Claude session. Experiment freely without stepping on anyone's work.</p>
           </article>
           <article className="feature-card">
+            <div className="feature-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4872C" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            </div>
             <h2>Nothing to install</h2>
-            <p>Open a link, start coding. Works entirely in the browser.</p>
+            <p>Open a link, start coding. Works entirely in the browser on desktop, tablet, or phone.</p>
           </article>
         </section>
       </div>
+
+      <footer className="site-footer">
+        <div className="footer-inner">
+          <span className="footer-brand">Jam</span>
+          <span className="footer-sep">&middot;</span>
+          <a href="https://github.com/bryanhpchiang/claude-collab" target="_blank" rel="noopener">GitHub</a>
+          <span className="footer-sep">&middot;</span>
+          <span>Built with Claude</span>
+        </div>
+      </footer>
     </>
   );
 }
