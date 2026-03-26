@@ -26,11 +26,12 @@ type TerminalPanelProps = {
   currentUserName: string;
   onClaudeReady(): void;
   onReady(): void;
+  onResize?(cols: number, rows: number): void;
   onTtyInput(data: string): void;
 };
 
 export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(function TerminalPanel(
-  { children, connectedUsers, currentUserName, onClaudeReady, onReady, onTtyInput },
+  { children, connectedUsers, currentUserName, onClaudeReady, onReady, onResize, onTtyInput },
   ref,
 ) {
   const terminalContainerRef = useRef<HTMLDivElement | null>(null);
@@ -40,6 +41,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
   const currentUserNameRef = useRef(currentUserName);
   const onClaudeReadyRef = useRef(onClaudeReady);
   const onReadyRef = useRef(onReady);
+  const onResizeRef = useRef(onResize);
   const onTtyInputRef = useRef(onTtyInput);
   const userScrolledUpRef = useRef(false);
   const awaitingClaudeReadyRef = useRef(false);
@@ -72,6 +74,10 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
   useEffect(() => {
     onReadyRef.current = onReady;
   }, [onReady]);
+
+  useEffect(() => {
+    onResizeRef.current = onResize;
+  }, [onResize]);
 
   useEffect(() => {
     onTtyInputRef.current = onTtyInput;
@@ -124,13 +130,18 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
 
     const isNearBottom = () => term.buffer.active.viewportY >= term.buffer.active.baseY - 5;
 
+    const notifyResize = () => {
+      const { cols, rows } = term;
+      if (cols > 0 && rows > 0) onResizeRef.current?.(cols, rows);
+    };
+
     const handleResize = () => {
       const nextFontSize = window.innerWidth <= 600 ? 10 : 14;
       if (term.options.fontSize !== nextFontSize) term.options.fontSize = nextFontSize;
-      try { fitAddon.fit(); } catch {}
+      try { fitAddon.fit(); notifyResize(); } catch {}
     };
 
-    const resizeObserver = new ResizeObserver(() => { try { fitAddon.fit(); } catch {} });
+    const resizeObserver = new ResizeObserver(() => { try { fitAddon.fit(); notifyResize(); } catch {} });
 
     term.element?.addEventListener("wheel", () => {
       userScrolledUpRef.current = !isNearBottom();

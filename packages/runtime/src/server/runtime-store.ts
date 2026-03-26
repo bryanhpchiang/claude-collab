@@ -294,6 +294,12 @@ export class RuntimeStore {
     session.shell.write(seq);
   }
 
+  resizePty(sessionId: string, cols: number, rows: number) {
+    const session = this.sessions.get(sessionId);
+    if (!session) return;
+    try { session.shell.resize(cols, rows); } catch {}
+  }
+
   getPendingMentions(name: string): PendingMention[] {
     return this.pendingMentions.get(name.toLowerCase()) || [];
   }

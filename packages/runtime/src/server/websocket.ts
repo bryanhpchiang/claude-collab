@@ -111,6 +111,17 @@ export function createWebSocketHandler(store: RuntimeStore) {
           return;
         }
 
+        if (data.type === "resize") {
+          const sessionId = store.getClientSession(ws);
+          if (!sessionId) return;
+          const cols = Number(data.cols);
+          const rows = Number(data.rows);
+          if (cols > 0 && rows > 0) {
+            store.resizePty(sessionId, cols, rows);
+          }
+          return;
+        }
+
         if (data.type === "ping") {
           ws.send(JSON.stringify({ type: "pong" }));
           return;

@@ -245,6 +245,9 @@ export function useRuntimeController(bootstrap: RuntimeBootstrap) {
       onReady() {
         setTerminalReady(true);
       },
+      onResize(cols: number, rows: number) {
+        sendWs({ type: "resize", cols, rows });
+      },
       onTtyInput(data: string) {
         sendWs({ type: "tty-input", data });
       },

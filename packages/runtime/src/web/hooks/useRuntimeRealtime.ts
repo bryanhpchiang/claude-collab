@@ -184,7 +184,27 @@ export function useRuntimeRealtime({
     let isActive = true;
     let reconnectTimer: number | null = null;
 
-    const connect = () => {
+    async function waitForHealth(maxAttempts = 20): Promise<boolean> {
+      for (let i = 0; i < maxAttempts; i++) {
+        if (!isActive) return false;
+        try {
+          const res = await fetch("/health", { signal: AbortSignal.timeout(2000) });
+          if (res.ok) return true;
+        } catch {}
+        await new Promise(r => setTimeout(r, 500));
+      }
+      return false;
+    }
+
+    const connect = async () => {
+      const healthy = await waitForHealth();
+      if (!isActive) return;
+      if (!healthy) {
+        appendSystem("Runtime not reachable. Retrying...");
+        reconnectTimer = window.setTimeout(connect, 2000);
+        return;
+      }
+
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
       const socket = new WebSocket(`${protocol}//${window.location.host}/ws`);
       wsRef.current = socket;
