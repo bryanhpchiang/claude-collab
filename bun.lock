@@ -60,7 +60,6 @@
         "@testing-library/user-event": "^14.6.1",
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
-        "@vitejs/plugin-react": "4.3.4",
         "happy-dom": "^20.8.8",
         "jsdom": "^29.0.1",
         "typescript": "^6.0.2",
