@@ -94,95 +94,75 @@ async function postJson<T>(url: string, init: RequestInit) {
 /* ------------------------------------------------------------------ */
 
 function JamJarAnimation() {
+  /* Uses the exact hero jar SVG from the coordination landing page */
   return (
-    <div className="relative mx-auto mb-6 h-36 w-40">
-      <svg viewBox="0 0 100 80" className="size-full overflow-visible" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="lid-g" x1="30" y1="8" x2="70" y2="20" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#E8A838" />
-            <stop offset="1" stopColor="#D4872C" />
-          </linearGradient>
-          <linearGradient id="jam-g" x1="50" y1="35" x2="50" y2="65" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#A855F7" />
-            <stop offset="1" stopColor="#7C3AED" />
-          </linearGradient>
-        </defs>
+    <div className="relative mx-auto mb-6 h-32 w-36">
+      {/* Spill puddle on the ground */}
+      <div className="jam-puddle absolute bottom-0 left-1/2 h-2.5 w-0 rounded-full bg-purple-500/40" />
 
-        {/* Spill puddle — appears when jar tips, fades when it returns */}
-        <ellipse cx="72" cy="72" rx="0" ry="0" fill="#A855F7" opacity="0" className="jam-puddle" />
+      {/* Falling drops */}
+      <div className="jam-drop-a absolute right-3 top-1/3 size-2 rounded-full bg-purple-500/50" />
+      <div className="jam-drop-b absolute right-5 top-1/3 size-1.5 rounded-full bg-purple-400/40" />
 
-        {/* Jar group — tips over and back */}
-        <g className="jam-jar-group">
-          {/* Lid */}
-          <rect x="33" y="8" width="34" height="7" rx="3.5" fill="url(#lid-g)" />
-          <path d="M30 15h40v3.5c0 1.2-4 3.5-8 3.5H38c-4 0-8-2.3-8-3.5V15z" fill="url(#lid-g)" opacity="0.8" />
-
-          {/* Jar body */}
-          <path d="M28 22c-2.5 0-5 2.5-5 5v25c0 10 7.5 17.5 17.5 17.5h19c10 0 17.5-7.5 17.5-17.5V27c0-2.5-2.5-5-5-5H28z" fill="#1E1832" />
-
-          {/* Jam inside */}
-          <path d="M23 44c2.5-2.5 10-5 17.5-3.5s13.5 4 17.5 2.5 11-3.5 17.5-2.5v12c0 10-7.5 17.5-17.5 17.5H40.5C30.5 70 23 62.5 23 52.5V44z" fill="url(#jam-g)" opacity="0.6" className="jam-fill" />
-
-          {/* Drip on jar */}
-          <path d="M66 52c0-2 2-4 5-4s6 2 6 4c0 1.2-1.2 1.8-5 1.8S66 53.2 66 52z" fill="#6D4BA0" />
-        </g>
-
-        {/* Spill stream — flows from jar mouth when tipped */}
-        <path d="M68 28 Q74 35 76 50 Q77 58 74 65" stroke="#A855F7" strokeWidth="3" fill="none" strokeLinecap="round" opacity="0" className="jam-stream" />
-      </svg>
+      {/* Jar — tips and returns */}
+      <div className="jam-jar absolute inset-0 flex items-center justify-center">
+        <svg viewBox="10 2 85 78" className="h-28 w-28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="30" y="8" width="40" height="8" rx="4" fill="url(#m-lid)"/>
+          <rect x="26" y="16" width="48" height="6" rx="3" fill="url(#m-lid)" opacity="0.7"/>
+          <path d="M28 22c-2 0-4 2-4 4v36c0 8 6 14 14 14h24c8 0 14-6 14-14V26c0-2-2-4-4-4H28z" fill="url(#m-body)"/>
+          <path d="M28 48c0 0 8-6 22-6s22 6 22 6v14c0 8-6 14-14 14H42c-8 0-14-6-14-14V48z" fill="url(#m-fill)" opacity="0.7"/>
+          <path d="M34 30v20" stroke="rgba(255,255,255,0.1)" strokeWidth="3" strokeLinecap="round"/>
+          <path d="M68 74 C68 71 70.5 69 74 69 C77.5 69 80 71 80 74 C80 75 79 75.5 74 75.5 C69 75.5 68 75 68 74Z" fill="#6D4BA0"/>
+          <path d="M17 75 C17 73.5 18.5 72 20.5 72 C22.5 72 24 73.5 24 75 C24 75.5 23.3 76 20.5 76 C17.7 76 17 75.5 17 75Z" fill="#A855F7" opacity="0.45"/>
+          <path d="M83 75.5 C83 74.5 83.8 73.5 85 73.5 C86.2 73.5 87 74.5 87 75.5 C87 76 86.5 76.2 85 76.2 C83.5 76.2 83 76 83 75.5Z" fill="#7C3AED" opacity="0.4"/>
+          <defs>
+            <linearGradient id="m-lid" x1="30" y1="8" x2="70" y2="22" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#E8A838"/><stop offset="1" stopColor="#D4872C"/>
+            </linearGradient>
+            <linearGradient id="m-body" x1="24" y1="22" x2="76" y2="76" gradientUnits="userSpaceOnUse">
+              <stop stopColor="rgba(232,168,56,0.22)"/><stop offset="1" stopColor="rgba(168,85,247,0.12)"/>
+            </linearGradient>
+            <linearGradient id="m-fill" x1="28" y1="42" x2="72" y2="76" gradientUnits="userSpaceOnUse">
+              <stop stopColor="#A855F7" stopOpacity="0.5"/><stop offset="1" stopColor="#7C3AED" stopOpacity="0.25"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
 
       <style>{`
-        /* 6s cycle: upright → tip → spill pause → return → rest */
-        @keyframes jar-tip {
-          0%, 8%   { transform: rotate(0deg) translateY(0); }
-          20%      { transform: rotate(75deg) translateX(8px) translateY(4px); }
-          45%      { transform: rotate(75deg) translateX(8px) translateY(4px); }
-          65%, 72% { transform: rotate(-5deg) translateY(-2px); }
-          80%      { transform: rotate(3deg); }
-          88%, 100% { transform: rotate(0deg) translateY(0); }
+        @keyframes tip {
+          0%, 6%    { transform: rotate(0deg); }
+          20%       { transform: rotate(80deg); }
+          44%       { transform: rotate(80deg); }
+          66%, 72%  { transform: rotate(-3deg); }
+          80%       { transform: rotate(1.5deg); }
+          90%, 100% { transform: rotate(0deg); }
         }
-
-        @keyframes puddle-grow {
-          0%, 15%   { rx: 0; ry: 0; opacity: 0; }
-          30%       { rx: 14; ry: 4; opacity: 0.4; }
-          45%       { rx: 18; ry: 5; opacity: 0.45; }
-          65%       { rx: 16; ry: 4.5; opacity: 0.35; }
-          80%       { rx: 6; ry: 2; opacity: 0.15; }
-          92%, 100% { rx: 0; ry: 0; opacity: 0; }
+        @keyframes puddle {
+          0%, 18%    { width: 0; opacity: 0; transform: translateX(-50%); }
+          28%        { width: 2.5rem; opacity: 0.45; transform: translateX(-30%); }
+          44%        { width: 3rem; opacity: 0.5; transform: translateX(-25%); }
+          66%        { width: 1.5rem; opacity: 0.2; transform: translateX(-40%); }
+          82%, 100%  { width: 0; opacity: 0; transform: translateX(-50%); }
         }
-
-        @keyframes stream-flow {
-          0%, 15%  { opacity: 0; stroke-dashoffset: 60; }
-          25%      { opacity: 0.5; stroke-dashoffset: 0; }
-          45%      { opacity: 0.4; stroke-dashoffset: 0; }
-          60%      { opacity: 0; stroke-dashoffset: -60; }
-          100%     { opacity: 0; stroke-dashoffset: -60; }
+        @keyframes drop {
+          0%, 18%  { opacity: 0; transform: translateY(0); }
+          24%      { opacity: 0.6; transform: translateY(6px); }
+          38%      { opacity: 0.4; transform: translateY(28px); }
+          50%      { opacity: 0; transform: translateY(42px); }
+          100%     { opacity: 0; transform: translateY(42px); }
         }
-
-        @keyframes fill-slosh {
-          0%, 8%   { transform: translateX(0); }
-          20%      { transform: translateX(6px) translateY(-2px); }
-          45%      { transform: translateX(6px) translateY(-2px); }
-          65%      { transform: translateX(-3px) translateY(1px); }
-          80%      { transform: translateX(1px); }
-          88%, 100% { transform: translateX(0); }
+        @keyframes drop2 {
+          0%, 24%  { opacity: 0; transform: translateY(0); }
+          30%      { opacity: 0.5; transform: translateY(4px); }
+          44%      { opacity: 0.3; transform: translateY(24px); }
+          56%      { opacity: 0; transform: translateY(38px); }
+          100%     { opacity: 0; transform: translateY(38px); }
         }
-
-        .jam-jar-group {
-          animation: jar-tip 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-          transform-origin: 60px 70px;
-        }
-        .jam-puddle {
-          animation: puddle-grow 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-        }
-        .jam-stream {
-          stroke-dasharray: 60;
-          animation: stream-flow 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-        }
-        .jam-fill {
-          animation: fill-slosh 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-          transform-origin: 50px 55px;
-        }
+        .jam-jar    { animation: tip 5.5s cubic-bezier(0.4,0,0.2,1) infinite; transform-origin: 58% 88%; }
+        .jam-puddle { animation: puddle 5.5s cubic-bezier(0.4,0,0.2,1) infinite; }
+        .jam-drop-a { animation: drop 5.5s ease-in-out infinite; }
+        .jam-drop-b { animation: drop2 5.5s ease-in-out infinite; }
       `}</style>
     </div>
   )
