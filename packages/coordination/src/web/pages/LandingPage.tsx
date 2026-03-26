@@ -77,11 +77,24 @@ export function LandingPage({ authEnabled, signedIn }: LandingPageProps) {
             Multiplayer Claude Code
           </div>
           <div className="hero-jar">
-            <svg className="hero-jar-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg className="hero-jar-icon" viewBox="-20 0 140 105" fill="none" xmlns="http://www.w3.org/2000/svg">
+              {/* Left splash */}
+              <circle cx="8" cy="52" r="6" fill="#A855F7" opacity="0.25"/>
+              <circle cx="0" cy="44" r="4" fill="#A855F7" opacity="0.18"/>
+              <circle cx="14" cy="62" r="3.5" fill="#7C3AED" opacity="0.2"/>
+              <circle cx="-4" cy="58" r="2.5" fill="#A855F7" opacity="0.12"/>
+              {/* Right splash */}
+              <circle cx="92" cy="48" r="5.5" fill="#E8A838" opacity="0.22"/>
+              <circle cx="100" cy="40" r="3.5" fill="#D4872C" opacity="0.18"/>
+              <circle cx="86" cy="58" r="4" fill="#E8A838" opacity="0.15"/>
+              <circle cx="104" cy="54" r="2.5" fill="#D4872C" opacity="0.12"/>
+              {/* Top drip from lid */}
+              <ellipse cx="68" cy="28" rx="3" ry="4" fill="#A855F7" opacity="0.3"/>
+              {/* Jar */}
               <rect x="30" y="16" width="40" height="8" rx="4" fill="url(#lp-jar-lid)"/>
               <rect x="26" y="24" width="48" height="6" rx="3" fill="url(#lp-jar-lid)" opacity="0.7"/>
               <path d="M28 30c-2 0-4 2-4 4v36c0 8 6 14 14 14h24c8 0 14-6 14-14V34c0-2-2-4-4-4H28z" fill="url(#lp-jar-body)"/>
-              <path d="M28 56c0 0 8-6 22-6s22 6 22 6v14c0 8-6 14-14 14H42c-8 0-14-6-14-14V56z" fill="url(#lp-jar-fill)" opacity="0.6"/>
+              <path d="M28 56c0 0 8-6 22-6s22 6 22 6v14c0 8-6 14-14 14H42c-8 0-14-6-14-14V56z" fill="url(#lp-jar-fill)" opacity="0.7"/>
               <path d="M34 38v20" stroke="rgba(255,255,255,0.12)" strokeWidth="3" strokeLinecap="round"/>
               <defs>
                 <linearGradient id="lp-jar-lid" x1="30" y1="16" x2="70" y2="30" gradientUnits="userSpaceOnUse">

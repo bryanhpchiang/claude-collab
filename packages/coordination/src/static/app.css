@@ -227,9 +227,9 @@ input {
 }
 
 .hero-jar-icon {
-  width: 80px;
-  height: 80px;
-  filter: drop-shadow(0 0 30px rgba(232, 168, 56, 0.2));
+  width: clamp(100px, 15vw, 140px);
+  height: clamp(100px, 15vw, 140px);
+  filter: drop-shadow(0 0 40px rgba(232, 168, 56, 0.25)) drop-shadow(0 0 80px rgba(168, 85, 247, 0.15));
 }
 
 .hero-badge {
