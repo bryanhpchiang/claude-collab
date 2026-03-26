@@ -42,7 +42,21 @@ export function LandingPage({ authEnabled, signedIn }: LandingPageProps) {
       <div className="page-grid"></div>
       <div className="container">
         <nav className="site-nav">
-          <a href="/" className="nav-brand">Jam</a>
+          <a href="/" className="nav-brand">
+            <svg className="nav-brand-logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="30" y="16" width="40" height="8" rx="4" fill="url(#nv-jar-lid)"/>
+              <rect x="26" y="24" width="48" height="6" rx="3" fill="url(#nv-jar-lid)" opacity="0.7"/>
+              <path d="M28 30c-2 0-4 2-4 4v36c0 8 6 14 14 14h24c8 0 14-6 14-14V34c0-2-2-4-4-4H28z" fill="url(#nv-jar-body)"/>
+              <path d="M28 56c0 0 8-6 22-6s22 6 22 6v14c0 8-6 14-14 14H42c-8 0-14-6-14-14V56z" fill="url(#nv-jar-fill)" opacity="0.7"/>
+              <path d="M34 38v20" stroke="rgba(255,255,255,0.1)" strokeWidth="3" strokeLinecap="round"/>
+              <defs>
+                <linearGradient id="nv-jar-lid" x1="30" y1="16" x2="70" y2="30" gradientUnits="userSpaceOnUse"><stop stopColor="#E8A838"/><stop offset="1" stopColor="#D4872C"/></linearGradient>
+                <linearGradient id="nv-jar-body" x1="24" y1="30" x2="76" y2="84" gradientUnits="userSpaceOnUse"><stop stopColor="rgba(232,168,56,0.18)"/><stop offset="1" stopColor="rgba(168,85,247,0.1)"/></linearGradient>
+                <linearGradient id="nv-jar-fill" x1="28" y1="50" x2="72" y2="84" gradientUnits="userSpaceOnUse"><stop stopColor="#A855F7" stopOpacity="0.4"/><stop offset="1" stopColor="#7C3AED" stopOpacity="0.2"/></linearGradient>
+              </defs>
+            </svg>
+            Jam
+          </a>
           <div className="nav-links">
             <a href="https://github.com/bryanhpchiang/claude-collab" target="_blank" rel="noopener">
               GitHub
@@ -68,16 +82,16 @@ export function LandingPage({ authEnabled, signedIn }: LandingPageProps) {
               <rect x="26" y="24" width="48" height="6" rx="3" fill="url(#lp-jar-lid)" opacity="0.7"/>
               <path d="M28 30c-2 0-4 2-4 4v36c0 8 6 14 14 14h24c8 0 14-6 14-14V34c0-2-2-4-4-4H28z" fill="url(#lp-jar-body)"/>
               <path d="M28 56c0 0 8-6 22-6s22 6 22 6v14c0 8-6 14-14 14H42c-8 0-14-6-14-14V56z" fill="url(#lp-jar-fill)" opacity="0.6"/>
-              <path d="M34 38v20" stroke="rgba(255,255,255,0.08)" strokeWidth="3" strokeLinecap="round"/>
+              <path d="M34 38v20" stroke="rgba(255,255,255,0.12)" strokeWidth="3" strokeLinecap="round"/>
               <defs>
                 <linearGradient id="lp-jar-lid" x1="30" y1="16" x2="70" y2="30" gradientUnits="userSpaceOnUse">
                   <stop stopColor="#E8A838"/><stop offset="1" stopColor="#D4872C"/>
                 </linearGradient>
                 <linearGradient id="lp-jar-body" x1="24" y1="30" x2="76" y2="84" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="rgba(232,168,56,0.12)"/><stop offset="1" stopColor="rgba(168,85,247,0.06)"/>
+                  <stop stopColor="rgba(232,168,56,0.22)"/><stop offset="1" stopColor="rgba(168,85,247,0.12)"/>
                 </linearGradient>
                 <linearGradient id="lp-jar-fill" x1="28" y1="50" x2="72" y2="84" gradientUnits="userSpaceOnUse">
-                  <stop stopColor="#A855F7" stopOpacity="0.3"/><stop offset="1" stopColor="#7C3AED" stopOpacity="0.15"/>
+                  <stop stopColor="#A855F7" stopOpacity="0.5"/><stop offset="1" stopColor="#7C3AED" stopOpacity="0.25"/>
                 </linearGradient>
               </defs>
             </svg>
@@ -157,6 +171,9 @@ export function LandingPage({ authEnabled, signedIn }: LandingPageProps) {
           </div>
         </section>
 
+        <div className="feature-grid-header">
+          <div className="section-label">Why Jam</div>
+        </div>
         <section className="feature-grid">
           <article className="feature-card">
             <div className="feature-icon">
