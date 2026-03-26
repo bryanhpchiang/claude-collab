@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { loadConfig } from "../src/config";
+import { DEFAULT_JAM_E2B_TEMPLATE, loadConfig } from "../src/config";
 
 const COORDINATION_ENV_KEYS = [
   "PORT",
@@ -101,6 +101,34 @@ describe("loadConfig", () => {
       },
       () => {
         expect(loadConfig().jamComputeProvider).toBe("e2b");
+      },
+    );
+  });
+
+  test("defaults the jam E2B template for the production E2B environment", () => {
+    withCoordinationEnv(
+      {
+        DATABASE_URL: "postgresql://jam:jam@localhost:5432/jam",
+        BETTER_AUTH_SECRET: "test-secret",
+        BASE_URL: "https://letsjam.now",
+        E2B_API_KEY: "test-e2b-key",
+      },
+      () => {
+        expect(loadConfig().jamE2bTemplate).toBe(DEFAULT_JAM_E2B_TEMPLATE);
+      },
+    );
+  });
+
+  test("does not force the production template for non-production base urls", () => {
+    withCoordinationEnv(
+      {
+        DATABASE_URL: "postgresql://jam:jam@localhost:5432/jam",
+        BETTER_AUTH_SECRET: "test-secret",
+        BASE_URL: "http://localhost:3000",
+        E2B_API_KEY: "test-e2b-key",
+      },
+      () => {
+        expect(loadConfig().jamE2bTemplate).toBe("");
       },
     );
   });

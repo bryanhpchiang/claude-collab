@@ -6,6 +6,7 @@ type CoordinationWebClientEntries = typeof COORDINATION_WEB_CLIENT_ENTRIES;
 
 export const DEFAULT_JAM_RUNTIME_START_COMMAND =
   "JAM_MODE=instance bun run runtime:start";
+export const DEFAULT_JAM_E2B_TEMPLATE = "jam-runtime-v1";
 export const DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND =
   "cd packages/runtime && JAM_MODE=instance bun run src/index.ts";
 
@@ -99,6 +100,14 @@ export function loadConfig(): CoordinationConfig {
 
   const defaultInstallDir =
     jamComputeProvider === "e2b" ? "/home/user/jam" : "/opt/jam";
+  const e2bDomain = process.env.E2B_DOMAIN || "e2b.letsjam.now";
+  const jamE2bTemplate =
+    process.env.JAM_E2B_TEMPLATE ||
+    (jamComputeProvider === "e2b" &&
+    e2bDomain === "e2b.letsjam.now" &&
+    baseUrl === "https://letsjam.now"
+      ? DEFAULT_JAM_E2B_TEMPLATE
+      : "");
 
   return {
     port: Number.isFinite(port) ? port : 8080,
@@ -135,8 +144,8 @@ export function loadConfig(): CoordinationConfig {
     jamAlbListenerArn: process.env.JAM_ALB_LISTENER_ARN || "",
     jamVpcId: process.env.JAM_VPC_ID || "",
     e2bApiKey,
-    e2bDomain: process.env.E2B_DOMAIN || "e2b.letsjam.now",
-    jamE2bTemplate: process.env.JAM_E2B_TEMPLATE || "",
+    e2bDomain,
+    jamE2bTemplate,
     jamE2bTimeoutMs: Number.isFinite(jamE2bTimeoutMs)
       ? jamE2bTimeoutMs
       : 60 * 60 * 1000,
