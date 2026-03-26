@@ -82,6 +82,7 @@ describe("buildE2bTemplateLaunchScript", () => {
     expect(script).not.toContain("npm install -g @anthropic-ai/claude-code");
     expect(script).not.toContain("git clone");
     expect(script).not.toContain("bun install --frozen-lockfile");
+    expect(DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND).toContain("bun run runtime:start");
     expect(script).toContain(
       `exec /bin/bash -c '${DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND} > /tmp/jam-runtime.log 2>&1'`,
     );

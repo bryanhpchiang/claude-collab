@@ -1,5 +1,9 @@
 import { describe, expect, test } from "bun:test";
-import { DEFAULT_JAM_E2B_TEMPLATE, loadConfig } from "../src/config";
+import {
+  DEFAULT_JAM_E2B_TEMPLATE,
+  DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND,
+  loadConfig,
+} from "../src/config";
 
 const COORDINATION_ENV_KEYS = [
   "PORT",
@@ -174,5 +178,10 @@ describe("loadConfig", () => {
 
     expect(pkg.scripts?.start).toContain("web:build");
     expect(pkg.scripts?.dev).toContain("web:build");
+  });
+
+  test("uses the runtime start script for E2B template launches", () => {
+    expect(DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND).toContain("bun run runtime:start");
+    expect(DEFAULT_JAM_E2B_TEMPLATE_START_COMMAND).not.toContain("src/index.ts");
   });
 });
