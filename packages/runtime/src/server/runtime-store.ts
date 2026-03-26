@@ -20,6 +20,7 @@ function appendMessageLog(username: string, text: string) {
 import { resolveProjectCwd } from "../project-paths";
 import { buildClaudeInput } from "../session-input";
 import { spawnClaude, SYSTEM_PROMPT } from "./claude";
+import { createClaudeStartupAutomator } from "./claude-startup";
 import type {
   AuthenticatedRuntimeUser,
   ChatEvent,
@@ -168,6 +169,7 @@ export class RuntimeStore {
       cwd,
       extraEnv: this.extraEnv,
     });
+    const startupAutomator = createClaudeStartupAutomator(shell);
 
     const session: Session = {
       id,
@@ -181,6 +183,7 @@ export class RuntimeStore {
     };
 
     shell.onData((data: string) => {
+      startupAutomator.observe(data);
       session.scrollback += data;
       if (session.scrollback.length > 200000) {
         session.scrollback = session.scrollback.slice(-100000);
@@ -189,6 +192,7 @@ export class RuntimeStore {
     });
 
     shell.onExit(({ exitCode, signal }) => {
+      startupAutomator.stop();
       console.log(`Session ${id} claude exited: code=${exitCode} signal=${signal}`);
       const reason =
         exitCode === 0

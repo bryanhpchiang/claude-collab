@@ -350,13 +350,13 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
           ) : (
             <div id="oauth-key-input" style={{ display: "block", marginTop: 18 }}>
               <p style={{ color: "#9B8FC2", fontSize: 13, marginBottom: 10 }}>
-                Paste the code from the sign-in page, or enter your Anthropic API key:
+                Paste the code from the Claude sign-in page:
               </p>
               <div style={{ display: "flex", gap: 8 }}>
                 <input
                   id="oauth-key-field"
                   type="text"
-                  placeholder="Paste code or API key here..."
+                  placeholder="Paste sign-in code here..."
                   style={{
                     flex: 1,
                     background: "#0C0A14",

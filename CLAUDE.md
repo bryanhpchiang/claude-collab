@@ -98,7 +98,7 @@ Browser (xterm.js) <--WebSocket--> Bun Server <--PTY--> Claude Code CLI
 - Resumes existing sessions with `--resume <sessionId>`
 - Sets `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` to enable parallel agent execution
 - Working directory: session/project cwd; the default project uses `JAM_CWD`, otherwise `$HOME`
-- Auto-sends Enter after 3s and 5s to dismiss the trust prompt
+- Prompt-aware startup automation advances Claude through the workspace trust prompt, bypass-permissions confirmation, theme picker, Claude subscription login picker, and post-login continue screen
 
 ### Session management
 - Sessions are in-memory only (lost on server restart, though Claude sessions persist on disk and can be resumed)
