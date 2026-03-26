@@ -47,6 +47,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
   const oauthOpenedRef = useRef(false);
 
   const [interactive, setInteractive] = useState(false);
+  const [termReady, setTermReady] = useState(false);
   const [oauthVisible, setOauthVisible] = useState(false);
   const [oauthUrl, setOauthUrl] = useState("");
   const [oauthShowKeyInput, setOauthShowKeyInput] = useState(false);
@@ -78,7 +79,22 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
 
   useEffect(() => {
     const container = terminalContainerRef.current;
-    if (!container) return;
+    if (!container || container.clientWidth === 0 || container.clientHeight === 0) {
+      // Container has no dimensions yet — wait for layout via ResizeObserver
+      if (container) {
+        const ro = new ResizeObserver(() => {
+          if (container.clientWidth > 0 && container.clientHeight > 0) {
+            ro.disconnect();
+            // Re-trigger this effect by forcing a state update
+            container.dataset.ready = "1";
+            setTermReady(v => !v);
+          }
+        });
+        ro.observe(container);
+        return () => ro.disconnect();
+      }
+      return;
+    }
 
     const term = new XTerm({
       cursorBlink: false,
@@ -145,7 +161,7 @@ export const TerminalPanel = forwardRef<TerminalHandle, TerminalPanelProps>(func
       fitAddonRef.current = null;
       termRef.current = null;
     };
-  }, []);
+  }, [termReady]);
 
   useEffect(() => {
     const term = termRef.current;
